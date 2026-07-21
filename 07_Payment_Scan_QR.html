@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#e5e2e1",
+                      "tertiary": "#e1ffd1",
+                      "tertiary-fixed-dim": "#2ae500",
+                      "tertiary-fixed": "#79ff5b",
+                      "on-primary-container": "#006970",
+                      "on-tertiary-container": "#106e00",
+                      "on-secondary-fixed": "#3a0033",
+                      "surface": "#131313",
+                      "tertiary-container": "#33fb0a",
+                      "primary-fixed-dim": "#00dbe9",
+                      "on-secondary-container": "#520049",
+                      "surface-bright": "#393939",
+                      "outline-variant": "#3b494b",
+                      "secondary-container": "#ff24e4",
+                      "on-tertiary-fixed-variant": "#095300",
+                      "surface-container-low": "#1c1b1b",
+                      "on-primary": "#00363a",
+                      "on-tertiary-fixed": "#022100",
+                      "error-container": "#93000a",
+                      "surface-container-highest": "#353534",
+                      "surface-dim": "#131313",
+                      "error": "#ffb4ab",
+                      "on-tertiary": "#053900",
+                      "on-secondary": "#5e0053",
+                      "on-surface-variant": "#b9cacb",
+                      "on-error": "#690005",
+                      "secondary-fixed": "#ffd7f0",
+                      "primary": "#dbfcff",
+                      "inverse-surface": "#e5e2e1",
+                      "primary-fixed": "#7df4ff",
+                      "background": "#131313",
+                      "on-secondary-fixed-variant": "#840076",
+                      "surface-container-lowest": "#0e0e0e",
+                      "surface-container-high": "#2a2a2a",
+                      "on-surface": "#e5e2e1",
+                      "on-primary-fixed": "#002022",
+                      "primary-container": "#00f0ff",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface-container": "#201f1f",
+                      "outline": "#849495",
+                      "surface-variant": "#353534",
+                      "secondary": "#fface8",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed-dim": "#fface8",
+                      "inverse-primary": "#006970",
+                      "surface-tint": "#00dbe9",
+                      "inverse-on-surface": "#313030"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-desktop": "40px",
+                      "gutter": "16px",
+                      "container-max": "1200px",
+                      "unit": "4px",
+                      "margin-mobile": "20px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Space Mono"
+                      ],
+                      "display-xl": [
+                              "Anybody"
+                      ],
+                      "headline-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "display-xl-mobile": [
+                              "Anybody"
+                      ],
+                      "headline-lg": [
+                              "Anybody"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-xl": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+      }catch(_e){}</script><meta charset="utf-8"></head><body class="bg-background text-on-background min-h-screen flex flex-col noise-bg">
+<!-- TopNavBar (Transactional Intent - Minimal Header) -->
+<header class="fixed top-0 w-full bg-surface/80 backdrop-blur-xl border-b-2 border-outline/20 z-50">
+<div class="flex justify-between items-center px-margin-mobile py-4 w-full">
+<div class="font-display-xl-mobile text-display-xl-mobile tracking-tighter text-tertiary-fixed italic">
+                 RETRO_SNAP
+             </div>
+<div>
+<button class="font-label-sm text-label-sm text-primary hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1">
+                    CANCEL
+                </button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[100px] pb-margin-mobile px-margin-mobile flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Decorative Background Elements -->
+<div class="absolute -top-20 -left-20 w-64 h-64 bg-secondary-container rounded-full blur-[100px] opacity-20"></div>
+<div class="absolute bottom-0 right-0 w-96 h-96 bg-primary-container rounded-full blur-[120px] opacity-20"></div>
+<div class="w-full max-w-md mx-auto space-y-8 relative z-10">
+<!-- Scan Instruction -->
+<div class="text-center">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-tertiary-fixed uppercase tracking-wider mb-2">
+                    COMPLETE_TRANSACTION
+                </h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                    Scan the code below with your banking app
+                </p>
+</div>
+<!-- QR Code Container - Glassmorphism & Brutalism hybrid -->
+<div class="relative group">
+<!-- Hard Shadow Base -->
+<div class="absolute inset-0 bg-secondary-container translate-x-2 translate-y-2 rounded-xl"></div>
+<!-- Main Container -->
+<div class="relative bg-surface/40 backdrop-blur-xl border-2 border-outline-variant p-6 rounded-xl flex flex-col items-center justify-center space-y-6 overflow-hidden">
+<!-- Grain overlay for this specific container -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%221.5%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E');"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-fixed" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+<h2 class="font-label-sm text-label-sm text-primary-fixed uppercase tracking-widest border-b border-primary-fixed/50 pb-1">
+                            SCAN TO PAY
+                        </h2>
+</div>
+<!-- The QR Code Image area -->
+<div class="bg-white p-4 rounded-lg relative shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+<!-- Corner brackets -->
+<div class="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-surface-container"></div>
+<div class="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-surface-container"></div>
+<div class="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-surface-container"></div>
+<div class="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-surface-container"></div>
+<img alt="QR Code" class="w-48 h-48 object-cover mix-blend-multiply" data-alt="A highly detailed, perfectly square QR code graphic designed in a stark black and white high-contrast style. The QR code should look scannable and precise, sitting on a pristine white background. The overall aesthetic is purely digital, functional, and utilitarian, fitting a tech-focused payment screen without any extraneous colorful elements." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFewUVSAvhrpaRz3RFquA2gVmYeLG1rFR_RihATN-L3a94FJ1ZHPXqircYkXwwgImqeyaI1ruLW2oxVIWz3vDXiZis9Y7wW6h-nisKpw6_c-Ekzdhek8Un5AX0U-jrZ--a3IhBBCvI9TaJbVSGc9odc8kc68Q1X6YY1hfg3lSA7oFA7OBIgZQKQrkH9XSr2rLxlx-xstbyMXii0SxytabYkPNhb4tiqJXwfCzlATqGgMmJvmMKbur2nQ">
+</div>
+<!-- Payment details -->
+<div class="w-full flex justify-between items-center border-t border-outline-variant/50 pt-4 mt-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">TOTAL:</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-tertiary-fixed">฿ 150.00</span>
+</div>
+</div>
+</div>
+<!-- Simulation Button -->
+<button class="w-full relative group block mt-8" id="successBtn" onclick="window.location.href='13_Processing_Your_Snap.html'">
+<!-- Hard Shadow Base -->
+<div class="absolute inset-0 bg-primary-container translate-x-[4px] translate-y-[4px] group-hover:translate-x-[2px] group-hover:translate-y-[2px] group-active:translate-x-0 group-active:translate-y-0 transition-transform duration-100 ease-out"></div>
+<!-- Button Surface -->
+<div class="relative bg-surface border-2 border-primary-container px-6 py-4 flex items-center justify-center gap-3 group-hover:-translate-x-[2px] group-hover:-translate-y-[2px] group-active:translate-x-[4px] group-active:translate-y-[4px] transition-transform duration-100 ease-out">
+<span class="material-symbols-outlined text-primary-container">check_circle</span>
+<span class="font-label-sm text-label-sm text-primary-container uppercase tracking-widest font-bold">
+                        PAYMENT SUCCESSFUL
+                    </span>
+</div>
+</button>
+<!-- Contextual Note -->
+<p class="text-center font-label-sm text-label-sm text-outline-variant text-[10px] uppercase mt-4">
+                *Awaiting confirmation from gateway
+            </p>
+</div>
+</main>
+<script>
+        // Micro-interaction for the success button
+        document.getElementById('successBtn').addEventListener('click', function() {
+            // Trigger the flash effect on the body
+            document.body.classList.add('animate-flash');
+            
+            // Remove the class after animation completes to allow re-triggering
+            setTimeout(() => {
+                document.body.classList.remove('animate-flash');
+            }, 300);
+            
+            // Temporary state change on button text for feedback
+            const textSpan = this.querySelector('span:last-child');
+            const originalText = textSpan.innerText;
+            textSpan.innerText = 'PROCESSING...';
+            
+            setTimeout(() => {
+                textSpan.innerText = originalText;
+            }, 1000);
+        });
+    </script>
+
+</body></html>

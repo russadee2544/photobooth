@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GRAB YOUR MEMORIES - RETRO_SNAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&amp;family=Hanken+Grotesk:wght@400&amp;family=Space+Mono:ital,wght@0,500;1,500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#e1ffd1",
+                        "tertiary-fixed-dim": "#2ae500",
+                        "tertiary-fixed": "#79ff5b",
+                        "on-primary-container": "#006970",
+                        "on-tertiary-container": "#106e00",
+                        "on-secondary-fixed": "#3a0033",
+                        "surface": "#131313",
+                        "tertiary-container": "#33fb0a",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-secondary-container": "#520049",
+                        "surface-bright": "#393939",
+                        "outline-variant": "#3b494b",
+                        "secondary-container": "#ff24e4",
+                        "on-tertiary-fixed-variant": "#095300",
+                        "surface-container-low": "#1c1b1b",
+                        "on-primary": "#00363a",
+                        "on-tertiary-fixed": "#022100",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#353534",
+                        "surface-dim": "#131313",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#053900",
+                        "on-secondary": "#5e0053",
+                        "on-surface-variant": "#b9cacb",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffd7f0",
+                        "primary": "#dbfcff",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed": "#7df4ff",
+                        "background": "#131313",
+                        "on-secondary-fixed-variant": "#840076",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-container-high": "#2a2a2a",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed": "#002022",
+                        "primary-container": "#00f0ff",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface-container": "#201f1f",
+                        "outline": "#849495",
+                        "surface-variant": "#353534",
+                        "secondary": "#fface8",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#fface8",
+                        "inverse-primary": "#006970",
+                        "surface-tint": "#00dbe9",
+                        "inverse-on-surface": "#313030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "container-max": "1200px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["Space Mono"],
+                        "display-xl": ["Anybody"],
+                        "headline-lg-mobile": ["Anybody"],
+                        "display-xl-mobile": ["Anybody"],
+                        "headline-lg": ["Anybody"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-xl": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "display-xl-mobile": ["40px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        
+        .printer-slot {
+            box-shadow: inset 0px -10px 20px rgba(0,0,0,0.8), 0px 5px 15px rgba(0,240,255,0.2);
+            border-bottom: 2px solid theme('colors.outline');
+        }
+
+        @keyframes scrollPrint {
+            0% { transform: translateY(-100%); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(0); }
+        }
+
+        .anim-print {
+            animation: scrollPrint 3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .anim-blink {
+            animation: blink 1s infinite;
+        }
+        
+        .dither-effect {
+            filter: grayscale(100%) contrast(150%) brightness(90%);
+            mix-blend-mode: luminosity;
+        }
+        
+        .sticker-btn {
+            box-shadow: 4px 4px 0px 0px theme('colors.secondary-container');
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .sticker-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px theme('colors.secondary-container');
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-x-hidden relative selection:bg-tertiary-fixed selection:text-on-tertiary-fixed">
+<div class="noise-overlay"></div>
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center px-margin-mobile py-4 w-full z-50 bg-surface/80 backdrop-blur-xl border-b-2 border-outline/20 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] fixed top-0 w-full hidden md:flex">
+<div class="font-display-xl tracking-tighter text-tertiary-fixed italic">RETRO_SNAP</div>
+<div class="flex gap-6 font-label-sm text-label-sm">
+<a class="text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">GALLERY</a>
+<a class="text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">SETTINGS</a>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1">EXIT</button>
+</nav>
+<!-- Mobile Header Fallback -->
+<header class="md:hidden flex justify-between items-center px-margin-mobile py-4 w-full z-50 bg-surface/80 backdrop-blur-xl border-b-2 border-outline/20 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] fixed top-0 w-full">
+<div class="font-display-xl-mobile tracking-tighter text-tertiary-fixed italic">RETRO_SNAP</div>
+<button class="font-label-sm text-label-sm text-primary">EXIT</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-24 pb-8 md:pt-32 px-margin-mobile md:px-margin-desktop w-full max-w-container-max mx-auto flex flex-col items-center justify-center relative">
+<div class="w-full text-center mb-8 md:mb-12">
+<h1 class="font-display-xl-mobile md:font-display-xl text-primary-container tracking-tighter uppercase mb-2">GRAB YOUR MEMORIES</h1>
+<p class="font-label-sm text-label-sm text-tertiary-fixed uppercase flex items-center justify-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed anim-blink"></span>
+                Printing Sequence Initiated...
+            </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter w-full relative z-10">
+<!-- Printer & Photo Strip -->
+<div class="md:col-span-7 lg:col-span-8 flex flex-col items-center relative">
+<!-- Printer Slot Graphic -->
+<div class="w-64 md:w-80 h-12 bg-surface-container-highest rounded-t-lg printer-slot flex items-center justify-center z-20 border-2 border-outline/30 relative overflow-hidden">
+<div class="w-3/4 h-2 bg-background rounded-full opacity-50"></div>
+<div class="absolute bottom-0 left-0 w-full h-[1px] bg-primary/30"></div>
+</div>
+<!-- Photo Strip Container -->
+<div class="relative w-56 md:w-72 bg-inverse-surface p-4 border-2 border-outline pb-12 z-10 overflow-hidden" style="box-shadow: 8px 8px 0px 0px rgba(0,240,255,0.4);">
+<div class="anim-print flex flex-col gap-4">
+<div class="w-full aspect-[3/4] bg-surface-container border-2 border-surface-container-highest relative overflow-hidden">
+<img class="w-full h-full object-cover dither-effect mix-blend-multiply opacity-80" data-alt="A gritty, black and white lo-fi portrait of two friends making funny faces, stylized with heavy digital dithering and a retro webcam aesthetic. High contrast, raw flash lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqFpoohFT5yb5XQzAuH0FiyDstlQgp_TeCdoHkV_yQasSmZhNU7RAkLFZfKGLT0KdjwOHLetctGGtBujUj8S16Kdq3f7Brkw0-y3YEOFolJys0VkalK5CV9off0B-11y3WV8wJfh20ZYMnh0OjuL4xz6QbpmDmjqlQDwRJ6-oD0tPtW5Qw2mlyRaYw0f3_LcoKV70A1JUet9UqLVgjCgIYkBFJi5kew0U60X18u-ADiV7H8IX9zhzbaA"/>
+</div>
+<div class="w-full aspect-[3/4] bg-surface-container border-2 border-surface-container-highest relative overflow-hidden">
+<img class="w-full h-full object-cover dither-effect mix-blend-multiply opacity-80" data-alt="A grainy, monochrome close-up of hands holding up peace signs, heavily textured with a Y2K digital camera aesthetic and pixelated dithering. Harsh direct flash." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqqo-4RbuJhKEmP1KXw7zJE3pC9C4woUxzLASgoavRNSweoONuU_VbofG53SFn0H2oh34RGzjQpFT_85zWlvarBUA9y5kmnQwHINXO23GahlDAjkRqTI0Fh4CXKPjTDpbgxSVXMyHqTBg42__vjn48oP45UpCBoSHBNgyK308h3ilzIxkhp9JJngwyY-NGI0kuHd8OjroDjtyeqp8tg7nrHp-BcQIPctLBr_DYZA13pFgU6Ks-zx-1fw"/>
+</div>
+<div class="w-full aspect-[3/4] bg-surface-container border-2 border-surface-container-highest relative overflow-hidden">
+<img class="w-full h-full object-cover dither-effect mix-blend-multiply opacity-80" data-alt="A candid, black and white dithered photo of someone laughing with a chaotic party background, resembling an old printed receipt photo strip. Brutalist digital artifacting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR0ce657nemvRpaVOhABSxqXylWyUsKnr7_vxDIEs9Cog-mQC2MlRwEEKc2SksvtNyXSmPeDjC-3R7Os5gEqKpcD3ecNNdQiCfcXyO1UKBEut2GG8_1JHpwRh9mMWK72Y9ZISEfmv2MqiQaYvStwj6YRLYQb8eV6WYzoKzLjPa6RoS97A3MIEXEhpxEUBkrvnkTyh8trejeR0xv0CLsnaZ5p50o6Fjy-afBnnTmJv0ZL1oUyt4GGa7vg"/>
+</div>
+<div class="mt-4 pt-4 border-t-2 border-dashed border-outline-variant flex flex-col items-center justify-center">
+<span class="font-label-sm text-label-sm text-surface-container-highest font-bold">BOOTH_01 // ACID_SNAP</span>
+<span class="font-label-sm text-[10px] text-surface-container-highest/60 mt-1">ID: 9948-X2</span>
+</div>
+</div>
+</div>
+</div>
+<!-- QR & Actions -->
+<div class="md:col-span-5 lg:col-span-4 flex flex-col gap-6 mt-8 md:mt-0 justify-center">
+<div class="bg-surface/60 backdrop-blur-md border-2 border-outline-variant/30 p-6 shadow-[8px_8px_0px_0px_rgba(255,36,228,0.5)] flex flex-col items-center text-center">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-secondary mb-4 uppercase">DIGITAL COPY</h2>
+<div class="bg-white p-4 border-4 border-surface-container-lowest mb-4 w-48 h-48 flex items-center justify-center relative group">
+<!-- Simulated QR Code -->
+<div class="grid grid-cols-5 grid-rows-5 gap-1 w-full h-full p-2 bg-white">
+<div class="bg-black col-span-2 row-span-2 rounded-[1px]"></div>
+<div class="bg-transparent"></div>
+<div class="bg-black col-span-2 row-span-2 rounded-[1px]"></div>
+<div class="bg-black"></div>
+<div class="bg-black"></div>
+<div class="bg-transparent"></div>
+<div class="bg-black"></div>
+<div class="bg-black"></div>
+<div class="bg-transparent col-span-5"></div>
+<div class="bg-black col-span-2 row-span-2 rounded-[1px]"></div>
+<div class="bg-transparent"></div>
+<div class="bg-black"></div>
+<div class="bg-transparent"></div>
+<div class="bg-transparent"></div>
+<div class="bg-black col-span-2"></div>
+</div>
+<!-- Scanner line animation -->
+<div class="absolute top-0 left-0 w-full h-[2px] bg-tertiary-fixed shadow-[0_0_10px_2px_rgba(121,255,91,0.8)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" style="animation: scan 2s infinite linear;"></div>
+<style>
+                            @keyframes scan {
+                                0% { top: 0; }
+                                50% { top: 100%; }
+                                100% { top: 0; }
+                            }
+                        </style>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-6 uppercase">Scan to save high-res files directly to your device.</p>
+<button class="w-full bg-primary text-on-primary font-label-sm text-label-sm uppercase py-4 border-2 border-primary sticker-btn flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">download</span>
+                        SAVE TO CAMERA ROLL
+                    </button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-surface-container-low text-on-surface font-label-sm text-label-sm uppercase py-3 border-2 border-outline-variant hover:border-tertiary-fixed transition-colors">
+                        REPRINT
+                    </button>
+<button class="bg-surface-container-low text-on-surface font-label-sm text-label-sm uppercase py-3 border-2 border-outline-variant hover:border-secondary transition-colors">
+                        NEW SESSION
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="flex justify-between items-center px-margin-desktop w-full mt-auto bg-surface-container-lowest py-2 border-t border-outline-variant/10">
+<div class="font-label-sm text-on-surface">©2024 ACID_SNAP_DIGITAL</div>
+<div class="flex gap-4 font-label-sm text-label-sm">
+<a class="text-on-surface-variant hover:text-tertiary transition-colors duration-200" href="#">PRIVACY</a>
+<a class="text-on-surface-variant hover:text-tertiary transition-colors duration-200" href="#">TOS</a>
+<a class="text-on-surface-variant hover:text-tertiary transition-colors duration-200" href="#">HELP</a>
+</div>
+</footer>
+</body></html>

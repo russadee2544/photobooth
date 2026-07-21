@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Processing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-hidden flex flex-col items-center justify-center relative">
+    
+    <div class="flex flex-col items-center justify-center z-10 fade-up-enter">
+        <div class="relative w-24 h-24 mb-8">
+            <!-- Outer spinning ring -->
+            <div class="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-gray-900 rounded-full border-t-transparent animate-spin"></div>
+            <!-- Inner pulse -->
+            <div class="absolute inset-4 bg-gray-900 rounded-full opacity-10 animate-ping"></div>
+        </div>
+        
+        <h2 class="text-2xl font-bold tracking-tight mb-2" data-i18n="proc_title">Processing Photos</h2>
+        <p id="status-text" class="text-gray-500 text-sm font-medium" data-i18n="proc_desc">Applying high-quality filters...</p>
+    </div>
+
+    <!-- Hidden canvas for processing -->
+    <canvas id="work-canvas" class="hidden"></canvas>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const statusText = document.getElementById('status-text');
+            const wait = (ms) => new Promise(r => setTimeout(r, ms));
+            
+            try {
+                let photos = [];
+                if (Session.photos) photos = Session.photos;
+                const template = Session.template || 'light';
+                
+                const currentLayoutStr = Session.layout || '4_1x1';
+                
+                // Fetch Custom Theme (if UUID)
+                let customThemeObj = null;
+                if (!['light', 'dark', 'mint', 'blue', 'exhibition'].includes(template)) {
+                    customThemeObj = await fetchCustomThemeById(template);
+                }
+                
+                // 1. Compose full res (1200px width for printing)
+                statusText.innerText = "Composing layout...";
+                await wait(500); // UI breathing room
+                
+                const colorCanvas = await composeStrip(photos, template, 1200, customThemeObj, currentLayoutStr);
+                Session.result = colorCanvas.toDataURL('image/jpeg', 0.9);
+
+                // 2. Apply Dithering for the alternate version
+                statusText.innerText = "Generating Retro Dithered version...";
+                await wait(500);
+
+                const workCanvas = document.getElementById('work-canvas');
+                workCanvas.width = colorCanvas.width;
+                workCanvas.height = colorCanvas.height;
+                const ctx = workCanvas.getContext('2d');
+                ctx.drawImage(colorCanvas, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, workCanvas.width, workCanvas.height);
+                const ditheredData = floydSteinbergDither(imageData);
+                ctx.putImageData(ditheredData, 0, 0);
+
+                Session.dithered = workCanvas.toDataURL('image/png');
+
+                // 3. Finalize
+                statusText.innerText = "Finalizing...";
+                await wait(500);
+
+                window.location.href = 'print.html';
+
+            } catch (err) {
+                console.error("Processing error:", err);
+                statusText.innerText = "Error processing. Returning to start...";
+                await wait(2000);
+                window.location.href = 'home.html';
+            }
+        });
+    </script>
+</body>
+</html>

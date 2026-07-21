@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Template</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
+    
+    <!-- Header -->
+    <header class="kiosk-header">
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+    </header>
+
+    <main class="flex-grow pt-24 pb-32 px-6 lg:px-12 flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter min-h-0">
+        
+        <!-- Live Preview Side -->
+        <div class="w-full lg:w-1/2 flex items-center justify-center bg-gray-100 rounded-3xl p-6 lg:p-8 relative overflow-hidden h-[40vh] lg:h-full shrink-0">
+            <!-- Background element for contrast -->
+            <div class="absolute inset-0 bg-white/50 pointer-events-none"></div>
+            
+            <div id="preview-container" class="relative z-10 shadow-2xl transition-transform duration-500 hover:scale-[1.02] w-full h-full flex items-center justify-center">
+                <!-- Canvas will be injected here -->
+            </div>
+        </div>
+
+        <!-- Selection Side -->
+        <div class="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center h-full max-h-[50vh] lg:max-h-[70vh]">
+            <h1 class="text-3xl lg:text-4xl font-bold tracking-tight mb-2 shrink-0" data-i18n="tpl_title">Choose Frame</h1>
+            <p class="text-gray-500 text-sm mb-6 lg:mb-10 shrink-0" data-i18n="tpl_desc">Select a frame style that matches your mood.</p>
+
+            <div class="grid grid-cols-2 gap-3 lg:gap-4 overflow-y-auto pr-2 pb-12 no-scrollbar h-full items-start content-start">
+                
+                <div class="selection-card selected p-6 text-center" data-template="light">
+                    <div class="w-16 h-16 rounded-full border border-gray-200 mx-auto mb-4 bg-white shadow-sm flex items-center justify-center">
+                        <div class="w-8 h-8 border border-gray-900 bg-white"></div>
+                    </div>
+                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_light">Classic Y2K</h3>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_light_sub">Minimalist Monochrome</p>
+                </div>
+
+                <div class="selection-card p-6 text-center" data-template="dark">
+                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex flex-col items-center justify-center gap-1">
+                        <!-- Retro ticket lines -->
+                        <div class="w-8 border-b-2 border-white border-dashed"></div>
+                        <div class="text-white text-[8px] tracking-widest font-bold">TICKET</div>
+                    </div>
+                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_dark">Retro Ticket</h3>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_dark_sub">Receipt Style</p>
+                </div>
+
+                <div class="selection-card p-6 text-center" data-template="mint">
+                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-100 border border-gray-200 flex flex-col items-center justify-center">
+                        <!-- Mac OS dots -->
+                        <div class="flex gap-1 mb-2 bg-gray-200 w-10 px-1 py-1 rounded-full">
+                            <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                            <div class="w-2 h-2 rounded-full bg-green-400"></div>
+                        </div>
+                    </div>
+                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_mint">Web Browser</h3>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_mint_sub">Mac OS Window</p>
+                </div>
+
+                <div class="selection-card p-6 text-center" data-template="blue">
+                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex items-center justify-center">
+                        <!-- Play button -->
+                        <span class="material-symbols-outlined text-white text-3xl">play_circle</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_blue">Music Player</h3>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_blue_sub">Retro MP3</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Bar -->
+    <div class="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
+        <button onclick="saveAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group" data-i18n="btn_process">
+            Process Photos
+            <span class="material-symbols-outlined ml-2 text-sm group-hover:rotate-180 transition-transform duration-500">sync</span>
+        </button>
+    </div>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const container = document.getElementById('preview-container');
+            const gridContainer = document.querySelector('.grid.grid-cols-2');
+            let photos = [];
+            
+            try {
+                if (Session.photos) photos = Session.photos;
+            } catch(e) {}
+
+            // Load Custom Layout Size
+            const layoutSizes = await fetchLayoutSizes();
+            const currentLayoutStr = Session.layout || '4'; 
+            let layoutId = '4'; // default to 4 cut
+            if(currentLayoutStr === '1-cut') layoutId = '1';
+            if(currentLayoutStr === '2-cut') layoutId = '2';
+            if(currentLayoutStr === '3-cut') layoutId = '3';
+            if(currentLayoutStr === '4-cut') layoutId = '4';
+            const currentLayoutSize = layoutSizes.find(l => l.layout_id === layoutId) || null;
+
+            // Load Custom Themes
+            const customThemes = await fetchCustomThemes();
+            customThemes.forEach(t => {
+                const icon = t.theme_type === 'png' ? 'image' : 'match_case';
+                
+                // Construct the HTML string instead of using innerHTML += which breaks event listeners
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'selection-card p-6 text-center';
+                cardDiv.dataset.template = t.id;
+                cardDiv.dataset.custom = "true";
+                cardDiv.innerHTML = `
+                        <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-accent-mint text-3xl">${icon}</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-900">${t.name}</h3>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-widest">Custom Theme</p>
+                `;
+                gridContainer.appendChild(cardDiv);
+            });
+
+            Session.template = 'light';
+            
+            async function updatePreview(templateId, isCustom) {
+                container.innerHTML = '<div class="spinner border-gray-300 mx-auto"></div>';
+                let themeObj = null;
+                if(isCustom) {
+                    themeObj = customThemes.find(t => t.id === templateId);
+                }
+                const canvas = await composeStrip(photos, templateId, 400, themeObj, currentLayoutStr); // 400px width for preview
+                canvas.className = 'rounded-sm shadow-xl max-w-full max-h-full object-contain';
+                container.innerHTML = '';
+                container.appendChild(canvas);
+            }
+
+            // Init
+            updatePreview('light', false);
+
+            // Selectors
+            const setupCards = () => {
+                const cards = document.querySelectorAll('.selection-card');
+                cards.forEach(card => {
+                    card.addEventListener('click', () => {
+                        cards.forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        Session.template = card.dataset.template;
+                        updatePreview(card.dataset.template, card.dataset.custom === 'true');
+                    });
+                });
+            };
+            setupCards();
+
+            new IdleTimer(120000, 'home.html').start(); // 2 mins idle
+        });
+
+        function saveAndContinue() {
+            window.location.href = 'processing.html';
+        }
+    </script>
+</body>
+</html>

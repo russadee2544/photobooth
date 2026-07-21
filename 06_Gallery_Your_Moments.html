@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RETRO_SNAP - GALLERY</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-container": "#33fb0a",
+                      "on-secondary-container": "#520049",
+                      "on-secondary": "#5e0053",
+                      "on-primary": "#00363a",
+                      "surface-container": "#201f1f",
+                      "primary-fixed": "#7df4ff",
+                      "surface-variant": "#353534",
+                      "secondary-fixed-dim": "#fface8",
+                      "on-tertiary-fixed": "#022100",
+                      "on-tertiary": "#053900",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface-container-high": "#2a2a2a",
+                      "secondary-container": "#ff24e4",
+                      "error-container": "#93000a",
+                      "on-primary-fixed": "#002022",
+                      "primary-fixed-dim": "#00dbe9",
+                      "outline-variant": "#3b494b",
+                      "on-tertiary-container": "#106e00",
+                      "on-background": "#e5e2e1",
+                      "surface": "#131313",
+                      "on-error-container": "#ffdad6",
+                      "surface-bright": "#393939",
+                      "tertiary-fixed-dim": "#2ae500",
+                      "surface-container-low": "#1c1b1b",
+                      "primary": "#dbfcff",
+                      "on-secondary-fixed-variant": "#840076",
+                      "on-surface-variant": "#b9cacb",
+                      "on-primary-container": "#006970",
+                      "on-error": "#690005",
+                      "secondary-fixed": "#ffd7f0",
+                      "on-secondary-fixed": "#3a0033",
+                      "background": "#131313",
+                      "on-tertiary-fixed-variant": "#095300",
+                      "error": "#ffb4ab",
+                      "surface-tint": "#00dbe9",
+                      "surface-container-highest": "#353534",
+                      "primary-container": "#00f0ff",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-surface": "#e5e2e1",
+                      "surface-dim": "#131313",
+                      "inverse-on-surface": "#313030",
+                      "tertiary-fixed": "#79ff5b",
+                      "inverse-surface": "#e5e2e1",
+                      "outline": "#849495",
+                      "inverse-primary": "#006970",
+                      "secondary": "#fface8",
+                      "tertiary": "#e1ffd1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max": "1200px",
+                      "margin-mobile": "20px",
+                      "margin-desktop": "40px",
+                      "gutter": "16px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "display-xl": [
+                              "Anybody"
+                      ],
+                      "headline-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "display-xl-mobile": [
+                              "Anybody"
+                      ],
+                      "headline-lg": [
+                              "Anybody"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Space Mono"
+                      ]
+              },
+              "fontSize": {
+                      "display-xl": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .dither-bw {
+            filter: grayscale(100%) contrast(150%) brightness(90%);
+            mix-blend-mode: luminosity;
+        }
+        
+        .dither-cyan {
+            filter: grayscale(100%) contrast(150%) brightness(120%) sepia(100%) hue-rotate(150deg) saturate(300%);
+            mix-blend-mode: screen;
+        }
+        
+        .dither-magenta {
+            filter: grayscale(100%) contrast(150%) brightness(120%) sepia(100%) hue-rotate(280deg) saturate(300%);
+            mix-blend-mode: screen;
+        }
+
+        .glass-card {
+            background: rgba(32, 31, 31, 0.4);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 36, 228, 0.3);
+            box-shadow: 4px 4px 0px 0px rgba(0, 240, 255, 0.5);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .glass-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px 0px rgba(0, 240, 255, 0.8);
+            border-color: rgba(255, 36, 228, 0.8);
+        }
+        
+        .btn-retro {
+            border: 2px solid theme('colors.secondary-container');
+            box-shadow: 4px 4px 0px 0px theme('colors.primary-container');
+            transition: all 0.1s ease-in-out;
+            background: theme('colors.surface-container-high');
+        }
+        
+        .btn-retro:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px theme('colors.primary-container');
+        }
+
+        .photo-strip {
+            padding: 12px;
+            background: #fff;
+            border: 2px solid theme('colors.outline');
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full bg-surface/80 backdrop-blur-xl dark:bg-surface/80 font-label-sm text-label-sm border-b-2 border-outline/20 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] flex justify-between items-center px-margin-mobile py-4 w-full z-50">
+<div class="font-display-xl-mobile text-display-xl-mobile tracking-tighter text-tertiary-fixed italic">
+            RETRO_SNAP
+        </div>
+<div class="hidden md:flex gap-6">
+<a class="text-tertiary-fixed font-bold border-b-2 border-tertiary-fixed hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">GALLERY</a>
+<a class="text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">SETTINGS</a>
+</div>
+<button class="text-primary hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1 flex items-center gap-2">
+            EXIT
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">logout</span>
+</button>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow pt-[120px] pb-24 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full">
+<div class="flex justify-between items-end mb-12 border-b-2 border-secondary-container pb-4">
+<div>
+<h1 class="font-display-xl-mobile md:font-display-xl text-display-xl-mobile md:text-display-xl text-primary-container uppercase tracking-tight">MY_ARCHIVE</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2">TOTAL_SNAPS: 042 // SYSTEM_ONLINE</p>
+</div>
+<button class="btn-retro px-4 py-2 font-label-sm text-label-sm text-secondary-container uppercase flex items-center gap-2">
+<span class="material-symbols-outlined">arrow_back</span>
+                HOME
+            </button>
+</div>
+<!-- Gallery Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Item 1: 4-cut BW -->
+<div class="glass-card p-4 flex flex-col items-center">
+<div class="photo-strip w-full max-w-[200px] flex flex-col gap-2">
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of a diverse group of friends laughing, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf-z5YCp7a-6oBgls5UrGksXnUoeR9i_3ACwb75WrprivSrn95RAqSIP4Oj2nhA71rSJY6dSUcCNvWWxkfWcJMhA2PtJiNVL9LH_wYbvQVMt995IZcvHZb5CmjzO9wvmZ5iSzwiiyTOvTZ8b2rMXQLfOd7I5nosNHO839DmxPr12LfjFl-JCa5w-87LDp9atFEd0IthtSfleAOCfg3Wpageqr63y2VBgWg88lcKe6mWRwEV_rlqMMptw"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of friends making funny faces, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbxS3QST_x-7-cfSpw3AfNWp6bBexWciWeyoPHORzxEvmNkz0qKwPK5scPUrbpI59UkiLYFGJZqImv6SjD1yAllTaVWNVZszOaekc6LSfDjHJ0pNhLWb8omPQe3Oq5RDgcLxmBgYkhDAlEZTGWNgKZ0xqPmSqtWECeK4v2C7simeNtq6aTMllAlvtv8asFF-pseqCHwCyGtzxGpPQrm0SxDfu-Uumj4UPCV7gKGrAZklUhuvfSl35OFA"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of friends posing with peace signs, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBW-J9sPzFP1fdW1mq86rsrYuBUI5fp5shywlxg8UOXZlgbYCE9ozfDRTbhNmLZ99ZqedOJTeZkj-qYhI56f-07lFqB7B3xbEqMycZWVAgKP7LudCq0pfiFwNpLTQweVrpbxsXfPAl1Kdm9m6fzkqJ1q-ILbp6tiJn7LFZKHl4dVP3hTPy53dbGGhzO-T6p-vvg9us3H5cGTOQXJBY40e2t3utI2n8YBDf7w7K7DyU9pgNlLwo-7MtrGA"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of friends hugging, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaZFvhM2VNqmggcKpOW3SYvmknmkfjr94gXZ10U5_W7WHSbcWMhZHuOZOmWbXhMDV07nLELoI9zZFwZ312y7FSqdNqONBmemwUwA6STEP7Kf4NEGNLHUrY8t9zJBWBJpQk_8Z3nBQj99MoXemCrgAZquEC_eGiXuf9TyOi7LhsZlEl1W9YHujxRFYEbbi_Bjj6sLgXE19UWHiiZbkqLffIfEOMb3OXAFxqu0fIney4wZlLbFMVn_IzCg"/>
+<div class="text-center font-label-sm text-[10px] text-black mt-2 tracking-widest font-bold">RETRO_SNAP // 2024</div>
+</div>
+<div class="w-full flex justify-between items-center mt-6 px-2">
+<span class="font-label-sm text-label-sm text-on-surface">STRIP_042</span>
+<button class="btn-retro p-2 text-primary-container" title="Print">
+<span class="material-symbols-outlined text-sm">print</span>
+</button>
+</div>
+</div>
+<!-- Item 2: 3-cut Cyan -->
+<div class="glass-card p-4 flex flex-col items-center">
+<div class="photo-strip w-full max-w-[200px] flex flex-col gap-2 bg-black border-primary-container">
+<img class="w-full h-auto aspect-square object-cover dither-cyan" data-alt="A cyber-punk style portrait of a person with neon cyan lighting, edgy futuristic aesthetic, high contrast lo-fi texture, Y2K digital style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqGhkpfGc8Q3qJ3CzXAVPpraYB5-OEGuTMar5sV1SH8jWwybixEBw2IzIB4EB_i5YP17vDVTgUMKy0ga6mMnJPXaU9ByckV9L5A-fb99kBCARqmWHes7JP2lggJJfkIpS748TTkF3krIXIDYLa8Wsd73j9uTk1EvSk3R9KJRyQPQ5cjwyTnjHees6s54rXURwwBxuta4N2lUreLCfcoDYAvOYkqkbxaQ88UcAfV5OYMZNZ1KZkStSClQ"/>
+<img class="w-full h-auto aspect-square object-cover dither-cyan" data-alt="A cyber-punk style portrait of a person with neon cyan lighting looking away, edgy futuristic aesthetic, high contrast lo-fi texture, Y2K digital style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWnnMX1mXjSDrJwJP1Vv4aLh430W1-tefc14CncuA5vlex-5RKo-AH7SwiS7uj-5Z9BYXdJHE7htqnX3035mi_6v-kHdNN03ooRVsqIhVJPhgfQqguPmPN6PunpVvFEAMLkTNAF1h1mQhikfJtEhGWWMeS0xpJv2lRRJgADJeeW2zcuIdrMI1BM1VIg1FvRivC0fylTN_MZMYpCNqdJyjJrHxfEqrOfS3iK555_Bw8BBc-CZ_jb_Fl6Q"/>
+<img class="w-full h-auto aspect-square object-cover dither-cyan" data-alt="A cyber-punk style portrait of a person with neon cyan lighting wearing futuristic sunglasses, edgy futuristic aesthetic, high contrast lo-fi texture, Y2K digital style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ_gk4RdNXnA4QFoMtHB5_mr082fCMD-pGC_2nIwi5GnJcEITIMjn2ko_z-sc3Zi7KTMNkqPSX1wZfQs7FPV4nFnffy-dDbvG57sPEvkF-VIImWJNdQZTl7-pB2rUPXuW2LXHxPFVWbeMfV759kQ0nX5_eOedMJuqxE8wnxZDRQUMpiSSVVzNpOmCcLkYlW7Ah89Ex5DLDIKtUuwqOqPgFEh1KGba6WW8_c9ItfDw_z7F_TexqgPlnIw"/>
+<div class="text-center font-label-sm text-[10px] text-primary-container mt-2 tracking-widest font-bold">CYBER_CUT // 2024</div>
+</div>
+<div class="w-full flex justify-between items-center mt-6 px-2">
+<span class="font-label-sm text-label-sm text-on-surface">STRIP_041</span>
+<button class="btn-retro p-2 text-primary-container" title="Print">
+<span class="material-symbols-outlined text-sm">print</span>
+</button>
+</div>
+</div>
+<!-- Item 3: 2-cut Magenta -->
+<div class="glass-card p-4 flex flex-col items-center">
+<div class="photo-strip w-full max-w-[200px] flex flex-col gap-2 bg-[#201f1f] border-secondary-container">
+<img class="w-full h-auto aspect-[4/3] object-cover dither-magenta" data-alt="An abstract lo-fi shot of neon lights in the dark, heavy magenta tint, pixelated dithered effect, Y2K digital camera aesthetic, grungy cyber nostalgia." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcYL1VofTKLneSgWN4iLKVniFTr8Zd3bBh7VILrdYyBYn4uCNzc-GmjTQJ20O-XYinwfZYnCnruE3yatXY8avLSSZWVVXth8wVNFc3MEt1J5GTqRWMfmMTzSd0KFhO5FRGz-rQgOvWg1Dh7zvQ3VlxhMzIIpYMw7kASGr0qenK2nBwbv0sNAGI9RkOA15MvIA8APJ6nvFAuRsWvHF3HR612iQm62GiZVHnSjIXzsGH83gVGWXzQMqsGw"/>
+<img class="w-full h-auto aspect-[4/3] object-cover dither-magenta" data-alt="An abstract lo-fi shot of a cityscape at night with neon lights, heavy magenta tint, pixelated dithered effect, Y2K digital camera aesthetic, grungy cyber nostalgia." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFjEWCM1HVhIZ32rnFloWPjcA8304Wa9aG5hUqhnzQTCSO_09TvDq7eJ-BHDI7A2ZWbKFUsp05_THNQY_rNgSIHgWi8cdjP_NElFSnW8C2e7HR8qMcs2NSDq662jokEEnfJlcBbIh-xslCv6imA1xc9rL5FNaceujVJ_8uRH0SLa5SLz3-Ornu6zWUq4fAK3RyfmTMl9wNYYoMusxNI93L5ojgQsR1uuP65gxtcb7ROLYdl_90xd3O1A"/>
+<div class="text-center font-label-sm text-[10px] text-secondary-container mt-2 tracking-widest font-bold">NIGHT_VISION</div>
+</div>
+<div class="w-full flex justify-between items-center mt-6 px-2">
+<span class="font-label-sm text-label-sm text-on-surface">STRIP_040</span>
+<button class="btn-retro p-2 text-primary-container" title="Print">
+<span class="material-symbols-outlined text-sm">print</span>
+</button>
+</div>
+</div>
+<!-- Item 4: 4-cut BW -->
+<div class="glass-card p-4 flex flex-col items-center">
+<div class="photo-strip w-full max-w-[200px] flex flex-col gap-2">
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of a couple smiling, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADWp1mF8sEjJQDrWjZqEB31-aOdDprkNfLqGIVmq9mlwpekhbP0uHf7pnKNwQ6VuzPhbAtAbLCkR7oMXRBPo8UqsW-6ZXxe9pcv9sN0IuLC9lzgbJLIPic55zFjGYFAvBaShDn3aGMkk9IuFJLiptlBxnYIF7tUDmTDJPBF5Fh0mfpYPBkO1I2vYQonNZxU8GrBKBdoKZO1PwQAMIwotPGKQbh6ln9MJnvwDLdPXUlbUGkXmSOmUyvAg"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of a couple kissing, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuxi9NFxJBAvcu690bo60hD-dfolDxdar_XaM4OEOSVv9x8dltGRhGQLE6ms0GB42sp4PW9G2PPnLMCCgDDmNR-bCeo1CmQpXYLfjBj7iOK8ot2e4kNeM15oeN8GJJgXzMbdxhNGRnZ7aG6D3J6nO4DmG2Lh4FxB9zlzNzGtC0hB1tYNcXtDp-UQF8VhBFgTmLo5VhBQ3R7hQoInBFF7WKytzwDvsHLr-nI5BO_Eke7cHP1g2AzwE1zQ"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of a couple acting silly, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJuw_DHBtar40x-6kWyOP8U1Uufd6Obv_7aEbMzDimyqMf73zH61TYNr8jZKSFO2hU7fBTiDeSgW4kdAq13kM_2XJTOrkaYs-Hr4WQcupM1Ocnv-Cc1ppxKclr9JtkuwUF6hZwpzl9kH5UMb3i8a-qU6lh-YJ4Lv1dbLlnExoNqBE-PXKfpgtrxD4EWn_NVDtDyTAlccUZALzxSbPzDYOMQTjdEoJ3sOaoz5xe-N6HCgCW2TbQ894rhg"/>
+<img class="w-full h-auto aspect-square object-cover dither-bw grayscale" data-alt="A vintage style black and white photo booth picture of a couple looking serious, high contrast lo-fi aesthetic, grainy texture, flash photography look, Y2K cyber nostalgia style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvW-CqXjfqWgGcYtRnfH7yUzp0oMMCG6EdVbdygwSUOWk2l4SDaV_OnV_HyU91SZKlc1pCM5a1Z_mMkWxTsChKSGMsFXOJ-MKxLyaCtlTWG80f7G938Cy-A7QwbGlSrC1IT9WovIFs15uIE5k7m5PRN0yCGu5HyIu4PyywmYKCWl-k1PxGxpb70IdHHp6yGzORgeLk7YiahdZy96dvhsyzJI467p6BqwZxlInnjxmmB7ch2_4CQtRS2Q"/>
+<div class="text-center font-label-sm text-[10px] text-black mt-2 tracking-widest font-bold">RETRO_SNAP // 2024</div>
+</div>
+<div class="w-full flex justify-between items-center mt-6 px-2">
+<span class="font-label-sm text-label-sm text-on-surface">STRIP_039</span>
+<button class="btn-retro p-2 text-primary-container" title="Print">
+<span class="material-symbols-outlined text-sm">print</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RETRO_SNAP - Layout Selector</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#e5e2e1",
+                      "tertiary": "#e1ffd1",
+                      "tertiary-fixed-dim": "#2ae500",
+                      "tertiary-fixed": "#79ff5b",
+                      "on-primary-container": "#006970",
+                      "on-tertiary-container": "#106e00",
+                      "on-secondary-fixed": "#3a0033",
+                      "surface": "#131313",
+                      "tertiary-container": "#33fb0a",
+                      "primary-fixed-dim": "#00dbe9",
+                      "on-secondary-container": "#520049",
+                      "surface-bright": "#393939",
+                      "outline-variant": "#3b494b",
+                      "secondary-container": "#ff24e4",
+                      "on-tertiary-fixed-variant": "#095300",
+                      "surface-container-low": "#1c1b1b",
+                      "on-primary": "#00363a",
+                      "on-tertiary-fixed": "#022100",
+                      "error-container": "#93000a",
+                      "surface-container-highest": "#353534",
+                      "surface-dim": "#131313",
+                      "error": "#ffb4ab",
+                      "on-tertiary": "#053900",
+                      "on-secondary": "#5e0053",
+                      "on-surface-variant": "#b9cacb",
+                      "on-error": "#690005",
+                      "secondary-fixed": "#ffd7f0",
+                      "primary": "#dbfcff",
+                      "inverse-surface": "#e5e2e1",
+                      "primary-fixed": "#7df4ff",
+                      "background": "#131313",
+                      "on-secondary-fixed-variant": "#840076",
+                      "surface-container-lowest": "#0e0e0e",
+                      "surface-container-high": "#2a2a2a",
+                      "on-surface": "#e5e2e1",
+                      "on-primary-fixed": "#002022",
+                      "primary-container": "#00f0ff",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface-container": "#201f1f",
+                      "outline": "#849495",
+                      "surface-variant": "#353534",
+                      "secondary": "#fface8",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed-dim": "#fface8",
+                      "inverse-primary": "#006970",
+                      "surface-tint": "#00dbe9",
+                      "inverse-on-surface": "#313030"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-desktop": "40px",
+                      "gutter": "16px",
+                      "container-max": "1200px",
+                      "unit": "4px",
+                      "margin-mobile": "20px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-sm": [
+                              "Space Mono"
+                      ],
+                      "display-xl": [
+                              "Anybody"
+                      ],
+                      "headline-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "display-xl-mobile": [
+                              "Anybody"
+                      ],
+                      "headline-lg": [
+                              "Anybody"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-xl": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
+        }
+        
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background-color: rgba(19, 19, 19, 0.6);
+            border: 1px solid rgba(59, 73, 75, 0.3);
+        }
+
+        .sticker-shadow-primary {
+            box-shadow: 4px 4px 0px 0px theme('colors.primary');
+        }
+        
+        .sticker-shadow-secondary {
+            box-shadow: 4px 4px 0px 0px theme('colors.secondary');
+        }
+
+        .sticker-shadow-tertiary {
+            box-shadow: 8px 0px 0px 0px rgba(0,240,255,0.5);
+        }
+        
+        .y2k-border {
+            border: 2px solid theme('colors.outline');
+        }
+        
+        .layout-card {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .layout-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            z-index: 20;
+        }
+        
+        .layout-card:active {
+            transform: translateY(0px) scale(0.98);
+        }
+        
+        .layout-card.selected {
+            border-color: theme('colors.tertiary-fixed');
+            box-shadow: 0px 0px 20px 0px theme('colors.tertiary-fixed');
+            background-color: rgba(51, 251, 10, 0.15);
+            transform: translateY(-4px) scale(1.05);
+            z-index: 20;
+        }
+        
+        .layout-preview {
+            background-color: theme('colors.surface-container');
+            border: 2px solid theme('colors.outline-variant');
+            transition: all 0.3s ease;
+        }
+        
+        .layout-card:hover .layout-preview {
+            border-color: theme('colors.outline');
+        }
+        
+        .layout-card.selected .layout-preview {
+            border-color: theme('colors.tertiary');
+            box-shadow: 0 0 15px rgba(51, 251, 10, 0.3);
+        }
+        
+        .cut-placeholder {
+            background-color: theme('colors.surface-dim');
+            border: 1px dashed theme('colors.outline');
+        }
+
+        @keyframes slideUpFade {
+            0% {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-entrance {
+            opacity: 0;
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+    </style>
+</head>
+<body class="text-on-background min-h-screen flex flex-col relative overflow-x-hidden selection:bg-secondary selection:text-on-secondary">
+<!-- TopNavBar (Web) -->
+<nav class="hidden md:flex justify-between items-center px-margin-desktop py-4 w-full z-50 fixed top-0 bg-surface/80 backdrop-blur-xl border-b-2 border-outline/20 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)]">
+<div class="font-display-xl text-display-xl tracking-tighter text-tertiary-fixed italic">RETRO_SNAP</div>
+<div class="flex gap-6 items-center">
+<a class="font-label-sm text-label-sm text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">GALLERY</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1" href="#">SETTINGS</a>
+</div>
+<button class="font-label-sm text-label-sm text-primary hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1">EXIT</button>
+</nav>
+<!-- SideNavBar (Web - Suppressed for Focus, but keeping structure as instructed if it was a main destination. Since it's a layout selector, it's part of a flow, so we suppress main navs, BUT JSON specifically provided SideNavBar. Resolving conflict: Layout Selector is a focused task. Suppressing SideNavBar for Canvas prioritization as per rules.) -->
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col px-margin-mobile md:px-margin-desktop pt-24 pb-32 md:pt-32 w-full max-w-container-max mx-auto relative z-10">
+<!-- Header -->
+<header class="mb-12 md:mb-16 text-center md:text-left">
+<h1 class="font-display-xl-mobile text-display-xl-mobile md:font-display-xl md:text-display-xl text-primary uppercase tracking-tighter drop-shadow-[2px_2px_0_rgba(255,36,228,0.8)]">CHOOSE YOUR VIBE</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-2 uppercase tracking-widest">Select strip layout for session BOOTH_01</p>
+</header>
+<!-- Layout Options Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 w-full max-w-5xl mx-auto">
+<!-- 2-Cut Option -->
+<button class="layout-card animate-entrance delay-100 glass-panel y2k-border sticker-shadow-primary p-6 flex flex-col items-center gap-6 rounded group relative overflow-hidden text-left focus:outline-none" onclick="selectLayout(this)">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+<div class="w-full flex justify-between items-center z-10">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold group-hover:text-primary transition-colors">2-CUT</span>
+<span class="material-symbols-outlined text-primary group-[.selected]:text-tertiary-fixed transition-colors" data-icon="crop_portrait" style="font-variation-settings: 'FILL' 1;">crop_portrait</span>
+</div>
+<!-- Preview Illustration -->
+<div class="layout-preview w-32 h-64 p-2 flex flex-col gap-2 shadow-inner z-10">
+<div class="cut-placeholder w-full h-1/2 rounded-sm relative overflow-hidden group-hover:opacity-80 transition-opacity">
+<img alt="Preview 1" class="w-full h-full object-cover opacity-50 filter grayscale mix-blend-screen group-hover:scale-110 transition-transform duration-500" data-alt="A stylish portrait of a young person wearing Y2K fashion, colorful tinted sunglasses, and a metallic silver jacket, lit by harsh direct flash photography against a dark background, evoking a nostalgic digital camera aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWaksVXzQmKGHOYXyXIDMB3mr45JxH3KnN8eyG3cxTbMeIzYbBXSqxVb2ByV9kPCxat8X6sNvBFA370RcyNye-O8vjhp5ZLTqkkLHtFGz7g03ssJSQFiRTIuyeqhjgwec6-nZCJ1saxQ6nESLgtYKkpsm6Yke9KSy1vY15Sbw2EVc0cSXJqBJbeHIJN3G0jvUvAlRMOCOV6ZN8ttMbLcDEo0au6Sb1MWPlH_zDYxaw020HSoKBbSSYIA"/>
+</div>
+<div class="cut-placeholder w-full h-1/2 rounded-sm relative overflow-hidden group-hover:opacity-80 transition-opacity">
+<img alt="Preview 2" class="w-full h-full object-cover opacity-50 filter grayscale mix-blend-screen group-hover:scale-110 transition-transform duration-500" data-alt="A close-up shot of two friends laughing, making peace signs at the camera, wearing glitter makeup and neon accessories, captured with a disposable camera style flash, high contrast, grainy texture, set in a dimly lit arcade." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpCJ8h1WeRDy2rXDPUNq6Z26ZeLXHp2BsbUwv2T6AunHDFPLEMvX58BAweVDcNjRhW95mAiig5yMOolMT_BPc6Eq3iAKTQoGG89aIrirveP1U6o87HM9_8Iik7D9lmB1zH_RtAt7hTGqERkwUTwcSKL7WpLaYjTYgwQHCu5SbGTcxVxEttqZ8vAiLdRgM0qQ2XTiGJl83zjT0kszOnDTAh7NRvSGgHDP8EeUHssZJBBHYQZbMnFaoO2A"/>
+</div>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant w-full text-center z-10 group-hover:text-primary transition-colors">CLASSIC WIDE</div>
+</button>
+<!-- 3-Cut Option -->
+<button class="layout-card animate-entrance delay-200 selected glass-panel y2k-border p-6 flex flex-col items-center gap-6 rounded group relative overflow-hidden text-left focus:outline-none" onclick="selectLayout(this)">
+<div class="absolute inset-0 bg-gradient-to-br from-tertiary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+<div class="w-full flex justify-between items-center z-10">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold group-hover:text-tertiary transition-colors">3-CUT</span>
+<span class="material-symbols-outlined text-tertiary-fixed transition-colors" data-icon="splitscreen" style="font-variation-settings: 'FILL' 1;">splitscreen</span>
+</div>
+<!-- Preview Illustration -->
+<div class="layout-preview w-32 h-64 p-2 flex flex-col gap-2 shadow-inner z-10 bg-surface">
+<div class="cut-placeholder w-full h-1/3 rounded-sm relative overflow-hidden group-hover:opacity-80 transition-opacity">
+<img alt="Preview 1" class="w-full h-full object-cover opacity-50 filter grayscale mix-blend-screen group-hover:scale-110 transition-transform duration-500" data-alt="A vibrant, distorted fisheye lens selfie of a teenager with spiked hair and neon green highlights, staring intensely into the lens, illuminated by a harsh white ring light against a pitch-black void, highly textured and grainy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaMIfFNHnBd91pU6aqF_vMnbriqXDYspPjqbV9M1UStw9lDmtBb-bP0b5a89kp_NBKU238Pf5Lf_uNZR_-kLAmlUWPLrAc-jpNIUa7Epxw8OgIpytGPINWoRM48uh5y1eD0H2hAN-jBJtixOvdEjHbi16HPl5cpF4JPwHopvRTDgdCRUem1z3LmxROxas3Ml4sUeTn5XIF4GOZNylRuhSUzpBiVLfvJM8cfPd0zLnOojelZeHDACZxCg"/>
+</div>
+<div class="cut-placeholder w-full h-1/3 rounded-sm relative overflow-hidden group-hover:opacity-80 transition-opacity">
+<img alt="Preview 2" class="w-full h-full object-cover opacity-50 filter grayscale mix-blend-screen group-hover:scale-110 transition-transform duration-500" data-alt="An abstract, blurry motion shot of someone dancing, trailing neon pink and blue light streaks, capturing the energetic and chaotic vibe of a late-night party in the early 2000s, high ISO noise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD83gqODZYGGitQsQ1Y00R5c9rUK_uRJdzB77mD0NBLKD1p_ZX73_ppiD8sSScogiWbTId2GPQedmr8O7-lW-TFSS5sPaXs7luUiHQcSzcjIbNTaA5Dpusj0zm7C8BchWnCVt2qNbi4gvvKFUHx3d_6bayMx64aIkwXJ2w7_cXjLyHDPlgH8tfpER9WjEr8Ts8bj4Pj2nLWW4tz5QBnlqvsuR1vkbbl6kDygLpTjJUc114RI0Sfdjm0aA"/>
+</div>
+<div class="cut-placeholder w-full h-1/3 rounded-sm relative overflow-hidden group-hover:opacity-80 transition-opacity">
+<img alt="Preview 3" class="w-full h-full object-cover opacity-50 filter grayscale mix-blend-screen group-hover:scale-110 transition-transform duration-500" data-alt="A low-angle shot of a person blowing a giant pink bubblegum bubble, wearing a chunky silver chain necklace and a mesh top, stark white flash lighting highlighting the bubble's reflection, gritty urban aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRRR5IkjnpNb3fo4pXwzjU4pkJhgErLc4eZ63skpGylDSGkcZ-OT_uTJZeF2syo0owzZI88TeOlsw8aTuymjedP9QDBofNg7pp7fIxy79yo9DqTokwZAEsuCuJUVm1UEO8C1Rlt7OZwaGjCwAvN1Z5fCgJS0GAo85PofTDbtgE5ErwKek_bmZhT4GUUqybfj_xKSG-PGBeCNigqIZCSaH4YbP37Wgv9-0A2Fb8orKEp22V-8k0WGRF0w"/>
+</div>
+</div>
+<div class="font-label-sm text-label-sm text-tertiary-fixed w-full text-center z-10 transition-colors">BALANCED TALL</div>
+</button>
+<!-- 4-Cut Option -->
+<button class="layout-card animate-entrance delay-300 glass-panel y2k-border sticker-shadow-secondary p-6 flex flex-col items-center gap-6 rounded group relative overflow-hidden text-left focus:outline-none" onclick="selectLayout(this)">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+<div class="w-full flex justify-between items-center z-10">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold group-hover:text-secondary transition-colors">4-CUT</span>
+<span class="material-symbols-outlined text-secondary group-[.selected]:text-tertiary-fixed transition-colors" data-icon="grid_4x4" style="font-variation-settings: 'FILL' 1;">grid_4x4</span>
+</div>
+<!-- Preview Illustration -->
+<div class="layout-preview w-32 h-64 p-2 flex flex-col gap-1 shadow-inner z-10">
+<div class="cut-placeholder w-full h-1/4 rounded-sm group-hover:bg-secondary/20 transition-colors"></div>
+<div class="cut-placeholder w-full h-1/4 rounded-sm group-hover:bg-secondary/20 transition-colors delay-75"></div>
+<div class="cut-placeholder w-full h-1/4 rounded-sm group-hover:bg-secondary/20 transition-colors delay-100"></div>
+<div class="cut-placeholder w-full h-1/4 rounded-sm group-hover:bg-secondary/20 transition-colors delay-150"></div>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant w-full text-center z-10 group-hover:text-secondary transition-colors">RAPID FIRE</div>
+</button>
+</div>
+</main>
+<!-- Bottom Action Bar (Contextual FAB Replacement for linear flow) -->
+<div class="fixed bottom-0 left-0 w-full p-4 md:p-8 bg-gradient-to-t from-background via-background/90 to-transparent z-40 flex justify-center md:justify-end">
+<button class="animate-pulse w-full md:w-auto px-12 py-4 bg-tertiary-fixed text-on-tertiary-fixed font-headline-lg-mobile text-headline-lg-mobile uppercase tracking-tighter border-2 border-on-tertiary-fixed shadow-[4px_4px_0px_0px_#000000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#000000] transition-all flex items-center justify-center gap-2">
+            NEXT_STEP <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Script for interaction -->
+<script>
+        function selectLayout(clickedCard) {
+            // Remove selected class and reset shadows for all cards
+            document.querySelectorAll('.layout-card').forEach(card => {
+                card.classList.remove('selected');
+                
+                // Re-apply original shadows based on initial structure to maintain aesthetic variety when unselected
+                if(card.querySelector('.text-primary')) {
+                    card.classList.add('sticker-shadow-primary');
+                } else if(card.querySelector('.text-secondary')) {
+                    card.classList.add('sticker-shadow-secondary');
+                } else {
+                     // The 3-cut defaults to primary if unselected
+                    card.classList.add('sticker-shadow-primary');
+                }
+                card.style.boxShadow = ''; // Clear inline styles
+                
+                // Reset label color for unselected
+                const label = card.querySelector('.text-center');
+                if(label) label.className = label.className.replace('text-tertiary-fixed', 'text-on-surface-variant');
+            });
+
+            // Add selected class to clicked card
+            clickedCard.classList.add('selected');
+            
+            // Remove specific colored shadows as .selected class handles the shadow in CSS
+            clickedCard.classList.remove('sticker-shadow-primary', 'sticker-shadow-secondary');
+            
+            // Update label color for selected
+            const label = clickedCard.querySelector('.text-center');
+            if(label) label.className = label.className.replace('text-on-surface-variant', 'text-tertiary-fixed');
+        }
+    </script>
+</body></html>

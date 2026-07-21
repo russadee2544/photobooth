@@ -1,0 +1,291 @@
+<!DOCTYPE html><html lang="en" class="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&amp;family=Hanken+Grotesk:wght@400&amp;family=Space+Mono:ital,wght@0,500;1,500&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">try{
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#e1ffd1",
+                        "tertiary-fixed-dim": "#2ae500",
+                        "tertiary-fixed": "#79ff5b",
+                        "on-primary-container": "#006970",
+                        "on-tertiary-container": "#106e00",
+                        "on-secondary-fixed": "#3a0033",
+                        "surface": "#131313",
+                        "tertiary-container": "#33fb0a",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-secondary-container": "#520049",
+                        "surface-bright": "#393939",
+                        "outline-variant": "#3b494b",
+                        "secondary-container": "#ff24e4",
+                        "on-tertiary-fixed-variant": "#095300",
+                        "surface-container-low": "#1c1b1b",
+                        "on-primary": "#00363a",
+                        "on-tertiary-fixed": "#022100",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#353534",
+                        "surface-dim": "#131313",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#053900",
+                        "on-secondary": "#5e0053",
+                        "on-surface-variant": "#b9cacb",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffd7f0",
+                        "primary": "#dbfcff",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed": "#7df4ff",
+                        "background": "#131313",
+                        "on-secondary-fixed-variant": "#840076",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-container-high": "#2a2a2a",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed": "#002022",
+                        "primary-container": "#00f0ff",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface-container": "#201f1f",
+                        "outline": "#849495",
+                        "surface-variant": "#353534",
+                        "secondary": "#fface8",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#fface8",
+                        "inverse-primary": "#006970",
+                        "surface-tint": "#00dbe9",
+                        "inverse-on-surface": "#313030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "container-max": "1200px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["Space Mono"],
+                        "display-xl": ["Anybody"],
+                        "headline-lg-mobile": ["Anybody"],
+                        "display-xl-mobile": ["Anybody"],
+                        "headline-lg": ["Anybody"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-xl": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "display-xl-mobile": ["40px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl dark:bg-surface/80 border-b-2 border-outline/20 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] flex justify-between items-center px-margin-mobile py-4">
+<!-- Navigation Links (Left on Desktop, Hidden on Mobile) -->
+<nav class="hidden md:flex gap-6">
+<a href="#" class="font-label-sm text-label-sm text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1">GALLERY</a>
+<a href="#" class="font-label-sm text-label-sm text-on-surface-variant font-medium hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1">SETTINGS</a>
+</nav>
+<!-- Brand Logo -->
+<div class="font-display-xl-mobile text-display-xl-mobile tracking-tighter text-tertiary-fixed italic md:absolute md:left-1/2 md:-translate-x-1/2">
+            RETRO_SNAP
+        </div>
+<!-- Trailing Action -->
+<button class="font-label-sm text-label-sm text-primary hover:skew-x-2 hover:text-secondary-fixed transition-transform active:translate-x-1 active:translate-y-1 ml-auto md:ml-0">
+            EXIT
+        </button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 mt-[88px] flex flex-col md:flex-row h-[calc(100vh-88px)] w-full max-w-container-max mx-auto overflow-hidden">
+<!-- Left Side: Preview Panel -->
+<section class="flex-1 md:w-1/2 p-margin-mobile flex flex-col items-center justify-center relative border-r-2 border-outline/20 bg-surface-container-low h-1/2 md:h-full">
+<h2 class="font-label-sm text-label-sm text-tertiary uppercase absolute top-4 left-4 z-10 bg-surface-container-highest px-2 py-1 border border-outline/30 hard-shadow-tertiary">
+                LIVE_PREVIEW
+            </h2>
+<!-- The Photo Strip Container -->
+<div id="preview-strip" class="relative w-64 h-[400px] bg-white p-4 border-4 border-white hard-shadow-primary transition-all duration-300 transform rotate-[-2deg] hover:rotate-0">
+<!-- Metadata overlay -->
+<div class="absolute bottom-1 right-2 text-surface font-label-sm text-[8px] opacity-70 z-20">
+                    ID_9482.RAW
+                </div>
+<!-- Inner photos container -->
+<div class="h-full w-full flex flex-col gap-2 relative z-10">
+<!-- Photo 1 -->
+<div class="flex-1 bg-surface-container-highest relative overflow-hidden border border-outline/10">
+<img class="w-full h-full object-cover filter grayscale sepia opacity-80 mix-blend-luminosity" data-alt="A portrait shot of two friends laughing in a dimly lit, neon-soaked cyberpunk alleyway. Bright magenta and cyan neon lights reflect off their glossy jackets. High contrast, gritty film grain texture, vivid 90s digital aesthetic, slightly out of focus background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1CZ7_bRlGY17Rz6XEibz_iY-9rFUPoGVvrpu6CkAhF7akmynys1C-Z5QM8SIa9-qYLD46PErYbmxQ0nerJ5CaZ2mQMXx8lai8NHQ140tIxNQqSgMWo0uz3DohZ4lqD17UzI6nbDX8N4QHCNs9g5Yg81nyaqMMt3YdDehJCu99oWu5b8YSxjWTRsMmCyD1FotUg4z9ePxb6LSsbQIINxOI9avPewMSY-2HjuOnos2OnGqbk0J7Ced1Jg">
+</div>
+<!-- Photo 2 -->
+<div class="flex-1 bg-surface-container-highest relative overflow-hidden border border-outline/10">
+<img class="w-full h-full object-cover filter grayscale sepia opacity-80 mix-blend-luminosity" data-alt="A close up shot of a person wearing futuristic chrome sunglasses reflecting an array of bright green laser lights. The lighting is harsh and direct, creating deep shadows. Heavy digital noise and artifacting present, characteristic of early 2000s low-res digital cameras. Dark moody club setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_6tTmrRyZG7_AbKwwAme-fs5iR5LTF_-Tz-1wWZ_BeGFpA8hbk29kW7mYWNTCIFxGX1Ss-J9Mlx3V_LvtIdplCsY2tEbfSzP4_BSn1B-8HzhH7hkm9V_CV2tKABKBj6AyKBnsXGaJ54zAk4bWhQ3X3thOhPaeJ3WbdLzOKT3JTvof3vi5--pkCePdr7coHrUymwXxdlA-z3ujMPmWgj2_b3RsJSV0-qsx6SHgu5GFSx9pS8ipX-om3w">
+</div>
+<!-- Photo 3 -->
+<div class="flex-1 bg-surface-container-highest relative overflow-hidden border border-outline/10">
+<img class="w-full h-full object-cover filter grayscale sepia opacity-80 mix-blend-luminosity" data-alt="An abstract, blurry motion-capture shot of a hand holding a glowing neon-pink glowstick. The background is a smear of dark blues and purples. High saturation, aggressive noise, raw digital aesthetic, evoking a chaotic, high-energy rave environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQoZULME2NWNVbgy5xW6dLvWXqM6_vIaukCawXSOFlLuHE7F1sFUwPxDAktM6CwvYys-6wMJ6r59ZfyGx-E_zwqOGuuUMuMWXAUDcoi9Fbd2a2gvwK7wJhIriawhFc0GZlY5kZ3klxodgWflXyrI6ngntPHAHYLhbCky5ChXyrccILQsMII6OC3YWwrdN6Yq4IVtzQ9elEVd82Y2PJFYJv1i7KHZXOIBCMs8Dnr_vHpYmdUbJuVBuq0w">
+</div>
+</div>
+<!-- Acid Overlay (Hidden by default, shown for ACID template) -->
+<div class="absolute inset-0 bg-tertiary-fixed mix-blend-color z-15 opacity-0 transition-opacity duration-300 pointer-events-none" id="acid-overlay"></div>
+</div>
+<!-- Zoom/Pan Controls -->
+<div class="absolute bottom-8 flex gap-4 glass-panel p-2 rounded-full hard-shadow-secondary">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:text-primary transition-colors bg-surface-variant/50 border border-outline/20">
+<span class="material-symbols-outlined">zoom_out</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface hover:text-primary transition-colors bg-surface-variant/50 border border-outline/20">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+</div>
+</section>
+<!-- Right Side: Template Selection -->
+<section class="flex-1 md:w-1/2 flex flex-col relative h-1/2 md:h-full bg-surface">
+<!-- Sticky Header -->
+<div class="p-margin-mobile border-b-2 border-outline/20 bg-surface/90 backdrop-blur z-20">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-primary uppercase mb-2">Select Template</h1>
+<p class="font-body-md text-on-surface-variant text-sm">Choose a layout style for your print.</p>
+</div>
+<!-- Scrollable Grid -->
+<div class="flex-1 overflow-y-auto hide-scrollbar p-margin-mobile pb-[120px]">
+<div class="grid grid-cols-2 gap-4">
+<!-- Template Option 1: Classic (Active) -->
+<button class="template-option group relative aspect-[3/4] border-2 border-tertiary-fixed bg-tertiary-container/10 hard-shadow-tertiary flex flex-col transition-all duration-200" onclick="selectTemplate(this, 'classic')">
+<div class="absolute top-2 right-2 opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-tertiary-fixed" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1 p-4 flex items-center justify-center w-full">
+<div class="w-16 h-32 bg-white border border-gray-300 flex flex-col gap-1 p-1">
+<div class="flex-1 bg-gray-200"></div>
+<div class="flex-1 bg-gray-200"></div>
+<div class="flex-1 bg-gray-200"></div>
+</div>
+</div>
+<div class="w-full p-2 bg-tertiary-fixed border-t-2 border-tertiary-fixed text-on-tertiary-container font-label-sm uppercase text-center">
+                            CLASSIC
+                        </div>
+</button>
+<!-- Template Option 2: Acid -->
+<button class="template-option group relative aspect-[3/4] border-2 border-outline/40 bg-surface-container-low hover:border-secondary hover:hard-shadow-secondary flex flex-col transition-all duration-200" onclick="selectTemplate(this, 'acid')">
+<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-50 transition-opacity">
+<span class="material-symbols-outlined text-secondary">check_circle</span>
+</div>
+<div class="flex-1 p-4 flex items-center justify-center w-full">
+<div class="w-16 h-32 bg-tertiary-fixed border border-black flex flex-col gap-1 p-1 rotate-3">
+<div class="flex-1 bg-black/80"></div>
+<div class="flex-1 bg-black/80"></div>
+<div class="flex-1 bg-black/80"></div>
+</div>
+</div>
+<div class="w-full p-2 border-t-2 border-outline/40 group-hover:border-secondary group-hover:bg-secondary/10 text-on-surface font-label-sm uppercase text-center transition-colors">
+                            ACID_TRIP
+                        </div>
+</button>
+<!-- Template Option 3: Cyber -->
+<button class="template-option group relative aspect-[3/4] border-2 border-outline/40 bg-surface-container-low hover:border-primary hover:hard-shadow-primary flex flex-col transition-all duration-200" onclick="selectTemplate(this, 'cyber')">
+<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-50 transition-opacity">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</div>
+<div class="flex-1 p-4 flex items-center justify-center w-full">
+<div class="w-16 h-32 bg-surface-container-lowest border border-primary-fixed flex flex-col gap-2 p-1">
+<div class="flex-1 bg-primary/20 border border-primary/50"></div>
+<div class="flex-1 bg-primary/20 border border-primary/50"></div>
+</div>
+</div>
+<div class="w-full p-2 border-t-2 border-outline/40 group-hover:border-primary group-hover:bg-primary/10 text-on-surface font-label-sm uppercase text-center transition-colors">
+                            NEON_GRID
+                        </div>
+</button>
+<!-- Template Option 4: Minimal -->
+<button class="template-option group relative aspect-[3/4] border-2 border-outline/40 bg-surface-container-low hover:border-white hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] flex flex-col transition-all duration-200" onclick="selectTemplate(this, 'minimal')">
+<div class="absolute top-2 right-2 opacity-0 group-hover:opacity-50 transition-opacity">
+<span class="material-symbols-outlined text-white">check_circle</span>
+</div>
+<div class="flex-1 p-4 flex items-center justify-center w-full">
+<div class="w-16 h-32 bg-black border border-white/20 p-2">
+<div class="w-full h-full bg-white/10"></div>
+</div>
+</div>
+<div class="w-full p-2 border-t-2 border-outline/40 group-hover:border-white group-hover:bg-white/10 text-on-surface font-label-sm uppercase text-center transition-colors">
+                            VOID
+                        </div>
+</button>
+</div>
+</div>
+<!-- Fixed Bottom Action Area -->
+<div class="absolute bottom-0 left-0 w-full p-margin-mobile bg-surface/90 backdrop-blur border-t-2 border-outline/20 flex justify-between items-center">
+<div class="font-label-sm text-on-surface-variant flex flex-col">
+<span class="">TOTAL: $5.00</span>
+<span class="text-[10px] text-tertiary">1 PRINT INCLUDED</span>
+</div>
+<a href="#" class="sticker-btn bg-primary text-on-primary-fixed border-2 border-on-primary-container px-6 py-3 font-label-sm uppercase tracking-wider hard-shadow-secondary shadow-secondary-container transition-transform inline-block text-center">CONFIRM &amp; PAY</a>
+</div>
+</section>
+</main>
+<script>
+        function selectTemplate(element, type) {
+            // Reset all options
+            const options = document.querySelectorAll('.template-option');
+            options.forEach(opt => {
+                // Reset to default inactive state classes
+                opt.className = 'template-option group relative aspect-[3/4] border-2 border-outline/40 bg-surface-container-low hover:border-secondary hover:hard-shadow-secondary flex flex-col transition-all duration-200';
+                
+                // Hide checkmark
+                const iconContainer = opt.querySelector('div.absolute');
+                iconContainer.className = 'absolute top-2 right-2 opacity-0 group-hover:opacity-50 transition-opacity';
+                
+                // Reset bottom label bar
+                const label = opt.querySelector('div.w-full.p-2');
+                label.className = 'w-full p-2 border-t-2 border-outline/40 group-hover:border-secondary group-hover:bg-secondary/10 text-on-surface font-label-sm uppercase text-center transition-colors';
+                
+                // Specifically for Minimal hover fix
+                if(opt.innerText.includes('VOID')) {
+                    opt.className = opt.className.replace('hover:border-secondary hover:hard-shadow-secondary', 'hover:border-white hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]');
+                    label.className = label.className.replace('group-hover:border-secondary group-hover:bg-secondary/10', 'group-hover:border-white group-hover:bg-white/10');
+                }
+                if(opt.innerText.includes('NEON_GRID')) {
+                    opt.className = opt.className.replace('hover:border-secondary hover:hard-shadow-secondary', 'hover:border-primary hover:hard-shadow-primary');
+                    label.className = label.className.replace('group-hover:border-secondary group-hover:bg-secondary/10', 'group-hover:border-primary group-hover:bg-primary/10');
+                }
+            });
+
+            // Set active state on clicked element
+            element.className = 'template-option group relative aspect-[3/4] border-2 border-tertiary-fixed bg-tertiary-container/10 hard-shadow-tertiary flex flex-col transition-all duration-200';
+            
+            const iconContainer = element.querySelector('div.absolute');
+            iconContainer.className = 'absolute top-2 right-2 opacity-100 transition-opacity';
+            iconContainer.innerHTML = '<span class="material-symbols-outlined text-tertiary-fixed" style="font-variation-settings: \'FILL\' 1;">check_circle</span>';
+            
+            const label = element.querySelector('div.w-full.p-2');
+            label.className = 'w-full p-2 bg-tertiary-fixed border-t-2 border-tertiary-fixed text-on-tertiary-container font-label-sm uppercase text-center';
+
+            // Update Preview Panel based on type
+            const preview = document.getElementById('preview-strip');
+            const images = preview.querySelectorAll('img');
+            const acidOverlay = document.getElementById('acid-overlay');
+            
+            // Reset Preview
+            preview.className = 'relative w-64 h-[400px] bg-white p-4 border-4 border-white hard-shadow-primary transition-all duration-300 transform rotate-[-2deg] hover:rotate-0';
+            acidOverlay.classList.remove('opacity-100');
+            acidOverlay.classList.add('opacity-0');
+            images.forEach(img => img.className = 'w-full h-full object-cover filter grayscale sepia opacity-80 mix-blend-luminosity');
+
+            if (type === 'acid') {
+                preview.className = 'relative w-64 h-[400px] bg-tertiary-fixed p-4 border-4 border-black hard-shadow-secondary transition-all duration-300 transform rotate-[3deg] hover:rotate-0';
+                acidOverlay.classList.remove('opacity-0');
+                acidOverlay.classList.add('opacity-100');
+                images.forEach(img => img.className = 'w-full h-full object-cover filter contrast-150 saturate-200');
+            } else if (type === 'cyber') {
+                preview.className = 'relative w-64 h-[400px] bg-surface-container-lowest p-4 border-2 border-primary-fixed hard-shadow-primary transition-all duration-300 transform rotate-0';
+                images.forEach(img => img.className = 'w-full h-full object-cover filter hue-rotate-180 contrast-125');
+            } else if (type === 'minimal') {
+                preview.className = 'relative w-64 h-[400px] bg-black p-4 border border-outline transition-all duration-300 transform rotate-0';
+                images.forEach(img => img.className = 'w-full h-full object-cover filter grayscale contrast-150');
+            }
+        }
+    </script>
+
+</body></html>

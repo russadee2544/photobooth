@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Redeem Code</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+            20%, 40%, 60%, 80% { transform: translateX(6px); }
+        }
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        .code-input {
+            font-family: 'Inter', monospace;
+            font-size: 3rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-align: center;
+            text-transform: uppercase;
+            caret-color: #4C65FF;
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            color: #0A0A0A;
+        }
+        .code-input::placeholder {
+            color: #D0D0D0;
+            letter-spacing: 0.3em;
+        }
+        .code-box {
+            border: 2px solid #E3E3E3;
+            border-radius: 20px;
+            padding: 1.5rem 2rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background: white;
+        }
+        .code-box:focus-within {
+            border-color: #4C65FF;
+            box-shadow: 0 0 0 4px rgba(76, 101, 255, 0.1);
+        }
+        .code-box.error {
+            border-color: #FF6B57;
+            box-shadow: 0 0 0 4px rgba(255, 107, 87, 0.1);
+        }
+        .code-box.success {
+            border-color: #BAFF66;
+            box-shadow: 0 0 0 4px rgba(186, 255, 102, 0.2);
+        }
+    </style>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-hidden relative flex flex-col">
+    
+    <!-- Background Gradients -->
+    <div class="absolute inset-0 bg-gradient-starter opacity-50 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="kiosk-header">
+        <button onclick="window.location.href='home.html'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_cancel">CANCEL</span>
+        </button>
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex items-center justify-center relative z-10 px-8">
+        <div class="glass-panel w-full max-w-lg p-10 flex flex-col items-center fade-up-enter">
+            
+            <!-- Icon -->
+            <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <span class="material-symbols-outlined text-white text-3xl">confirmation_number</span>
+            </div>
+
+            <h1 class="text-2xl font-bold tracking-tight mb-2" id="redeem-title">กรอกรหัส Redeem</h1>
+            <p class="text-gray-500 text-sm mb-8 text-center" id="redeem-desc">กรอกรหัส 6 หลักที่ได้รับจากพนักงาน</p>
+            
+            <!-- Code Input -->
+            <div id="code-box" class="code-box w-full mb-4">
+                <input 
+                    type="text" 
+                    id="code-input" 
+                    class="code-input" 
+                    placeholder="AB1234" 
+                    maxlength="6"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                >
+            </div>
+
+            <!-- Error Message -->
+            <div id="error-msg" class="text-accent-coral text-sm font-medium mb-6 h-6 flex items-center gap-1 opacity-0 transition-opacity">
+                <span class="material-symbols-outlined text-base">error</span>
+                <span id="error-text"></span>
+            </div>
+
+            <!-- Redeem Button -->
+            <button id="redeem-btn" onclick="handleRedeem()" class="btn-modern bg-gray-300 text-gray-500 cursor-not-allowed w-full text-lg py-5" disabled>
+                ใช้รหัส (Redeem)
+                <span class="material-symbols-outlined ml-2">east</span>
+            </button>
+
+            <!-- Loading state -->
+            <div id="loading" class="hidden flex items-center gap-3 mt-6">
+                <div class="spinner"></div>
+                <span class="text-gray-500 text-sm font-medium">กำลังตรวจสอบรหัส...</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Flash Overlay -->
+    <div id="flash-overlay" class="flash-overlay"></div>
+
+    <script src="shared.js"></script>
+    <script>
+        const errorMessages = {
+            en: {
+                invalid_format: 'Code must be 2 letters + 4 digits (e.g. AB1234)',
+                not_found: 'Invalid code. Please check and try again.',
+                used_today: 'This code has already been used today.',
+                network_error: 'Connection error. Please try again.',
+            },
+            th: {
+                invalid_format: 'รหัสต้องเป็นตัวอักษร 2 ตัว + ตัวเลข 4 ตัว (เช่น AB1234)',
+                not_found: 'รหัสไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่',
+                used_today: 'รหัสนี้ถูกใช้ไปแล้ววันนี้',
+                network_error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่',
+            }
+        };
+
+        const titleText = { en: 'Enter Redeem Code', th: 'กรอกรหัส Redeem' };
+        const descText = { en: 'Enter the 6-character code from the staff', th: 'กรอกรหัส 6 หลักที่ได้รับจากพนักงาน' };
+        const btnText = { en: 'Redeem', th: 'ใช้รหัส (Redeem)' };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Event mode skip
+            if (Kiosk.mode === 'event') {
+                window.location.replace('layout.html');
+                return;
+            }
+
+            new IdleTimer(60000, 'home.html').start();
+            
+            const input = document.getElementById('code-input');
+            const btn = document.getElementById('redeem-btn');
+            
+            // Apply language
+            const lang = getLanguage();
+            document.getElementById('redeem-title').innerText = titleText[lang] || titleText.th;
+            document.getElementById('redeem-desc').innerText = descText[lang] || descText.th;
+            btn.innerHTML = (btnText[lang] || btnText.th) + ' <span class="material-symbols-outlined ml-2">east</span>';
+            
+            // Auto uppercase + enable button when 6 chars
+            input.addEventListener('input', (e) => {
+                e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                clearError();
+                
+                if (e.target.value.length === 6) {
+                    btn.disabled = false;
+                    btn.className = 'btn-modern btn-primary w-full text-lg py-5 shadow-xl hover:-translate-y-1 transition-all';
+                } else {
+                    btn.disabled = true;
+                    btn.className = 'btn-modern bg-gray-300 text-gray-500 cursor-not-allowed w-full text-lg py-5';
+                }
+            });
+
+            // Enter key to submit
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && input.value.length === 6) {
+                    handleRedeem();
+                }
+            });
+            
+            // Auto focus
+            setTimeout(() => input.focus(), 300);
+        });
+
+        function showError(errorKey) {
+            const lang = getLanguage();
+            const messages = errorMessages[lang] || errorMessages.th;
+            const errorMsg = document.getElementById('error-msg');
+            const errorText = document.getElementById('error-text');
+            const codeBox = document.getElementById('code-box');
+            
+            errorText.innerText = messages[errorKey] || messages.not_found;
+            errorMsg.classList.remove('opacity-0');
+            errorMsg.classList.add('opacity-100');
+            
+            codeBox.classList.add('error', 'shake');
+            setTimeout(() => codeBox.classList.remove('shake'), 500);
+        }
+
+        function clearError() {
+            const errorMsg = document.getElementById('error-msg');
+            const codeBox = document.getElementById('code-box');
+            errorMsg.classList.remove('opacity-100');
+            errorMsg.classList.add('opacity-0');
+            codeBox.classList.remove('error');
+        }
+
+        let isProcessing = false;
+
+        async function handleRedeem() {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            const input = document.getElementById('code-input');
+            const btn = document.getElementById('redeem-btn');
+            const loading = document.getElementById('loading');
+            const codeBox = document.getElementById('code-box');
+            const code = input.value.toUpperCase().trim();
+
+            // Show loading
+            btn.classList.add('hidden');
+            loading.classList.remove('hidden');
+            clearError();
+
+            // Validate
+            const result = await validateRedeemCode(code);
+
+            if (!result.valid) {
+                // Show error
+                btn.classList.remove('hidden');
+                loading.classList.add('hidden');
+                showError(result.error);
+                isProcessing = false;
+                return;
+            }
+
+            // Mark as used
+            const marked = await markCodeUsed(code);
+            if (!marked) {
+                btn.classList.remove('hidden');
+                loading.classList.add('hidden');
+                showError('network_error');
+                isProcessing = false;
+                return;
+            }
+
+            // Success!
+            codeBox.classList.add('success');
+            loading.classList.add('hidden');
+            triggerFlash();
+
+            setTimeout(() => {
+                window.location.href = 'layout.html';
+            }, 600);
+        }
+    </script>
+</body>
+</html>

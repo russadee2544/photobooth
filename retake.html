@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Review Photos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
+    
+    <!-- Header -->
+    <header class="kiosk-header">
+        <button onclick="window.location.href='capture.html'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_back">BACK</span>
+        </button>
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div>
+    </header>
+
+    <main class="flex-grow pt-24 pb-48 px-8 max-w-6xl mx-auto w-full flex flex-col relative z-10 fade-up-enter">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold tracking-tight mb-2 uppercase">Review Photos</h1>
+            <p class="text-gray-500 text-sm">Retake any photo you don't like before continuing.</p>
+        </div>
+
+        <!-- Grid of photos -->
+        <div id="photo-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
+            <!-- Injected by JS -->
+        </div>
+    </main>
+
+    <!-- Bottom Bar -->
+    <div class="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
+        <button id="btn-continue" onclick="saveSelectionAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group transition-all shadow-xl hover:-translate-y-1">
+            Continue 
+            <span class="material-symbols-outlined ml-2 text-sm group-hover:translate-x-1 transition-transform">east</span>
+        </button>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        let requiredCount = 4;
+        let rawPhotos = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const layoutStr = Session.layout || '4';
+            requiredCount = parseInt(layoutStr, 10);
+
+            rawPhotos = Session.get('raw_photos') || [];
+            if (rawPhotos.length === 0) {
+                // If no photos, go back to capture
+                window.location.href = 'capture.html';
+                return;
+            }
+
+            renderGrid();
+            new IdleTimer(120000, 'home.html').start();
+        });
+
+        function renderGrid() {
+            const grid = document.getElementById('photo-grid');
+            grid.innerHTML = '';
+
+            rawPhotos.forEach((src, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden group shadow-sm transition-transform hover:scale-[1.02]';
+
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = 'w-full h-full object-cover transition-opacity';
+                img.id = `img-${idx}`;
+                
+                // Retake button overlay
+                const retakeOverlay = document.createElement('div');
+                retakeOverlay.className = 'absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px] cursor-pointer';
+                retakeOverlay.onclick = () => {
+                    window.location.href = `capture.html?retake=${idx}`;
+                };
+
+                const retakeBtn = document.createElement('div');
+                retakeBtn.className = 'bg-white text-gray-900 rounded-full px-4 py-2 flex items-center gap-2 font-medium text-sm shadow-xl transform scale-95 group-hover:scale-100 transition-transform';
+                retakeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">autorenew</span> Retake';
+                
+                retakeOverlay.appendChild(retakeBtn);
+
+                // Number badge
+                const badge = document.createElement('div');
+                badge.className = 'absolute top-4 left-4 w-8 h-8 rounded-full bg-black/60 text-white font-bold flex items-center justify-center text-sm shadow-md backdrop-blur-md';
+                badge.innerText = idx + 1;
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(retakeOverlay);
+                wrapper.appendChild(badge);
+                grid.appendChild(wrapper);
+            });
+        }
+
+        function saveSelectionAndContinue() {
+            // In retake flow, all photos shown are the final photos
+            Session.photos = rawPhotos; 
+            
+            window.location.href = 'template.html';
+        }
+    </script>
+</body>
+</html>

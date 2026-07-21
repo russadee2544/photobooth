@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Layout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
+    
+    <!-- Background Gradients -->
+    <div class="absolute inset-0 bg-gradient-starter opacity-30 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="kiosk-header">
+        <button onclick="window.location.href='home.html'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_back">BACK</span>
+        </button>
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div> <!-- spacer -->
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow pt-28 pb-48 px-8 max-w-6xl mx-auto w-full flex flex-col justify-center relative z-10 fade-up-enter">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold tracking-tight mb-2 uppercase" data-i18n="layout_title">Choose Your Layout</h1>
+            <p class="text-gray-500 text-sm" data-i18n="layout_desc">Select a frame style that matches your mood.</p>
+        </div>
+
+                <div class="grid grid-cols-3 gap-6 max-w-4xl mx-auto w-full">
+            
+            <!-- 1-CUT 1:1 -->
+            <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="1_1x1">
+                <div class="strip-preview w-32 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_1">1 Frame</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">1:1 Square</p>
+                </div>
+            </div>
+
+            <!-- 2-CUT 1:1 -->
+            <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="2_1x1">
+                <div class="strip-preview w-24 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="w-full flex flex-col gap-1">
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_2">2 Frames</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">1:1 Vertical</p>
+                </div>
+            </div>
+
+            <!-- 3-CUT 1:1 -->
+            <div class="selection-card selected p-6 flex flex-col items-center gap-4" data-layout="3_1x1">
+                <div class="strip-preview w-20 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="w-full flex flex-col gap-1">
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_3">3 Frames</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">1:1 Vertical</p>
+                </div>
+            </div>
+
+            <!-- 3-CUT 16:9 -->
+            <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="3_16x9">
+                <div class="strip-preview w-28 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="w-full flex flex-col gap-1">
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_3">3 Frames</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">16:9 Vertical</p>
+                </div>
+            </div>
+
+            <!-- 4-CUT 1:1 -->
+            <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="4_1x1">
+                <div class="strip-preview w-32 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="grid grid-cols-2 gap-1 w-full">
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-square bg-gray-100 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_4">4 Frames</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">1:1 Grid</p>
+                </div>
+            </div>
+
+            <!-- 4-CUT 16:9 -->
+            <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="4_16x9">
+                <div class="strip-preview w-40 shadow-sm border border-gray-100 flex-grow flex flex-col justify-center items-center p-2 bg-white rounded-sm">
+                    <div class="grid grid-cols-2 gap-1 w-full">
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                        <div class="w-full aspect-video bg-gray-100 rounded-sm"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h2 class="text-sm font-semibold tracking-tight" data-i18n="layout_4">4 Frames</h2>
+                    <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">16:9 Grid</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+
+    <!-- Bottom Bar -->
+    <div class="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
+        <button onclick="window.location.href='capture.html'" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group" data-i18n="btn_continue">
+            Continue 
+            <span class="material-symbols-outlined ml-2 text-sm group-hover:translate-x-1 transition-transform">east</span>
+        </button>
+    </div>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Session.layout = '3_1x1';
+
+            const cards = document.querySelectorAll('.selection-card');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    cards.forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    Session.layout = card.dataset.layout;
+                });
+            });
+
+            new IdleTimer(60000, 'home.html').start();
+        });
+    </script>
+</body>
+</html>

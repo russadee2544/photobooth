@@ -1,0 +1,247 @@
+<!DOCTYPE html><html lang="en" class="dark" style=""><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400&amp;family=Space+Mono:wght@500&amp;family=Anybody:ital,wght@0,700;0,800;1,800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"><script id="tailwind-config">try{
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e5e2e1",
+                        "tertiary": "#e1ffd1",
+                        "tertiary-fixed-dim": "#2ae500",
+                        "tertiary-fixed": "#79ff5b",
+                        "on-primary-container": "#006970",
+                        "on-tertiary-container": "#106e00",
+                        "on-secondary-fixed": "#3a0033",
+                        "surface": "#131313",
+                        "tertiary-container": "#33fb0a",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-secondary-container": "#520049",
+                        "surface-bright": "#393939",
+                        "outline-variant": "#3b494b",
+                        "secondary-container": "#ff24e4",
+                        "on-tertiary-fixed-variant": "#095300",
+                        "surface-container-low": "#1c1b1b",
+                        "on-primary": "#00363a",
+                        "on-tertiary-fixed": "#022100",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#353534",
+                        "surface-dim": "#131313",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#053900",
+                        "on-secondary": "#5e0053",
+                        "on-surface-variant": "#b9cacb",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffd7f0",
+                        "primary": "#dbfcff",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed": "#7df4ff",
+                        "background": "#131313",
+                        "on-secondary-fixed-variant": "#840076",
+                        "surface-container-lowest": "#0e0e0e",
+                        "surface-container-high": "#2a2a2a",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-fixed": "#002022",
+                        "primary-container": "#00f0ff",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface-container": "#201f1f",
+                        "outline": "#849495",
+                        "surface-variant": "#353534",
+                        "secondary": "#fface8",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#fface8",
+                        "inverse-primary": "#006970",
+                        "surface-tint": "#00dbe9",
+                        "inverse-on-surface": "#313030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "gutter": "16px",
+                        "container-max": "1200px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Hanken Grotesk"],
+                        "label-sm": ["Space Mono"],
+                        "display-xl": ["Anybody"],
+                        "headline-lg-mobile": ["Anybody"],
+                        "display-xl-mobile": ["Anybody"],
+                        "headline-lg": ["Anybody"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-xl": ["64px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "display-xl-mobile": ["40px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    }catch(_e){}</script><meta charset="utf-8"></head><body class="bg-background text-on-background font-body-md text-body-md overflow-hidden relative w-full h-screen">
+<div class="grain-overlay"></div>
+<div id="flash-overlay" class="fixed inset-0 z-[100] pointer-events-none transition-all duration-300"></div>
+<!-- SideNavBar -->
+<nav class="bg-surface/60 backdrop-blur-lg dark:bg-surface/60 fixed left-0 top-0 h-full w-20 md:w-64 border-r-2 border-outline-variant/30 shadow-[8px_0px_0px_0px_rgba(0,240,255,0.5)] flex flex-col py-8 px-4 gap-6 z-40">
+<div class="flex items-center gap-4 mb-8">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border-2 border-primary hidden md:block">
+<img alt="User Preview" class="w-full h-full object-cover" data-alt="A small, stylized avatar image representing a user in a Y2K digital environment. The portrait is slightly pixelated, featuring a figure with vibrant pink and cyan neon lighting, wearing retro-futuristic sunglasses. The background is a dark, gritty texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrx7sVA-plje-I_JnjV3QRYyK5GmNGtNBkFyN0ediTUfeR_rdO3jeyPTBPf-VKVbUpPpg75guNgFjBnU3xTAQVDz_HOpR2si2_tmuNUSI2qItx-GKaFkkjttBo-OQ9YiDvRCK0iJt7rejAdq_HLlvPsj2eS_BU09ek_CAqkINxmFyZlVuZVNvL96MgnXhSVhyq147ne_wcR3zb__mN1OzYpbXw_CAMJcccCF_qMZuGoQ93ksbjH4AfxQ">
+</div>
+<div class="hidden md:flex flex-col">
+<span class="font-display-xl text-display-xl text-primary text-xl">BOOTH_01</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">READY_TO_SNAP</span>
+</div>
+</div>
+<button class="bg-primary text-on-primary font-label-sm text-label-sm uppercase py-3 px-4 rounded border-2 border-primary shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-y-1 active:translate-x-1 transition-transform mb-6 text-center w-full">
+            START_SESSION
+        </button>
+<div class="flex flex-col gap-2 flex-grow">
+<!-- FILTERS - Inactive -->
+<a class="flex items-center gap-4 p-3 rounded font-label-sm text-label-sm uppercase text-on-surface hover:bg-surface-variant/50 hover:border-2 hover:border-secondary transition-all active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-xl">filter_vintage</span>
+<span class="hidden md:block">FILTERS</span>
+</a>
+<!-- LAYOUTS - Inactive -->
+<a class="flex items-center gap-4 p-3 rounded font-label-sm text-label-sm uppercase text-on-surface hover:bg-surface-variant/50 hover:border-2 hover:border-secondary transition-all active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-xl">grid_view</span>
+<span class="hidden md:block">LAYOUTS</span>
+</a>
+<!-- STICKERS - Inactive -->
+<a class="flex items-center gap-4 p-3 rounded font-label-sm text-label-sm uppercase text-on-surface hover:bg-surface-variant/50 hover:border-2 hover:border-secondary transition-all active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-xl">auto_fix_high</span>
+<span class="hidden md:block">STICKERS</span>
+</a>
+<!-- PRINT - Inactive -->
+<a class="flex items-center gap-4 p-3 rounded font-label-sm text-label-sm uppercase text-on-surface hover:bg-surface-variant/50 hover:border-2 hover:border-secondary transition-all active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-xl">print</span>
+<span class="hidden md:block">PRINT</span>
+</a>
+</div>
+<!-- Bottom Settings (Timer/Flash for context) -->
+<div class="mt-auto flex flex-col gap-4 pt-4 border-t-2 border-outline-variant/30">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface hidden md:block">TIMER</span>
+<button class="p-2 border-2 border-outline-variant text-on-surface hover:border-secondary transition-colors rounded">
+<span class="material-symbols-outlined">timer_3</span>
+</button>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface hidden md:block">FLASH</span>
+<button class="p-2 border-2 border-outline-variant text-tertiary-fixed hover:border-secondary transition-colors rounded">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">flash_on</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-20 md:ml-64 h-full relative flex flex-col bg-surface-container-lowest">
+<!-- Top App Bar / Progress -->
+<header class="absolute top-0 left-0 w-full p-6 flex justify-between items-start z-30 pointer-events-none">
+<div class="bg-surface/80 backdrop-blur-md border-2 border-outline/20 p-3 rounded shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] pointer-events-auto">
+<span class="font-label-sm text-label-sm text-primary uppercase block mb-1">SESSION_042</span>
+<div class="flex gap-2">
+<div class="w-8 h-2 bg-tertiary-fixed rounded-full"></div>
+<div class="w-8 h-2 bg-surface-variant rounded-full border border-outline"></div>
+<div class="w-8 h-2 bg-surface-variant rounded-full border border-outline"></div>
+<div class="w-8 h-2 bg-surface-variant rounded-full border border-outline"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant block mt-2 text-right">SHOT 1/4</span>
+</div>
+<button class="pointer-events-auto bg-surface/80 backdrop-blur-md border-2 border-outline/20 p-2 rounded text-error hover:text-error-container hover:border-error transition-colors">
+<span class="material-symbols-outlined text-2xl">close</span>
+</button>
+</header>
+<!-- Live Camera Feed (Canvas) -->
+<div class="flex-grow relative flex items-center justify-center p-4 sm:p-8">
+<div class="relative w-full max-w-4xl aspect-[3/4] sm:aspect-video bg-surface-container rounded-xl overflow-hidden border-4 border-outline/30 shadow-[8px_8px_0px_0px_rgba(51,251,10,0.4)]">
+<!-- Placeholder Image for Feed -->
+<div class="bg-cover bg-center w-full h-full absolute inset-0 opacity-80 mix-blend-screen" data-alt="A dynamic, slightly blurry live camera feed preview in a digital photo booth. The scene shows a messy, neon-lit bedroom with posters and glowing monitors. The colors are dominated by cyan, magenta, and deep blacks. The image has a heavy digital grain and scanline effect, simulating a lo-fi webcam capture from the early 2000s." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBAakwGfg1Y299JfSyIf1fUBhvAe1MWBNhGD9vheO7pu4GQNby-vIndF8p5hyITrdx3fCnhBhm049gXqtKzY4QRKgXdeO2UHVVuObrOi2mktzzD92ObhJPX9___eNoiSv55c_8C0mGTTsgAezcJozFx2vhSWfF5lMksbhHxy1tstLjyHmggadSYwOdWUdXZEp4vgq7nl1Ttr0O3d7BJc0-8RorDwv5RzlOJIJJU_iOc0BK9xr7M1qS1ZA')"></div>
+<!-- HUD Overlays -->
+<div class="absolute inset-0 border-2 border-tertiary/20 m-4 pointer-events-none rounded">
+<!-- Corner Reticles -->
+<div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-tertiary-fixed"></div>
+<div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-tertiary-fixed"></div>
+<div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-tertiary-fixed"></div>
+<div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-tertiary-fixed"></div>
+<!-- Center Focus -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-tertiary-fixed/50 rounded-full flex items-center justify-center">
+<div class="w-1 h-1 bg-tertiary-fixed rounded-full"></div>
+</div>
+</div>
+<!-- Countdown Overlay -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-display-xl text-[120px] sm:text-[200px] text-primary drop-shadow-[0_0_20px_rgba(0,240,255,0.8)] z-20 countdown-pulse select-none hidden" id="countdown">
+                    3
+                </div>
+<!-- Camera Icon (when idle) -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center opacity-50">
+<span class="material-symbols-outlined text-[80px] text-on-surface mb-4">photo_camera</span>
+<span class="font-label-sm text-label-sm text-on-surface tracking-widest bg-surface/50 px-2 py-1 rounded">FEED_ACTIVE</span>
+</div>
+</div>
+</div>
+<!-- Bottom Controls -->
+<div class="p-6 pb-12 flex justify-center items-center gap-8 relative z-30">
+<!-- Retake / Cancel -->
+<button class="w-14 h-14 rounded-full border-2 border-outline-variant bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-variant hover:border-primary hover:-translate-y-1 transition-all">
+<span class="material-symbols-outlined text-xl">replay</span>
+</button>
+<!-- Main Shutter Button -->
+<a href="10_Select_Layout.html" class="relative group block" id="shutter-btn"><div class="absolute inset-0 bg-secondary rounded-full blur-md opacity-50 group-hover:opacity-100 transition-opacity"></div><div class="w-24 h-24 rounded-full bg-surface-container border-4 border-secondary flex items-center justify-center relative z-10 shadow-[4px_4px_0px_0px_rgba(255,36,228,1)] group-hover:-translate-y-1 group-active:translate-y-1 group-active:shadow-[0px_0px_0px_0px_rgba(255,36,228,1)] transition-all"><div class="w-16 h-16 rounded-full bg-secondary"></div></div></a>
+<!-- Manual Overrides -->
+<button class="w-14 h-14 rounded-full border-2 border-outline-variant bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-variant hover:border-tertiary-fixed hover:-translate-y-1 transition-all">
+<span class="material-symbols-outlined text-xl">tune</span>
+</button>
+</div>
+</main>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const shutterBtn = document.getElementById('shutter-btn');
+            const countdownEl = document.getElementById('countdown');
+            const flashOverlay = document.getElementById('flash-overlay');
+            
+            let isCapturing = false;
+
+            shutterBtn.addEventListener('click', () => {
+                if (isCapturing) return;
+                isCapturing = true;
+                
+                countdownEl.classList.remove('hidden');
+                let count = 3;
+                countdownEl.innerText = count;
+
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownEl.innerText = count;
+                    } else {
+                        clearInterval(interval);
+                        countdownEl.classList.add('hidden');
+                        triggerFlash();
+                    }
+                }, 1000);
+            });
+
+            function triggerFlash() {
+                flashOverlay.classList.add('flash-animation');
+                
+                // Vibrate if supported
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+
+                setTimeout(() => {
+                    flashOverlay.classList.remove('flash-animation');
+                    isCapturing = false;
+                    // Logic to update progress bar would go here
+                }, 500);
+            }
+        });
+    </script>
+
+</body></html>

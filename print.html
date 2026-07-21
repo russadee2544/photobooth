@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Print & Save</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .print-slide-down {
+            animation: slide-down 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slide-down {
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Thermal Printer Styles */
+        @media print {
+            @page {
+                margin: 0;
+                size: 80mm auto; /* Standard thermal receipt size */
+            }
+            body * {
+                visibility: hidden;
+            }
+            #print-section, #print-section * {
+                visibility: visible;
+            }
+            #print-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                background: white;
+            }
+            #print-section img {
+                width: 100%;
+                max-width: 100%;
+                filter: grayscale(100%);
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-hidden flex">
+
+    <!-- Header -->
+    <header class="kiosk-header">
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+    </header>
+
+    <!-- Left Side: Digital Downloads -->
+    <div class="w-1/2 flex flex-col justify-center px-16 fade-up-enter z-10 pt-16">
+        <h1 class="text-4xl font-bold tracking-tight mb-2" data-i18n="print_title">Your photos are ready.</h1>
+        <p class="text-gray-500 text-sm mb-12" data-i18n="print_desc">Scan the QR code to save to your digital wallet.</p>
+
+        <div id="upload-status" class="flex items-center gap-3 text-sm font-medium text-gray-500 mb-8">
+            <div class="spinner border-gray-300 w-5 h-5 border-2"></div>
+            <span data-i18n="uploading">Uploading to Cloud...</span>
+        </div>
+
+        <div id="qr-container" class="hidden flex gap-8">
+            <!-- Normal QR -->
+            <div class="flex flex-col items-center">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3">
+                    <div id="qr-color" class="w-32 h-32 flex items-center justify-center bg-gray-50"></div>
+                </div>
+                <span class="text-xs font-semibold tracking-widest text-gray-900 uppercase" data-i18n="print_color">Premium Color</span>
+            </div>
+            <!-- Dithered QR -->
+            <div class="flex flex-col items-center">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3">
+                    <div id="qr-dithered" class="w-32 h-32 flex items-center justify-center bg-gray-50"></div>
+                </div>
+                <span class="text-xs font-semibold tracking-widest text-gray-500 uppercase" data-i18n="print_retro">Retro Edition</span>
+            </div>
+        </div>
+
+        <div class="mt-16 flex gap-4">
+            <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-8 py-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">receipt_long</span>
+                <span data-i18n="btn_print">Print Receipt</span>
+            </button>
+            <button onclick="window.location.href='home.html'" class="btn-modern btn-secondary text-sm px-8 py-3" data-i18n="btn_finish">
+                Finish Session
+            </button>
+        </div>
+    </div>
+
+    <!-- Right Side: The Print Preview -->
+    <div class="w-1/2 bg-gray-100 relative shadow-inner overflow-hidden flex items-start justify-center pt-24 no-print">
+        <!-- The actual print strip sliding down -->
+        <div class="relative print-slide-down">
+            <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-12 bg-white rounded-t-xl shadow-lg z-20 hidden"></div>
+            <img id="final-result" class="w-[280px] shadow-2xl rounded-sm z-10 relative bg-white" src="" alt="Final Strip" />
+        </div>
+    </div>
+
+    <!-- Hidden section strictly for the thermal printer -->
+    <div id="print-section" class="hidden">
+        <h2 style="font-family: 'Prompt', sans-serif; font-size: 16px; text-align: center; margin-bottom: 10px;">MEMORIES</h2>
+        <img id="print-result" src="" alt="Print Strip" />
+        <p style="font-family: 'Prompt', sans-serif; font-size: 10px; text-align: center; margin-top: 10px;">Thank you for using Photo Booth!</p>
+    </div>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const finalResult = document.getElementById('final-result');
+            const printResult = document.getElementById('print-result');
+            const uploadStatus = document.getElementById('upload-status');
+            const qrContainer = document.getElementById('qr-container');
+
+            if (Session.result) {
+                finalResult.src = Session.result;
+                printResult.src = Session.dithered; // Thermal printer uses the dithered version!
+            } else {
+                window.location.href = 'home.html';
+                return;
+            }
+
+            // Check paper
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount <= 0) {
+                const printBtn = document.getElementById('btn-print');
+                printBtn.disabled = true;
+                printBtn.classList.replace('btn-primary', 'bg-gray-300');
+                printBtn.classList.add('text-gray-500', 'cursor-not-allowed');
+                printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">error</span> Out of Paper';
+            }
+
+            try {
+                // Upload both versions
+                const uploadPromises = [];
+                
+                // Color upload
+                const colorFileName = `color_${Date.now()}.jpg`;
+                uploadPromises.push(
+                    uploadToCloud(Session.result, colorFileName).then(url => {
+                        Session.colorCloudUrl = url;
+                        return url;
+                    })
+                );
+
+                // Dithered upload
+                const ditheredFileName = `dither_${Date.now()}.png`;
+                uploadPromises.push(
+                    uploadToCloud(Session.dithered, ditheredFileName).then(url => {
+                        Session.ditheredCloudUrl = url;
+                        return url;
+                    })
+                );
+
+                const results = await Promise.all(uploadPromises);
+
+                if (!results[0] || !results[1]) {
+                    throw new Error("One or more uploads failed returning null");
+                }
+
+                uploadStatus.classList.add('hidden');
+                qrContainer.classList.remove('hidden');
+
+                // Generate QRs
+                new QRCode(document.getElementById("qr-color"), {
+                    text: Session.colorCloudUrl,
+                    width: 128,
+                    height: 128,
+                    colorDark: "#0A0A0A",
+                    colorLight: "#FFFFFF",
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+
+                new QRCode(document.getElementById("qr-dithered"), {
+                    text: Session.ditheredCloudUrl,
+                    width: 128,
+                    height: 128,
+                    colorDark: "#0A0A0A",
+                    colorLight: "#FFFFFF",
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+
+                // Phase 4: Log Session Analytics to Cloud
+                logSessionToCloud(Session.colorCloudUrl, Session.ditheredCloudUrl);
+
+            } catch (error) {
+                console.error("Upload failed:", error);
+                uploadStatus.innerHTML = `<span class="material-symbols-outlined text-red-500">error</span> <span class="text-red-500">Cloud upload failed. Network error.</span>`;
+            }
+
+            // Return home after 90 seconds
+            setTimeout(() => {
+                window.location.href = 'home.html';
+            }, 90000);
+        });
+
+        function handlePrint() {
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount > 0) {
+                paperCount--;
+                localStorage.setItem('kiosk_paper', paperCount.toString());
+                window.print();
+                
+                // Disable button after 1 print
+                const printBtn = document.getElementById('btn-print');
+                printBtn.disabled = true;
+                printBtn.classList.replace('btn-primary', 'bg-gray-300');
+                printBtn.classList.add('text-gray-500', 'cursor-not-allowed');
+                printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Printed';
+            }
+        }
+    </script>
+</body>
+</html>

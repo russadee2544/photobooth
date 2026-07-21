@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Booth Template Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+        .canvas-container { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+        canvas { border: 1px solid #ccc; max-width: 200px; height: auto; background: white; }
+    </style>
+</head>
+<body>
+    <h1 class="text-2xl font-bold mb-4">Template Generator</h1>
+    <p class="mb-4">Right-click on any template below and select "Save Image As..." to download the exact 1200px wide PNG for designing your themes.</p>
+    
+    <div id="container" class="canvas-container"></div>
+
+    <script>
+        const layouts = [
+            { id: '1_1x1', count: 1, ratio: '1x1' },
+            { id: '2_1x1', count: 2, ratio: '1x1' },
+            { id: '3_1x1', count: 3, ratio: '1x1' },
+            { id: '3_16x9', count: 3, ratio: '16x9' },
+            { id: '4_1x1', count: 4, ratio: '1x1' },
+            { id: '4_16x9', count: 4, ratio: '16x9' }
+        ];
+
+        // Match exactly what shared.js does for custom templates
+        const outputWidth = 1200;
+        const scale = outputWidth / 600;
+        const pt = 375 * scale; // 5cm header
+        const pb = 187.5 * scale; // 2.5cm footer
+        const px = 24 * scale;
+        const ps = 16 * scale;
+
+        layouts.forEach(layout => {
+            const availableWidth = outputWidth - px * 2;
+            let photoWidth, photoHeight, totalHeight;
+            let coords = [];
+            const count = layout.count;
+            const ratio = layout.ratio;
+
+            if (count <= 3) {
+                photoWidth = availableWidth;
+                photoHeight = ratio === '16x9' ? Math.round(photoWidth * (9/16)) : photoWidth;
+                totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+                for (let i = 0; i < count; i++) {
+                    coords.push({ x: px, y: pt + i * (photoHeight + ps) });
+                }
+            } else if (count === 4) {
+                photoWidth = Math.round((availableWidth - ps) / 2);
+                photoHeight = ratio === '16x9' ? Math.round(photoWidth * (9/16)) : photoWidth;
+                totalHeight = pt + pb + (photoHeight * 2) + ps;
+                coords.push({ x: px, y: pt }); 
+                coords.push({ x: px + photoWidth + ps, y: pt }); 
+                coords.push({ x: px, y: pt + photoHeight + ps }); 
+                coords.push({ x: px + photoWidth + ps, y: pt + photoHeight + ps });
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = outputWidth;
+            canvas.height = totalHeight;
+            const ctx = canvas.getContext('2d');
+
+            // Draw Background (Transparent)
+            ctx.clearRect(0, 0, outputWidth, totalHeight);
+
+            // Draw Outer Border just for visibility
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, outputWidth, totalHeight);
+
+            // Draw Photo Boxes
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'; // semi-transparent red for photo areas
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            
+            coords.forEach((c, idx) => {
+                ctx.fillRect(c.x, c.y, photoWidth, photoHeight);
+                ctx.strokeRect(c.x, c.y, photoWidth, photoHeight);
+                
+                // Label
+                ctx.fillStyle = 'red';
+                ctx.font = 'bold 40px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Photo ${idx + 1}`, c.x + photoWidth/2, c.y + photoHeight/2);
+            });
+
+            // Draw Header/Footer text guides
+            ctx.fillStyle = 'blue';
+            ctx.font = 'bold 30px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('HEADER AREA', outputWidth/2, pt / 2);
+            ctx.fillText('FOOTER AREA', outputWidth/2, totalHeight - pb / 2);
+
+            // Add to DOM
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col items-center';
+            const label = document.createElement('p');
+            label.className = 'font-bold mt-2';
+            label.innerText = `${layout.id} (${outputWidth} x ${totalHeight}px)`;
+            
+            wrapper.appendChild(canvas);
+            wrapper.appendChild(label);
+            document.getElementById('container').appendChild(wrapper);
+        });
+    </script>
+</body>
+</html>

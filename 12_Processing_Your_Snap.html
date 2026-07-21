@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Retro Snap - Processing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&amp;family=Hanken+Grotesk:wght@400&amp;family=Space+Mono:ital,wght@0,500;1,500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed-dim": "#2ae500",
+                      "tertiary": "#e1ffd1",
+                      "on-tertiary-fixed-variant": "#095300",
+                      "secondary-fixed": "#ffd7f0",
+                      "on-surface": "#e5e2e1",
+                      "on-surface-variant": "#b9cacb",
+                      "on-secondary": "#5e0053",
+                      "outline-variant": "#3b494b",
+                      "surface-variant": "#353534",
+                      "surface-bright": "#393939",
+                      "on-secondary-fixed": "#3a0033",
+                      "inverse-primary": "#006970",
+                      "surface-container-high": "#2a2a2a",
+                      "on-secondary-fixed-variant": "#840076",
+                      "inverse-surface": "#e5e2e1",
+                      "secondary-container": "#ff24e4",
+                      "on-primary": "#00363a",
+                      "surface-container-lowest": "#0e0e0e",
+                      "surface-container-low": "#1c1b1b",
+                      "on-secondary-container": "#520049",
+                      "outline": "#849495",
+                      "secondary": "#fface8",
+                      "primary-container": "#00f0ff",
+                      "surface-container-highest": "#353534",
+                      "on-primary-container": "#006970",
+                      "background": "#131313",
+                      "on-tertiary-fixed": "#022100",
+                      "primary-fixed-dim": "#00dbe9",
+                      "inverse-on-surface": "#313030",
+                      "tertiary-fixed": "#79ff5b",
+                      "primary-fixed": "#7df4ff",
+                      "surface-container": "#201f1f",
+                      "on-tertiary": "#053900",
+                      "tertiary-container": "#33fb0a",
+                      "secondary-fixed-dim": "#fface8",
+                      "surface": "#131313",
+                      "on-primary-fixed": "#002022",
+                      "error": "#ffb4ab",
+                      "on-error-container": "#ffdad6",
+                      "surface-dim": "#131313",
+                      "on-primary-fixed-variant": "#004f54",
+                      "on-tertiary-container": "#106e00",
+                      "on-error": "#690005",
+                      "surface-tint": "#00dbe9",
+                      "on-background": "#e5e2e1",
+                      "error-container": "#93000a",
+                      "primary": "#dbfcff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "container-max": "1200px",
+                      "gutter": "16px",
+                      "margin-desktop": "40px",
+                      "margin-mobile": "20px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "label-sm": [
+                              "Space Mono"
+                      ],
+                      "headline-lg": [
+                              "Anybody"
+                      ],
+                      "body-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "display-xl-mobile": [
+                              "Anybody"
+                      ],
+                      "display-xl": [
+                              "Anybody"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-xl-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "display-xl": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        /* Grain overlay */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Scanline animation */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background: linear-gradient(to bottom, transparent, rgba(51, 251, 10, 0.5), transparent);
+            opacity: 0.4;
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Glitch text effect */
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-hover:hover {
+            animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: theme('colors.secondary-container');
+        }
+
+        /* Progress Bar Animation */
+        @keyframes loadProgress {
+            0% { width: 0%; }
+            30% { width: 45%; }
+            50% { width: 60%; }
+            80% { width: 85%; }
+            100% { width: 100%; }
+        }
+        
+        .progress-fill {
+            animation: loadProgress 8s ease-in-out forwards;
+        }
+
+        /* Blinking cursor */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col relative overflow-hidden antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Global Grain -->
+<div class="grain-overlay"></div>
+<div class="scanline"></div>
+<!-- Decorative background elements -->
+<div class="absolute inset-0 pointer-events-none opacity-20">
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-container rounded-full mix-blend-screen filter blur-[100px] animate-pulse"></div>
+<div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary-container rounded-full mix-blend-screen filter blur-[100px] animate-pulse" style="animation-delay: 2s;"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center p-margin-mobile md:p-margin-desktop relative z-10">
+<!-- Processing Container (Bento / Glassmorphism Hybrid) -->
+<div class="w-full max-w-2xl bg-surface-container/60 backdrop-blur-xl border border-outline/20 p-8 md:p-12 shadow-[8px_8px_0px_0px_rgba(255,36,228,0.5)] flex flex-col items-center justify-center gap-12 relative overflow-hidden group">
+<!-- Corner Decals -->
+<div class="absolute top-4 left-4 font-label-sm text-label-sm text-tertiary-fixed opacity-70">REC // 00:00:00</div>
+<div class="absolute bottom-4 right-4 font-label-sm text-label-sm text-primary-fixed opacity-70">SYS.ON</div>
+<!-- Central Spinning Lens / Loader -->
+<div class="relative w-48 h-48 flex items-center justify-center">
+<!-- Outer Ring -->
+<div class="absolute inset-0 border-4 border-dashed border-tertiary-fixed rounded-full animate-[spin_10s_linear_infinite] opacity-50"></div>
+<!-- Middle Ring -->
+<div class="absolute inset-4 border-2 border-primary-container rounded-full animate-[spin_6s_linear_infinite_reverse] shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
+<!-- Inner Icon -->
+<span class="material-symbols-outlined text-[80px] text-secondary-container animate-pulse glitch-hover" style="font-variation-settings: 'FILL' 1;">
+                    camera
+                </span>
+<!-- Crosshairs -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-full h-px bg-tertiary-fixed/30"></div>
+<div class="absolute h-full w-px bg-tertiary-fixed/30"></div>
+</div>
+</div>
+<!-- Status Text Terminal -->
+<div class="w-full bg-surface-container-lowest/80 border border-outline-variant/30 p-6 rounded-sm shadow-[4px_4px_0px_0px_rgba(121,255,91,0.3)] relative">
+<div class="font-label-sm text-label-sm text-tertiary flex flex-col gap-2 terminal-output">
+<div class="flex items-center gap-2 opacity-50">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>[OK] INIT_BOOT_SEQ...</span>
+</div>
+<div class="flex items-center gap-2 opacity-50">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>[OK] MOUNTING_VIRTUAL_DRIVE...</span>
+</div>
+<div class="flex items-center gap-2 text-primary-container" id="current-status">
+<span class="material-symbols-outlined text-[16px] animate-spin">sync</span>
+<span class="status-text">DEVELOPING_FILM...</span><span class="cursor-blink bg-primary-container w-2 h-4 inline-block ml-1"></span>
+</div>
+</div>
+</div>
+<!-- Brutalist Progress Bar -->
+<div class="w-full flex flex-col gap-2">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface">
+<span>PROCESSING</span>
+<span id="percentage-display">0%</span>
+</div>
+<div class="w-full h-8 bg-surface-container-highest border-2 border-outline-variant relative overflow-hidden">
+<div class="progress-fill h-full bg-tertiary-fixed relative">
+<!-- Striped pattern on progress bar -->
+<div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, #000 10px, #000 20px);"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to cycle through text statuses and update percentage based on time
+        document.addEventListener('DOMContentLoaded', () => {
+            const statuses = [
+                "DEVELOPING_FILM...",
+                "APPLYING_DITHER_FILTER...",
+                "RENDERING_Y2K_ASSETS...",
+                "GENERATING_QR_CODE...",
+                "FINALIZING_OUTPUT..."
+            ];
+            
+            let statusIndex = 0;
+            const statusElement = document.querySelector('.status-text');
+            const percentDisplay = document.getElementById('percentage-display');
+            
+            // Total duration matches CSS animation (8s)
+            const totalDuration = 8000; 
+            const intervalTime = totalDuration / statuses.length;
+            const startTime = Date.now();
+
+            // Status Text Cycling
+            const statusInterval = setInterval(() => {
+                statusIndex++;
+                if (statusIndex < statuses.length) {
+                    statusElement.textContent = statuses[statusIndex];
+                }
+            }, intervalTime);
+
+            // Percentage Update
+            const percentInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                let percent = Math.min(100, Math.floor((elapsed / totalDuration) * 100));
+                
+                // Add some artificial non-linear scaling to match CSS easing visually
+                if(percent > 30 && percent < 50) percent = Math.floor(percent * 1.1);
+                if(percent > 100) percent = 100;
+
+                percentDisplay.textContent = `${percent}%`;
+
+                if (elapsed >= totalDuration) {
+                    clearInterval(statusInterval);
+                    clearInterval(percentInterval);
+                    
+                    // Simulate completion state
+                    const currentStatusLine = document.getElementById('current-status');
+                    currentStatusLine.classList.remove('text-primary-container');
+                    currentStatusLine.classList.add('text-tertiary-fixed');
+                    currentStatusLine.innerHTML = `
+                        <span class="material-symbols-outlined text-[16px]">task_alt</span>
+                        <span>PROCESSING_COMPLETE</span>
+                    `;
+                    
+                    // Add a slight flash effect
+                    document.body.style.filter = "invert(1)";
+                    setTimeout(() => {
+                        document.body.style.filter = "none";
+                        // Normally would redirect to final print screen here
+                    }, 150);
+                }
+            }, 50);
+        });
+    </script>
+</body></html>

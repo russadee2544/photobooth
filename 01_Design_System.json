@@ -1,0 +1,120 @@
+{
+  "displayName": "Cyber-Nostalgia System",
+  "styleGuidelines": "## Brand & Style\nThis design system captures the \"Y2K Acid\" aesthetic, blending turn-of-the-millennium digital optimism with contemporary high-tech execution. The brand personality is edgy, energetic, and unapologetically loud, targeting a Gen Z audience that values expressive self-documentation. \n\nThe style is a hybrid of **Glassmorphism** and **Brutalism**. It utilizes high-transparency frosted surfaces to suggest futuristic hardware, juxtaposed against heavy \"sticker-style\" borders and grainy textures that feel tactile and lo-fi. The emotional response is one of controlled chaos—a nostalgic playground for digital expression.\n\n## Layout & Spacing\nThe layout follows a **Fluid Grid** model with an 8-column structure for mobile and 12-column for desktop. However, element placement should feel slightly off-center or \"stacked\" to evoke a sticker-book feel.\n\n- **Margins:** Tight margins (20px) on mobile to maximize the screen real estate for photo previews.\n- **Gutters:** Consistent 16px gutters to maintain structural integrity amidst the chaotic color palette.\n- **Safe Areas:** Generous bottom padding for thumb-heavy camera controls.\n\n## Elevation & Depth\nDepth is achieved through a combination of **Glassmorphism** and **Hard Shadows**.\n\n- **Glass Layers:** Use `backdrop-filter: blur(12px)` with a 1px solid border at 20% opacity. This simulates futuristic HUD overlays.\n- **Grainy Textures:** All glass surfaces must include a subtle noise/grain texture overlay (approx 5% opacity) to break the digital perfection.\n- **Sticker Shadows:** Interactive elements do not use soft ambient shadows. Instead, use \"Hard Shadows\"—solid offsets of 4px or 8px in a contrasting color (e.g., a Blue button with a Pink hard shadow) to create a 3D pop-art effect.\n\n## Components\n- **Sticker Buttons:** Rectangular with a 2pt solid border. On hover/press, the button should shift -2px on X and Y axes, while the hard shadow remains stationary, simulating a physical press.\n- **Control Chips:** Monospaced text inside glass containers. Used for camera filters and toggle settings.\n- **Grainy Sliders:** Track bars for exposure/zoom should be thick and utilize the Tertiary (Lime Green) color for the active state, with a square handle.\n- **Photo Cards:** Images are encased in thick white or neon borders with \"Space Mono\" metadata printed directly in the corner of the frame.\n- **Glass Modals:** Large-scale blurs that take up 90% of the screen, featuring a \"Scanline\" animated texture overlaying the content.\n- **Flash Indicator:** A high-contrast, sudden \"invert color\" animation across the UI when the shutter is triggered.",
+  "theme": {
+    "colorMode": "DARK",
+    "font": "ANYBODY",
+    "roundness": "ROUND_FOUR",
+    "customColor": "#00f0ff",
+    "headlineFont": "ANYBODY",
+    "bodyFont": "HANKEN_GROTESK",
+    "labelFont": "SPACE_MONO",
+    "namedColors": {
+      "background": "#131313",
+      "error": "#ffb4ab",
+      "error_container": "#93000a",
+      "inverse_on_surface": "#313030",
+      "inverse_primary": "#006970",
+      "inverse_surface": "#e5e2e1",
+      "on_background": "#e5e2e1",
+      "on_error": "#690005",
+      "on_error_container": "#ffdad6",
+      "on_primary": "#00363a",
+      "on_primary_container": "#006970",
+      "on_primary_fixed": "#002022",
+      "on_primary_fixed_variant": "#004f54",
+      "on_secondary": "#5e0053",
+      "on_secondary_container": "#520049",
+      "on_secondary_fixed": "#3a0033",
+      "on_secondary_fixed_variant": "#840076",
+      "on_surface": "#e5e2e1",
+      "on_surface_variant": "#b9cacb",
+      "on_tertiary": "#053900",
+      "on_tertiary_container": "#106e00",
+      "on_tertiary_fixed": "#022100",
+      "on_tertiary_fixed_variant": "#095300",
+      "outline": "#849495",
+      "outline_variant": "#3b494b",
+      "primary": "#dbfcff",
+      "primary_container": "#00f0ff",
+      "primary_fixed": "#7df4ff",
+      "primary_fixed_dim": "#00dbe9",
+      "secondary": "#fface8",
+      "secondary_container": "#ff24e4",
+      "secondary_fixed": "#ffd7f0",
+      "secondary_fixed_dim": "#fface8",
+      "surface": "#131313",
+      "surface_bright": "#393939",
+      "surface_container": "#201f1f",
+      "surface_container_high": "#2a2a2a",
+      "surface_container_highest": "#353534",
+      "surface_container_low": "#1c1b1b",
+      "surface_container_lowest": "#0e0e0e",
+      "surface_dim": "#131313",
+      "surface_tint": "#00dbe9",
+      "surface_variant": "#353534",
+      "tertiary": "#e1ffd1",
+      "tertiary_container": "#33fb0a",
+      "tertiary_fixed": "#79ff5b",
+      "tertiary_fixed_dim": "#2ae500"
+    },
+    "colorVariant": "FIDELITY",
+    "overridePrimaryColor": "#00f0ff",
+    "overrideSecondaryColor": "#ff00e5",
+    "overrideTertiaryColor": "#39ff14",
+    "overrideNeutralColor": "#121212",
+    "spacingScale": 2,
+    "typography": {
+      "body-md": {
+        "fontFamily": "Hanken Grotesk",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "lineHeight": "1.5"
+      },
+      "display-xl": {
+        "fontFamily": "Anybody",
+        "fontSize": "64px",
+        "fontWeight": "800",
+        "lineHeight": "1.1",
+        "letterSpacing": "-0.04em"
+      },
+      "display-xl-mobile": {
+        "fontFamily": "Anybody",
+        "fontSize": "40px",
+        "fontWeight": "800",
+        "lineHeight": "1.1",
+        "letterSpacing": "-0.04em"
+      },
+      "headline-lg": {
+        "fontFamily": "Anybody",
+        "fontSize": "32px",
+        "fontWeight": "700",
+        "lineHeight": "1.2"
+      },
+      "headline-lg-mobile": {
+        "fontFamily": "Anybody",
+        "fontSize": "24px",
+        "fontWeight": "700",
+        "lineHeight": "1.2"
+      },
+      "label-sm": {
+        "fontFamily": "Space Mono",
+        "fontSize": "12px",
+        "fontWeight": "500",
+        "lineHeight": "1.2",
+        "letterSpacing": "0.05em"
+      }
+    },
+    "spacing": {
+      "container-max": "1200px",
+      "gutter": "16px",
+      "margin-desktop": "40px",
+      "margin-mobile": "20px",
+      "unit": "4px"
+    },
+    "headlineFontFamily": "Anybody",
+    "bodyFontFamily": "Hanken Grotesk",
+    "labelFontFamily": "Space Mono"
+  },
+  "version": "1"
+}

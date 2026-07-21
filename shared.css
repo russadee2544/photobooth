@@ -1,0 +1,247 @@
+/* ============================================================
+   RETRO_SNAP — Premium Minimalist Design System
+   ============================================================ */
+
+/* --- Fonts are loaded via <link> in HTML (Inter) --- */
+
+/* ======================== BODY (IPAD/TABLET OPTIMIZATIONS) ======================== */
+body {
+    /* Prevent pull-to-refresh on iPad Safari */
+    overscroll-behavior-y: none;
+    /* Prevent pinch-to-zoom on iPad Safari */
+    touch-action: pan-x pan-y;
+}
+
+/* ======================== BACKGROUND GRADIENTS ======================== */
+.bg-gradient-starter {
+    background: linear-gradient(135deg, #F0F0F0 0%, #E3E3E3 100%);
+}
+
+.bg-gradient-memories {
+    background: linear-gradient(135deg, #FF6B57 0%, #FFB6A3 100%);
+}
+
+.bg-gradient-premium {
+    background: linear-gradient(135deg, #4C65FF 0%, #9D4CFF 100%);
+}
+
+/* ======================== FLASH EFFECT ======================== */
+.flash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    pointer-events: none;
+    transition: all 0.3s;
+}
+
+.flash-active {
+    animation: flash-bang 0.6s ease-out forwards;
+}
+
+@keyframes flash-bang {
+    0%   { background: transparent; }
+    15%  { background: white; }
+    100% { background: transparent; }
+}
+
+/* ======================== MODERN BUTTONS ======================== */
+.btn-modern {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    border-radius: 9999px; /* Pill shape */
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.btn-modern:active {
+    transform: scale(0.96);
+}
+
+.btn-primary {
+    background: #0A0A0A;
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.15);
+}
+.btn-primary:hover {
+    background: #222222;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary {
+    background: #FFFFFF;
+    color: #0A0A0A;
+    border: 1px solid #E3E3E3;
+}
+.btn-secondary:hover {
+    background: #F9F9F9;
+    border-color: #0A0A0A;
+}
+
+.btn-accent-mint {
+    background: #BAFF66;
+    color: #0A0A0A;
+}
+.btn-accent-mint:hover {
+    background: #A5F04B;
+}
+
+/* ======================== GLASSMORPHISM ======================== */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+    border-radius: 24px;
+}
+
+.glass-panel-dark {
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    border-radius: 24px;
+}
+
+/* ======================== COUNTDOWN ======================== */
+.countdown-num {
+    font-weight: 300;
+    font-size: clamp(120px, 30vw, 240px);
+    color: #FFFFFF;
+    text-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    animation: countdown-fade 1s ease-in-out infinite;
+    user-select: none;
+}
+
+@keyframes countdown-fade {
+    0%   { transform: scale(0.9); opacity: 0; }
+    20%  { transform: scale(1); opacity: 1; }
+    80%  { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1.1); opacity: 0; }
+}
+
+/* ======================== PROGRESS SPINNER ======================== */
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid #E3E3E3;
+    border-top-color: #0A0A0A;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ======================== PRESENTATION ANIMATION ======================== */
+.fade-up-enter {
+    animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-up {
+    0%   { transform: translateY(40px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ======================== KIOSK HEADER ======================== */
+.kiosk-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 50;
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+}
+
+.kiosk-brand {
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    color: #0A0A0A;
+}
+.dark-mode .kiosk-brand {
+    color: #FFFFFF;
+}
+
+/* ======================== SELECTION CARDS ======================== */
+.selection-card {
+    background: #FFFFFF;
+    border: 1px solid #E3E3E3;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.selection-card:hover {
+    border-color: #8E8E8E;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.06);
+}
+
+.selection-card.selected {
+    border-color: #0A0A0A;
+    border-width: 2px;
+    background: #FAFAFA;
+}
+
+/* ======================== TOUCH OPTIMIZATIONS ======================== */
+@media (pointer: coarse) {
+    .btn-modern {
+        min-height: 56px;
+    }
+    
+    /* On touch devices, elements that rely on group-hover should just be visible */
+    .group-hover\:opacity-100 {
+        opacity: 1 !important;
+    }
+    
+    /* Adjust scale transitions for touch */
+    .group-hover\:scale-100 {
+        transform: scale(1) !important;
+    }
+}
+
+/* ======================== HIDE SCROLLBAR ======================== */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ======================== TEMPLATE PREVIEW ======================== */
+.strip-preview {
+    background: white;
+    padding: 12px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.strip-preview img,
+.strip-preview canvas,
+.strip-preview .photo-slot {
+    width: 100%;
+    aspect-ratio: 3/2;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 8px;
+    background: #F0F0F0;
+}
+
+.strip-preview .photo-slot:last-child {
+    margin-bottom: 0;
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

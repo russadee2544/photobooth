@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Admin Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen overflow-y-auto relative flex flex-col p-8">
+    
+    <header class="flex justify-between items-center mb-12 border-b border-gray-800 pb-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
+            <p class="text-gray-400 text-sm">System configuration and hardware status.</p>
+        </div>
+        <button onclick="window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-6 py-2 hover:bg-gray-700">Exit Admin</button>
+    </header>
+
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl w-full mx-auto">
+        
+        <!-- Mode Configuration -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-blue">settings</span>
+                Operating Mode
+            </h2>
+            
+            <div class="flex gap-4 mb-6">
+                <button id="btn-normal" onclick="setMode('normal')" class="flex-1 py-4 border border-gray-600 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-700 transition-colors">
+                    <span class="material-symbols-outlined text-3xl">payments</span>
+                    <span class="font-medium">Normal Mode</span>
+                    <span class="text-xs text-gray-400">(Pay-per-use)</span>
+                </button>
+                <button id="btn-event" onclick="setMode('event')" class="flex-1 py-4 border border-gray-600 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-700 transition-colors">
+                    <span class="material-symbols-outlined text-3xl">stars</span>
+                    <span class="font-medium">Event Mode</span>
+                    <span class="text-xs text-gray-400">(Free-to-use)</span>
+                </button>
+            </div>
+
+            <div id="event-config-box" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Event Sponsor / Name</label>
+                    <input type="text" id="event-name" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3" placeholder="e.g. Wedding of John & Jane">
+                </div>
+                <button onclick="saveEventConfig()" class="w-full bg-accent-blue text-white py-3 rounded-lg font-bold">Save Event Info</button>
+            </div>
+        </div>
+
+        <!-- Hardware Status -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-mint">print</span>
+                Hardware Status
+            </h2>
+            
+            <div class="flex items-center justify-between bg-gray-900 p-4 rounded-lg mb-4">
+                <div>
+                    <span class="block text-sm text-gray-400 font-medium">Printer Paper Level</span>
+                    <span id="paper-count" class="text-2xl font-bold text-accent-mint">100</span> <span class="text-gray-500">sheets left</span>
+                </div>
+                <div class="w-16 h-16 rounded-full border-4 border-accent-mint flex items-center justify-center">
+                    <span class="material-symbols-outlined text-2xl text-accent-mint">check</span>
+                </div>
+            </div>
+
+            <button onclick="refillPaper()" class="w-full bg-gray-700 text-white py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors">
+                Refill Paper Stack (100)
+            </button>
+        </div>
+
+        <!-- Cloud Analytics -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-accent-coral">bar_chart</span>
+                    Cloud Analytics (Supabase)
+                </h2>
+                <button onclick="fetchAnalytics()" class="text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-sm">refresh</span> Refresh
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Total Sessions</span>
+                    <span id="stat-total" class="text-3xl font-bold text-white">-</span>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Event Mode</span>
+                    <span id="stat-event" class="text-3xl font-bold text-accent-mint">-</span>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Normal Mode</span>
+                    <span id="stat-normal" class="text-3xl font-bold text-accent-blue">-</span>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Revenue (Est.)</span>
+                    <span id="stat-revenue" class="text-3xl font-bold text-accent-coral">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Redeem Code Manager -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-yellow-400">confirmation_number</span>
+                    Redeem Code Manager
+                </h2>
+                <button onclick="loadRedeemData()" class="text-sm bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg flex items-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-sm">refresh</span> Refresh
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Total Codes</span>
+                    <span id="rc-total" class="text-3xl font-bold text-white">-</span>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Available Today</span>
+                    <span id="rc-available" class="text-3xl font-bold text-accent-mint">-</span>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Used Today</span>
+                    <span id="rc-used" class="text-3xl font-bold text-accent-coral">-</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-4 mb-6">
+                <button id="gen-btn" onclick="handleGenerateCodes()" class="flex-1 bg-accent-blue text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    Generate 50 Codes
+                </button>
+                <button onclick="handlePrintCodes()" class="flex-1 bg-gray-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-600 transition-colors">
+                    <span class="material-symbols-outlined">print</span>
+                    Print Codes
+                </button>
+            </div>
+
+            <!-- Code Table -->
+            <div class="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto no-scrollbar">
+                <div id="code-grid" class="grid grid-cols-5 md:grid-cols-10 gap-2 text-center">
+                    <span class="text-gray-500 text-sm col-span-full">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme Branding Configuration -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-coral">branding_watermark</span>
+                Theme Branding (Header & Footer)
+            </h2>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Select Theme to Edit</label>
+                <select id="branding-theme-select" onchange="loadGlobalBranding()" class="w-full md:w-1/2 bg-gray-900 border border-gray-600 rounded-lg text-white p-3 font-medium focus:ring-2 focus:ring-accent-mint outline-none">
+                    <option value="light">Light Theme (Classic Y2K)</option>
+                    <option value="dark">Dark Theme (Retro Ticket)</option>
+                    <option value="mint">Mint Theme (Web Browser)</option>
+                    <option value="blue">Blue Theme (Music Player)</option>
+                    <!-- Custom themes injected here -->
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Header Settings -->
+                <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
+                    <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
+                        Header 
+                        <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Top area</span>
+                    </h3>
+                    
+                    <div class="flex gap-4 mb-4">
+                        <button id="hf-header-mode-text" onclick="setHeaderMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
+                        <button id="hf-header-mode-image" onclick="setHeaderMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
+                    </div>
+
+                    <div id="hf-header-text-ui" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content</label>
+                            <input type="text" id="hf-header-text" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1" placeholder="e.g. MEMORIES" oninput="updateLivePreview()">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
+                                <select id="hf-header-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
+                                    <option value="Inter">Inter (English)</option>
+                                    <option value="Prompt">Prompt (Thai)</option>
+                                    <option value="Kanit">Kanit (Thai)</option>
+                                    <option value="Sarabun">Sarabun (Thai)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
+                                <input type="number" id="hf-header-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="24" oninput="updateLivePreview()">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
+                                <input type="color" id="hf-header-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
+                                <input type="color" id="hf-header-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="hf-header-image-ui" class="space-y-3 hidden">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
+                        <input type="file" id="hf-header-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleHeaderUpload(event)">
+                        <input type="hidden" id="hf-header-base64">
+                        <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 750 px (กว้าง 8 ซม. x สูง 5 ซม.)</p>
+                        <img id="hf-header-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
+                    </div>
+                </div>
+
+                <!-- Footer Settings -->
+                <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
+                    <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
+                        Footer 
+                        <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Bottom area</span>
+                    </h3>
+                    
+                    <div class="flex gap-4 mb-4">
+                        <button id="hf-footer-mode-text" onclick="setFooterMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
+                        <button id="hf-footer-mode-image" onclick="setFooterMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
+                    </div>
+
+                    <div id="hf-footer-text-ui" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content</label>
+                            <input type="text" id="hf-footer-text" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1" placeholder="e.g. Thank you!" oninput="updateLivePreview()">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
+                                <select id="hf-footer-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
+                                    <option value="Inter">Inter (English)</option>
+                                    <option value="Prompt">Prompt (Thai)</option>
+                                    <option value="Kanit">Kanit (Thai)</option>
+                                    <option value="Sarabun">Sarabun (Thai)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
+                                <input type="number" id="hf-footer-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="18" oninput="updateLivePreview()">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
+                                <input type="color" id="hf-footer-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
+                                <input type="color" id="hf-footer-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="hf-footer-image-ui" class="space-y-3 hidden">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
+                        <input type="file" id="hf-footer-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleFooterUpload(event)">
+                        <input type="hidden" id="hf-footer-base64">
+                        <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 375 px (กว้าง 8 ซม. x สูง 2.5 ซม.)</p>
+                        <img id="hf-footer-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Live Preview -->
+            <div class="mt-8 border-t border-gray-700 pt-6">
+                <h3 class="text-md font-bold text-gray-200 mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-400">preview</span>
+                    Live Preview
+                </h3>
+                <div class="flex justify-center bg-gray-900 p-8 rounded-lg border border-gray-700">
+                    <canvas id="branding-preview-canvas" width="400" height="600" class="shadow-2xl border border-gray-600 bg-white" style="max-height: 600px; width: auto;"></canvas>
+                </div>
+            </div>
+
+            <button onclick="saveGlobalBranding()" class="w-full mt-6 bg-accent-blue text-white py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">
+                Save Theme Branding
+            </button>
+        </div>
+
+        <!-- Layout Sizes Manager -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-400">aspect_ratio</span>
+                    Layout Sizes Configuration
+                </h2>
+                <button onclick="saveLayoutSizes()" class="text-sm bg-accent-blue hover:opacity-90 px-6 py-2 rounded-lg flex items-center gap-1 transition-colors font-bold text-white">
+                    <span class="material-symbols-outlined text-sm">save</span> Save Sizes
+                </button>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">Set the print dimensions (in Centimeters) for each layout type.</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="layout-sizes-grid">
+                <span class="text-gray-500 text-sm">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Theme Builder -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-mint">palette</span>
+                Custom Theme Builder
+            </h2>
+            
+            <div class="flex gap-4 mb-6">
+                <button id="theme-type-text" onclick="setThemeType('text')" class="flex-1 py-3 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint">Basic Text Editor</button>
+                <button id="theme-type-png" onclick="setThemeType('png')" class="flex-1 py-3 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700">PNG Overlay Upload</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left: Form -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Theme Name</label>
+                        <input type="text" id="tb-name" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3" placeholder="e.g. Wedding Event A">
+                    </div>
+
+                    <!-- Text Mode Settings -->
+                    <div id="tb-text-settings" class="space-y-4">
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Background Color</label>
+                                <input type="color" id="tb-bg-color" value="#FFFFFF" class="w-full h-12 rounded-lg cursor-pointer bg-gray-900 border border-gray-600">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Text Color</label>
+                                <input type="color" id="tb-text-color" value="#0A0A0A" class="w-full h-12 rounded-lg cursor-pointer bg-gray-900 border border-gray-600">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Header Text</label>
+                            <input type="text" id="tb-header" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3" placeholder="Top text">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Footer Text</label>
+                            <input type="text" id="tb-footer" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3" placeholder="Bottom text">
+                        </div>
+                    </div>
+
+                    <!-- PNG Mode Settings -->
+                    <div id="tb-png-settings" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Upload PNG Overlay</label>
+                            <input type="file" id="tb-png-file" accept="image/png" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-2" onchange="handlePNGUpload(event)">
+                            <input type="hidden" id="tb-png-base64">
+                            <p class="text-xs text-gray-500 mt-2">Design your PNG to match the Layout Size you configured above. Make holes transparent.</p>
+                        </div>
+                        <div id="tb-png-preview-container" class="hidden">
+                            <img id="tb-png-preview" class="max-h-32 object-contain bg-gray-900 rounded-lg border border-gray-600">
+                        </div>
+                    </div>
+
+                    <button onclick="saveCustomTheme()" class="w-full bg-accent-mint text-gray-900 py-3 rounded-lg font-bold hover:bg-green-400 transition-colors">
+                        Save Custom Theme
+                    </button>
+                </div>
+                
+                <!-- Right: List of Themes -->
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-700 flex flex-col">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Saved Custom Themes</h3>
+                    <div id="custom-themes-list" class="flex-1 overflow-y-auto space-y-2 no-scrollbar">
+                        <span class="text-sm text-gray-500">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white text-gray-900 px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity">
+        Saved successfully!
+    </div>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePaperUI();
+            fetchAnalytics();
+            loadRedeemData();
+            loadLayoutSizesAdmin();
+            loadCustomThemesAdmin();
+            loadGlobalBranding();
+        });
+
+        function setHeaderMode(mode) {
+            document.getElementById('hf-header-mode-text').classList.toggle('bg-accent-mint/10', mode === 'text');
+            document.getElementById('hf-header-mode-text').classList.toggle('border-accent-mint', mode === 'text');
+            document.getElementById('hf-header-mode-text').classList.toggle('text-accent-mint', mode === 'text');
+            document.getElementById('hf-header-mode-text').classList.toggle('border-gray-600', mode !== 'text');
+            document.getElementById('hf-header-mode-text').classList.toggle('text-gray-400', mode !== 'text');
+
+            document.getElementById('hf-header-mode-image').classList.toggle('bg-accent-mint/10', mode === 'image');
+            document.getElementById('hf-header-mode-image').classList.toggle('border-accent-mint', mode === 'image');
+            document.getElementById('hf-header-mode-image').classList.toggle('text-accent-mint', mode === 'image');
+            document.getElementById('hf-header-mode-image').classList.toggle('border-gray-600', mode !== 'image');
+            document.getElementById('hf-header-mode-image').classList.toggle('text-gray-400', mode !== 'image');
+
+            document.getElementById('hf-header-text-ui').classList.toggle('hidden', mode !== 'text');
+            document.getElementById('hf-header-image-ui').classList.toggle('hidden', mode !== 'image');
+        }
+
+        function setFooterMode(mode) {
+            document.getElementById('hf-footer-mode-text').classList.toggle('bg-accent-mint/10', mode === 'text');
+            document.getElementById('hf-footer-mode-text').classList.toggle('border-accent-mint', mode === 'text');
+            document.getElementById('hf-footer-mode-text').classList.toggle('text-accent-mint', mode === 'text');
+            document.getElementById('hf-footer-mode-text').classList.toggle('border-gray-600', mode !== 'text');
+            document.getElementById('hf-footer-mode-text').classList.toggle('text-gray-400', mode !== 'text');
+
+            document.getElementById('hf-footer-mode-image').classList.toggle('bg-accent-mint/10', mode === 'image');
+            document.getElementById('hf-footer-mode-image').classList.toggle('border-accent-mint', mode === 'image');
+            document.getElementById('hf-footer-mode-image').classList.toggle('text-accent-mint', mode === 'image');
+            document.getElementById('hf-footer-mode-image').classList.toggle('border-gray-600', mode !== 'image');
+            document.getElementById('hf-footer-mode-image').classList.toggle('text-gray-400', mode !== 'image');
+
+            document.getElementById('hf-footer-text-ui').classList.toggle('hidden', mode !== 'text');
+            document.getElementById('hf-footer-image-ui').classList.toggle('hidden', mode !== 'image');
+        }
+
+        function handleHeaderUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('hf-header-base64').value = e.target.result;
+                    const preview = document.getElementById('hf-header-preview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleFooterUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('hf-footer-base64').value = e.target.result;
+                    const preview = document.getElementById('hf-footer-preview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveGlobalBranding() {
+            const theme = document.getElementById('branding-theme-select').value;
+            const data = {
+                header: {
+                    mode: document.getElementById('hf-header-text-ui').classList.contains('hidden') ? 'image' : 'text',
+                    text: document.getElementById('hf-header-text').value,
+                    font: document.getElementById('hf-header-font').value,
+                    size: document.getElementById('hf-header-size').value,
+                    color: document.getElementById('hf-header-color').value,
+                    bg: document.getElementById('hf-header-bg').value,
+                    base64: document.getElementById('hf-header-base64').value
+                },
+                footer: {
+                    mode: document.getElementById('hf-footer-text-ui').classList.contains('hidden') ? 'image' : 'text',
+                    text: document.getElementById('hf-footer-text').value,
+                    font: document.getElementById('hf-footer-font').value,
+                    size: document.getElementById('hf-footer-size').value,
+                    color: document.getElementById('hf-footer-color').value,
+                    bg: document.getElementById('hf-footer-bg').value,
+                    base64: document.getElementById('hf-footer-base64').value
+                }
+            };
+            localStorage.setItem('kiosk_branding_' + theme, JSON.stringify(data));
+            showToast('Theme Branding Saved');
+            updateLivePreview();
+        }
+
+        function loadGlobalBranding() {
+            const theme = document.getElementById('branding-theme-select').value;
+            const data = JSON.parse(localStorage.getItem('kiosk_branding_' + theme) || '{}');
+            
+            // Reset fields to defaults
+            document.getElementById('hf-header-text').value = '';
+            document.getElementById('hf-header-font').value = 'Inter';
+            document.getElementById('hf-header-size').value = '24';
+            document.getElementById('hf-header-color').value = '#000000';
+            document.getElementById('hf-header-bg').value = '#FFFFFF';
+            document.getElementById('hf-header-base64').value = '';
+            document.getElementById('hf-header-preview').classList.add('hidden');
+            
+            document.getElementById('hf-footer-text').value = '';
+            document.getElementById('hf-footer-font').value = 'Inter';
+            document.getElementById('hf-footer-size').value = '18';
+            document.getElementById('hf-footer-color').value = '#000000';
+            document.getElementById('hf-footer-bg').value = '#FFFFFF';
+            document.getElementById('hf-footer-base64').value = '';
+            document.getElementById('hf-footer-preview').classList.add('hidden');
+
+            if (!data.header) {
+                setHeaderMode('text');
+                setFooterMode('text');
+                updateLivePreview();
+                return;
+            }
+
+            setHeaderMode(data.header.mode || 'text');
+            document.getElementById('hf-header-text').value = data.header.text || '';
+            if(data.header.font) document.getElementById('hf-header-font').value = data.header.font;
+            if(data.header.size) document.getElementById('hf-header-size').value = data.header.size;
+            if(data.header.color) document.getElementById('hf-header-color').value = data.header.color;
+            if(data.header.bg) document.getElementById('hf-header-bg').value = data.header.bg;
+            document.getElementById('hf-header-base64').value = data.header.base64 || '';
+            if (data.header.base64) {
+                const preview = document.getElementById('hf-header-preview');
+                preview.src = data.header.base64;
+                preview.classList.remove('hidden');
+            }
+
+            setFooterMode(data.footer.mode || 'text');
+            document.getElementById('hf-footer-text').value = data.footer.text || '';
+            if(data.footer.font) document.getElementById('hf-footer-font').value = data.footer.font;
+            if(data.footer.size) document.getElementById('hf-footer-size').value = data.footer.size;
+            if(data.footer.color) document.getElementById('hf-footer-color').value = data.footer.color;
+            if(data.footer.bg) document.getElementById('hf-footer-bg').value = data.footer.bg;
+            document.getElementById('hf-footer-base64').value = data.footer.base64 || '';
+            if (data.footer.base64) {
+                const preview = document.getElementById('hf-footer-preview');
+                preview.src = data.footer.base64;
+                preview.classList.remove('hidden');
+            }
+            updateLivePreview();
+        }
+
+        function updateLivePreview() {
+            const canvas = document.getElementById('branding-preview-canvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // Fixed dimensions for 3_1x1 strip representation
+            const outputWidth = 1200;
+            const pt = 750; // 5cm at 300dpi scale=2
+            const pb = 375; // 2.5cm at 300dpi scale=2
+            const photoWidth = 1100;
+            const photoHeight = 733;
+            const ps = 50; // padding between photos
+            const count = 3;
+            const totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+            
+            // Set canvas size for high-res drawing, scaled down via CSS
+            canvas.width = outputWidth;
+            canvas.height = totalHeight;
+
+            // Fill base template background
+            const theme = document.getElementById('branding-theme-select').value;
+            ctx.fillStyle = theme === 'dark' || theme === 'blue' ? '#000000' : 
+                            theme === 'mint' ? '#F2FFF5' : 
+                            theme === 'exhibition' ? '#F5F5F5' : '#FFFFFF';
+            ctx.fillRect(0, 0, outputWidth, totalHeight);
+
+            // Draw placeholder photos
+            for (let i = 0; i < count; i++) {
+                const y = pt + (i * photoHeight) + (i * ps);
+                ctx.fillStyle = '#CCCCCC';
+                ctx.fillRect(50, y, photoWidth, photoHeight);
+                ctx.fillStyle = '#999999';
+                ctx.font = '600 80px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Photo ' + (i+1), outputWidth/2, y + photoHeight/2 + 25);
+            }
+
+            // Draw Header
+            const hMode = document.getElementById('hf-header-text-ui').classList.contains('hidden') ? 'image' : 'text';
+            if (hMode === 'text') {
+                const hText = document.getElementById('hf-header-text').value;
+                if (hText) {
+                    ctx.fillStyle = document.getElementById('hf-header-bg').value;
+                    ctx.fillRect(0, 0, outputWidth, pt - 4);
+                    
+                    ctx.fillStyle = document.getElementById('hf-header-color').value;
+                    ctx.textAlign = 'center';
+                    const hFont = document.getElementById('hf-header-font').value;
+                    const hSize = document.getElementById('hf-header-size').value || '24';
+                    ctx.font = `800 ${hSize * 2}px "${hFont}", sans-serif`;
+                    ctx.fillText(hText, outputWidth / 2, pt / 2 + (hSize * 0.8));
+                }
+            } else {
+                const hB64 = document.getElementById('hf-header-base64').value;
+                if(hB64) {
+                    const img = new Image();
+                    img.onload = () => ctx.drawImage(img, 0, 0, outputWidth, pt);
+                    img.src = hB64;
+                }
+            }
+
+            // Draw Footer
+            const fMode = document.getElementById('hf-footer-text-ui').classList.contains('hidden') ? 'image' : 'text';
+            if (fMode === 'text') {
+                const fText = document.getElementById('hf-footer-text').value;
+                if (fText) {
+                    ctx.fillStyle = document.getElementById('hf-footer-bg').value;
+                    ctx.fillRect(0, totalHeight - pb + 4, outputWidth, pb);
+                    
+                    ctx.fillStyle = document.getElementById('hf-footer-color').value;
+                    ctx.textAlign = 'center';
+                    const fFont = document.getElementById('hf-footer-font').value;
+                    const fSize = document.getElementById('hf-footer-size').value || '18';
+                    ctx.font = `600 ${fSize * 2}px "${fFont}", sans-serif`;
+                    ctx.fillText(fText, outputWidth / 2, totalHeight - pb / 2 + (fSize * 0.8));
+                }
+            } else {
+                const fB64 = document.getElementById('hf-footer-base64').value;
+                if(fB64) {
+                    const img = new Image();
+                    img.onload = () => ctx.drawImage(img, 0, totalHeight - pb, outputWidth, pb);
+                    img.src = fB64;
+                }
+            }
+        }
+
+        function updateUI() {
+            const mode = Kiosk.mode;
+            document.getElementById('btn-normal').classList.toggle('border-accent-blue', mode === 'normal');
+            document.getElementById('btn-normal').classList.toggle('bg-accent-blue/10', mode === 'normal');
+            
+            document.getElementById('btn-event').classList.toggle('border-accent-blue', mode === 'event');
+            document.getElementById('btn-event').classList.toggle('bg-accent-blue/10', mode === 'event');
+
+            if (mode === 'event') {
+                document.getElementById('event-config-box').classList.remove('hidden');
+                document.getElementById('event-name').value = Kiosk.eventName;
+            } else {
+                document.getElementById('event-config-box').classList.add('hidden');
+            }
+        }
+
+        function setMode(mode) {
+            Kiosk.mode = mode;
+            updateUI();
+            showToast('Mode updated: ' + mode.toUpperCase());
+        }
+
+        function saveEventConfig() {
+            Kiosk.eventName = document.getElementById('event-name').value;
+            showToast('Event info saved');
+        }
+
+        function getPaper() {
+            return parseInt(localStorage.getItem('kiosk_paper') || '100');
+        }
+
+        function updatePaperUI() {
+            const count = getPaper();
+            const countEl = document.getElementById('paper-count');
+            countEl.innerText = count;
+            
+            if (count < 20) {
+                countEl.className = 'text-2xl font-bold text-accent-coral';
+            } else {
+                countEl.className = 'text-2xl font-bold text-accent-mint';
+            }
+        }
+
+        function refillPaper() {
+            localStorage.setItem('kiosk_paper', '100');
+            updatePaperUI();
+            showToast('Paper refilled to 100');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2000);
+        }
+
+        // Phase 4: Fetch Analytics from Supabase
+        async function fetchAnalytics() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/kiosk_sessions?select=kiosk_mode`, {
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+
+                if (!res.ok) throw new Error('Fetch failed');
+                const data = await res.json();
+                
+                let total = data.length;
+                let event = data.filter(d => d.kiosk_mode === 'event').length;
+                let normal = data.filter(d => d.kiosk_mode === 'normal').length;
+
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-event').innerText = event;
+                document.getElementById('stat-normal').innerText = normal;
+                document.getElementById('stat-revenue').innerText = '฿' + (normal * 10).toLocaleString();
+
+            } catch (e) {
+                console.error("Analytics fetch error:", e);
+                document.getElementById('stat-total').innerText = 'Err';
+                document.getElementById('stat-event').innerText = 'Err';
+                document.getElementById('stat-normal').innerText = 'Err';
+                document.getElementById('stat-revenue').innerText = 'Err';
+            }
+        }
+
+        // ======================== REDEEM CODE ADMIN ========================
+
+        let allRedeemCodes = [];
+        let lastBatchId = null;
+
+        async function loadRedeemData() {
+            allRedeemCodes = await fetchRedeemCodes();
+            
+            const total = allRedeemCodes.length;
+            const usedCount = allRedeemCodes.filter(c => c.usedToday).length;
+            const availableCount = total - usedCount;
+
+            document.getElementById('rc-total').innerText = total;
+            document.getElementById('rc-available').innerText = availableCount;
+            document.getElementById('rc-used').innerText = usedCount;
+
+            // Find last batch
+            if (allRedeemCodes.length > 0) {
+                lastBatchId = allRedeemCodes[0].batch_id;
+            }
+
+            // Render code grid
+            const grid = document.getElementById('code-grid');
+            if (total === 0) {
+                grid.innerHTML = '<span class="text-gray-500 text-sm col-span-full">No codes yet. Click "Generate 50 Codes" to create your first batch.</span>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            allRedeemCodes.forEach(c => {
+                const chip = document.createElement('div');
+                chip.className = `px-2 py-1.5 rounded text-xs font-mono font-bold tracking-wide ${
+                    c.usedToday
+                        ? 'bg-accent-coral/20 text-accent-coral line-through opacity-60'
+                        : 'bg-accent-mint/20 text-accent-mint'
+                }`;
+                chip.innerText = c.code;
+                grid.appendChild(chip);
+            });
+        }
+
+        async function handleGenerateCodes() {
+            const btn = document.getElementById('gen-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Generating...';
+
+            const result = await generateRedeemCodes(50);
+            
+            if (result.success) {
+                lastBatchId = result.batchId;
+                showToast(`✅ Generated ${result.codes.length} new codes!`);
+                await loadRedeemData();
+            } else {
+                showToast('❌ Failed to generate codes');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Generate 50 Codes';
+        }
+
+        function handlePrintCodes() {
+            // Get codes to print — latest batch or all available
+            let codesToPrint = allRedeemCodes;
+            if (lastBatchId) {
+                const batchCodes = allRedeemCodes.filter(c => c.batch_id === lastBatchId);
+                if (batchCodes.length > 0) codesToPrint = batchCodes;
+            }
+
+            // Only print available (not used today)
+            codesToPrint = codesToPrint.filter(c => !c.usedToday);
+
+            if (codesToPrint.length === 0) {
+                showToast('No available codes to print');
+                return;
+            }
+
+            // Build print window
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Redeem Codes — Print</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: 'Inter', 'Arial', sans-serif; padding: 10mm; }
+                        h1 { font-size: 14px; text-align: center; margin-bottom: 5mm; color: #333; }
+                        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+                        .code-card {
+                            border: 1px dashed #ccc;
+                            padding: 8mm 4mm;
+                            text-align: center;
+                            page-break-inside: avoid;
+                        }
+                        .code-card .label {
+                            font-size: 8px;
+                            color: #999;
+                            text-transform: uppercase;
+                            letter-spacing: 2px;
+                            margin-bottom: 2mm;
+                        }
+                        .code-card .code {
+                            font-size: 20px;
+                            font-weight: 800;
+                            letter-spacing: 3px;
+                            color: #000;
+                            font-family: 'Courier New', monospace;
+                        }
+                        .code-card .brand {
+                            font-size: 7px;
+                            color: #bbb;
+                            margin-top: 2mm;
+                            letter-spacing: 2px;
+                        }
+                        @media print {
+                            body { padding: 5mm; }
+                            h1 { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>MEMORIES Photo Booth — Redeem Codes (${codesToPrint.length} codes)</h1>
+                    <div class="grid">
+                        ${codesToPrint.map(c => `
+                            <div class="code-card">
+                                <div class="label">Redeem Code</div>
+                                <div class="code">${c.code}</div>
+                                <div class="brand">MEMORIES</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <script>
+                        setTimeout(() => { window.print(); }, 500);
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+
+
+        // ======================== LAYOUT SIZES & THEME BUILDER ========================
+        let currentThemeType = 'text';
+
+        function setThemeType(type) {
+            currentThemeType = type;
+            const btnText = document.getElementById('theme-type-text');
+            const btnPng = document.getElementById('theme-type-png');
+            const setText = document.getElementById('tb-text-settings');
+            const setPng = document.getElementById('tb-png-settings');
+
+            if(type === 'text') {
+                btnText.className = 'flex-1 py-3 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint';
+                btnPng.className = 'flex-1 py-3 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700';
+                setText.classList.remove('hidden');
+                setPng.classList.add('hidden');
+            } else {
+                btnPng.className = 'flex-1 py-3 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint';
+                btnText.className = 'flex-1 py-3 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700';
+                setPng.classList.remove('hidden');
+                setText.classList.add('hidden');
+            }
+        }
+
+        async function loadLayoutSizesAdmin() {
+            const sizes = await fetchLayoutSizes(); 
+            const grid = document.getElementById('layout-sizes-grid');
+            grid.innerHTML = '';
+            for(let i=1; i<=4; i++) {
+                const s = sizes.find(x => x.layout_id == i) || {width_cm: 5, height_cm: 15};
+                grid.innerHTML += `
+                    <div class="bg-gray-900 p-4 rounded-lg flex flex-col border border-gray-700">
+                        <span class="text-purple-400 font-bold mb-3 border-b border-gray-700 pb-2">Layout ${i}</span>
+                        <label class="text-xs text-gray-400 mb-1">Width (cm)</label>
+                        <input type="number" id="ls-w-${i}" value="${s.width_cm}" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white mb-3">
+                        <label class="text-xs text-gray-400 mb-1">Height (cm)</label>
+                        <input type="number" id="ls-h-${i}" value="${s.height_cm}" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white">
+                    </div>
+                `;
+            }
+        }
+
+        async function saveLayoutSizes() {
+            const btn = event.currentTarget;
+            const ogHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">progress_activity</span> Saving...';
+            
+            const updates = [];
+            for(let i=1; i<=4; i++) {
+                updates.push({
+                    layout_id: i.toString(),
+                    width_cm: parseFloat(document.getElementById(`ls-w-${i}`).value),
+                    height_cm: parseFloat(document.getElementById(`ls-h-${i}`).value)
+                });
+            }
+            await updateLayoutSizes(updates); 
+            showToast('Layout Sizes Saved!');
+            
+            btn.innerHTML = ogHtml;
+        }
+
+        function handlePNGUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const b64 = ev.target.result;
+                document.getElementById('tb-png-base64').value = b64;
+                document.getElementById('tb-png-preview').src = b64;
+                document.getElementById('tb-png-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function loadCustomThemesAdmin() {
+            const themes = await fetchCustomThemes(); 
+            const list = document.getElementById('custom-themes-list');
+            const brandingSelect = document.getElementById('branding-theme-select');
+            
+            // Clean up old custom themes from select
+            Array.from(brandingSelect.options).forEach(opt => {
+                if (opt.value.startsWith('custom_')) {
+                    opt.remove();
+                }
+            });
+
+            if(themes.length === 0) {
+                list.innerHTML = '<span class="text-sm text-gray-500">No custom themes yet.</span>';
+                return;
+            }
+            list.innerHTML = '';
+            themes.forEach(t => {
+                // Add to list
+                list.innerHTML += `
+                    <div class="bg-gray-800 p-3 rounded-lg flex justify-between items-center border border-gray-700">
+                        <div>
+                            <div class="font-bold text-white">${t.name}</div>
+                            <div class="text-xs text-accent-mint">${t.theme_type === 'png' ? 'PNG Overlay' : 'Text Editor'}</div>
+                        </div>
+                        <button onclick="deleteCustomTheme('${t.id}')" class="text-gray-500 hover:text-accent-coral material-symbols-outlined transition-colors">delete</button>
+                    </div>
+                `;
+                // Add to branding select
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.text = `Custom: ${t.name}`;
+                brandingSelect.appendChild(option);
+            });
+        }
+
+        async function saveCustomTheme() {
+            const name = document.getElementById('tb-name').value;
+            if(!name) { showToast('Please enter theme name'); return; }
+
+            const payload = {
+                name: name,
+                theme_type: currentThemeType
+            };
+
+            if(currentThemeType === 'text') {
+                payload.bg_color = document.getElementById('tb-bg-color').value;
+                payload.text_color = document.getElementById('tb-text-color').value;
+                payload.header_text = document.getElementById('tb-header').value;
+                payload.footer_text = document.getElementById('tb-footer').value;
+            } else {
+                payload.png_image = document.getElementById('tb-png-base64').value;
+                if(!payload.png_image) { showToast('Please upload a PNG'); return; }
+            }
+
+            const btn = event.currentTarget;
+            const og = btn.innerText;
+            btn.innerText = 'Saving...';
+            
+            await insertCustomTheme(payload); 
+            showToast('Theme saved successfully!');
+            
+            // Reset
+            document.getElementById('tb-name').value = '';
+            document.getElementById('tb-png-base64').value = '';
+            document.getElementById('tb-png-file').value = '';
+            document.getElementById('tb-png-preview-container').classList.add('hidden');
+            
+            btn.innerText = og;
+            loadCustomThemesAdmin();
+        }
+
+        async function deleteCustomTheme(id) {
+            if(!confirm('Are you sure you want to delete this theme?')) return;
+            await removeCustomTheme(id); 
+            showToast('Theme deleted');
+            loadCustomThemesAdmin();
+        }
+    </script>
+</body>
+</html>

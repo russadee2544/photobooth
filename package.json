@@ -1,0 +1,11 @@
+{
+  "name": "photobooth",
+  "version": "1.0.0",
+  "description": "Retro Dither Photo Booth Screens",
+  "scripts": {
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

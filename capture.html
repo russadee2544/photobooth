@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Capture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
+    </script>
+    <link rel="stylesheet" href="shared.css">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen overflow-hidden relative">
+    
+    <!-- Header (Dark mode by context) -->
+    <header class="kiosk-header">
+        <div class="kiosk-brand tracking-widest text-sm text-white" data-i18n="brand">MEMORIES</div>
+        <div class="text-sm font-medium tracking-widest flex items-center gap-4 text-white">
+            <button id="cam-switch-btn" class="hover:text-accent-mint transition-colors flex items-center">
+                <span class="material-symbols-outlined">flip_camera_ios</span>
+            </button>
+            <span id="shot-counter" class="bg-white text-gray-900 px-2 py-1 rounded-sm text-xs">1/3</span>
+        </div>
+    </header>
+
+    <!-- Camera Selection Modal -->
+    <div id="cam-menu" class="hidden absolute top-20 right-8 bg-gray-900/90 backdrop-blur border border-gray-700 p-4 rounded-xl shadow-2xl z-50 text-white min-w-[200px]">
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Select Camera</h3>
+        <div id="cam-list" class="flex flex-col gap-2 text-sm">
+            <!-- Camera options injected here -->
+        </div>
+    </div>
+
+    <!-- Camera Viewfinder -->
+    <main class="absolute inset-0 z-0 flex items-center justify-center bg-black overflow-hidden">
+        <video id="video-feed" autoplay playsinline class="absolute w-full h-full object-cover"></video>
+        
+        <!-- Crop Guide Box -->
+        <div id="crop-guide" class="relative z-10 border-2 border-white/50 border-dashed transition-all duration-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
+
+        <!-- Canvas for flash capture -->
+        <canvas id="photo-canvas" class="hidden"></canvas>
+    </main>
+
+    <!-- UI Overlay -->
+    <div class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-center items-center">
+        <!-- Countdown -->
+        <div id="countdown" class="countdown-num hidden drop-shadow-lg">3</div>
+    </div>
+
+    <!-- Error/Demo Banner -->
+    <div id="demo-banner" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur border border-gray-700 text-white px-6 py-4 rounded-xl text-sm font-medium flex flex-col items-center gap-3 shadow-2xl z-50 pointer-events-auto">
+        <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-accent-coral">videocam_off</span>
+            <span data-i18n="cam_error">Camera access denied or not found.</span>
+        </div>
+        <p class="text-xs text-gray-400 max-w-xs text-center font-normal">If prompted by your browser, please click "Allow" to use the camera.</p>
+        <button id="req-cam-btn" class="bg-white text-gray-900 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors w-full mt-1">
+            Request Permission / Retry
+        </button>
+        <button id="force-demo-btn" class="bg-transparent border border-gray-600 text-gray-300 px-4 py-2 rounded-md hover:bg-gray-800 transition-colors w-full mt-1 text-xs">
+            Continue without Camera (Demo Mode)
+        </button>
+    </div>
+
+    <!-- Flash Overlay -->
+    <div id="flash-overlay" class="flash-overlay"></div>
+
+    <script src="shared.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const video = document.getElementById('video-feed');
+            const canvas = document.getElementById('photo-canvas');
+            const countdownEl = document.getElementById('countdown');
+            const shotCounterEl = document.getElementById('shot-counter');
+            const demoBanner = document.getElementById('demo-banner');
+            const reqCamBtn = document.getElementById('req-cam-btn');
+            const forceDemoBtn = document.getElementById('force-demo-btn');
+            const cropGuide = document.getElementById('crop-guide');
+            
+            const camSwitchBtn = document.getElementById('cam-switch-btn');
+            const camMenu = document.getElementById('cam-menu');
+            const camList = document.getElementById('cam-list');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const retakeIdx = urlParams.get('retake');
+            const isRetake = retakeIdx !== null;
+
+            const layoutStr = Session.layout || '4_1x1';
+            let requiredShots = 4;
+            let ratio = '1x1';
+            if (layoutStr.includes('_')) {
+                const parts = layoutStr.split('_');
+                requiredShots = parseInt(parts[0], 10);
+                ratio = parts[1];
+            } else {
+                requiredShots = parseInt(layoutStr, 10);
+            }
+            const totalShots = isRetake ? 1 : requiredShots;
+            let currentShot = 1;
+            let photos = [];
+            let useDemo = false;
+            let currentStream = null;
+
+            // Resize guide box to match ratio
+            function updateGuideBox() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                
+                const maxW = w * 0.85;
+                const maxH = h * 0.7; // Leave room for UI
+
+                let targetRatio = 1;
+                if (ratio === '16x9') {
+                    targetRatio = 16 / 9;
+                }
+
+                let guideW = maxW;
+                let guideH = guideW / targetRatio;
+
+                if (guideH > maxH) {
+                    guideH = maxH;
+                    guideW = guideH * targetRatio;
+                }
+
+                cropGuide.style.width = guideW + 'px';
+                cropGuide.style.height = guideH + 'px';
+            }
+            window.addEventListener('resize', updateGuideBox);
+            updateGuideBox();
+
+            // Setup Camera
+            async function startCamera(deviceId = null) {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                try {
+                    const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
+                    if (deviceId) { constraints.video.deviceId = { exact: deviceId }; } 
+                    else { constraints.video.facingMode = 'user'; }
+
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error("getUserMedia is not supported");
+                    }
+                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = currentStream;
+                    video.play();
+                    
+                    demoBanner.classList.add('hidden');
+                    useDemo = false;
+                    if (deviceId) localStorage.setItem('pb_camera_id', deviceId);
+                    return true;
+                } catch (err) {
+                    console.error("Camera access failed:", err);
+                    useDemo = true;
+                    demoBanner.classList.remove('hidden');
+                    return false;
+                }
+            }
+
+            async function loadCameraList() {
+                try {
+                    await navigator.mediaDevices.getUserMedia({video: true, audio: false}).then(s => s.getTracks().forEach(t => t.stop())).catch(e => {});
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    
+                    camList.innerHTML = '';
+                    const savedId = localStorage.getItem('pb_camera_id');
+
+                    if (videoDevices.length === 0) {
+                        camList.innerHTML = '<span class="text-gray-500">No cameras found</span>';
+                    } else {
+                        videoDevices.forEach((device, index) => {
+                            const btn = document.createElement('button');
+                            btn.className = 'text-left py-2 px-3 rounded hover:bg-gray-800 transition-colors w-full truncate';
+                            btn.innerText = device.label || `Camera ${index + 1}`;
+                            if (savedId === device.deviceId || (!savedId && index === 0)) {
+                                btn.classList.add('text-accent-mint', 'font-medium');
+                            }
+                            btn.onclick = () => {
+                                camMenu.classList.add('hidden');
+                                startCamera(device.deviceId);
+                                Array.from(camList.children).forEach(c => c.classList.remove('text-accent-mint', 'font-medium'));
+                                btn.classList.add('text-accent-mint', 'font-medium');
+                            };
+                            camList.appendChild(btn);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to list cameras:", e);
+                }
+            }
+
+            camSwitchBtn.onclick = () => camMenu.classList.toggle('hidden');
+            reqCamBtn.onclick = async () => {
+                demoBanner.classList.add('hidden');
+                const success = await startCamera(localStorage.getItem('pb_camera_id'));
+                loadCameraList();
+                if (success) startSequence();
+            };
+            forceDemoBtn.onclick = () => {
+                demoBanner.classList.add('hidden');
+                useDemo = true;
+                startSequence();
+            };
+
+            const wait = (ms) => new Promise(r => setTimeout(r, ms));
+            
+            async function runCountdown() {
+                countdownEl.classList.remove('hidden');
+                for (let i = 3; i > 0; i--) {
+                    countdownEl.innerText = i;
+                    countdownEl.style.animation = 'none';
+                    countdownEl.offsetHeight; 
+                    countdownEl.style.animation = null;
+                    await wait(1000);
+                }
+                countdownEl.classList.add('hidden');
+            }
+
+            function takePhoto() {
+                triggerFlash();
+                if (useDemo) {
+                    canvas.width = 1080; canvas.height = 1920;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = `hsl(${Math.random() * 360}, 60%, 80%)`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#0A0A0A';
+                    ctx.font = 'bold 80px "Inter", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('DEMO PHOTO ' + currentShot, canvas.width/2, canvas.height/2);
+                    photos.push(canvas.toDataURL('image/jpeg', 0.9));
+                } else {
+                    // We crop the video exactly as the crop guide is showing!
+                    // Video covers the screen.
+                    const vw = video.videoWidth;
+                    const vh = video.videoHeight;
+                    const windowW = window.innerWidth;
+                    const windowH = window.innerHeight;
+
+                    // Compute object-cover video dimensions on screen
+                    const videoRatio = vw / vh;
+                    const windowRatio = windowW / windowH;
+                    let drawW = windowW;
+                    let drawH = windowW / videoRatio;
+                    if (drawH < windowH) {
+                        drawH = windowH;
+                        drawW = windowH * videoRatio;
+                    }
+                    
+                    // Box size on screen
+                    const boxW = parseFloat(cropGuide.style.width);
+                    const boxH = parseFloat(cropGuide.style.height);
+
+                    // Box coordinates on screen (centered)
+                    const boxX = (windowW - boxW) / 2;
+                    const boxY = (windowH - boxH) / 2;
+
+                    // Video coordinates on screen (centered)
+                    const vidX = (windowW - drawW) / 2;
+                    const vidY = (windowH - drawH) / 2;
+
+                    // Relative crop coordinates in source video pixels
+                    const scaleX = vw / drawW;
+                    const scaleY = vh / drawH;
+
+                    const cropX = (boxX - vidX) * scaleX;
+                    const cropY = (boxY - vidY) * scaleY;
+                    const cropW = boxW * scaleX;
+                    const cropH = boxH * scaleY;
+
+                    canvas.width = cropW;
+                    canvas.height = cropH;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Mirror image if using front camera (we always flip here to be safe)
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    
+                    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                    photos.push(canvas.toDataURL('image/jpeg', 0.9));
+                }
+            }
+
+            async function startSequence() {
+                if (!useDemo) {
+                    while(video.videoWidth === 0) await wait(100);
+                }
+                await wait(2000); 
+
+                while (currentShot <= totalShots) {
+                    shotCounterEl.innerText = isRetake ? 'Retake' : `${currentShot}/${totalShots}`;
+                    await runCountdown();
+                    takePhoto();
+                    currentShot++;
+                    if (currentShot <= totalShots) await wait(1500); 
+                }
+
+                if (isRetake) {
+                    let existingPhotos = Session.get('raw_photos') || [];
+                    existingPhotos[parseInt(retakeIdx, 10)] = photos[0];
+                    Session.set('raw_photos', existingPhotos);
+                } else {
+                    Session.set('raw_photos', photos);
+                }
+                
+                if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+                window.location.href = 'retake.html';
+            }
+
+            const success = await startCamera(localStorage.getItem('pb_camera_id'));
+            loadCameraList();
+            if (success) startSequence();
+        });
+    </script>
+</body>
+</html>
