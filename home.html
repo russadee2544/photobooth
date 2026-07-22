@@ -109,18 +109,6 @@
         });
 
         function startSession() {
-            // Phase 3: Lockdown Fullscreen on Start (safely guarded for mobile/iOS)
-            if (document.documentElement && typeof document.documentElement.requestFullscreen === 'function' && !document.fullscreenElement) {
-                try {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.log(`Fullscreen notice: ${err.message}`);
-                    });
-                } catch (e) {
-                    console.log("Fullscreen not supported on this browser/device");
-                }
-            }
-
-            // Check Phase 1: Event Mode Routing
             if (Kiosk.mode === 'event') {
                 window.location.href = 'layout.html'; // Skip payment!
             } else {
