@@ -13,5 +13,16 @@
     { "source": "/payment", "destination": "/payment.html" },
     { "source": "/processing", "destination": "/processing.html" },
     { "source": "/print", "destination": "/print.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
   ]
 }
