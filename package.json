@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Retro Dither Photo Booth Screens",
   "scripts": {
-    "dev": "vite"
+    "dev": "vite",
+    "build": "vite build"
   },
   "devDependencies": {
     "vite": "^5.0.0"

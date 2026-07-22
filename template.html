@@ -25,10 +25,10 @@
         <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
     </header>
 
-    <main class="flex-grow pt-24 pb-32 px-6 lg:px-12 flex flex-col lg:flex-row gap-8 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter min-h-0">
+    <main class="flex-grow pt-20 pb-28 px-4 sm:px-6 lg:px-12 flex flex-col lg:flex-row gap-6 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter">
         
         <!-- Live Preview Side -->
-        <div class="w-full lg:w-1/2 flex items-center justify-center bg-gray-100 rounded-3xl p-6 lg:p-8 relative overflow-hidden h-[40vh] lg:h-full shrink-0">
+        <div class="w-full lg:w-1/2 flex items-center justify-center bg-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-[35vh] lg:min-h-[60vh] shrink-0">
             <!-- Background element for contrast -->
             <div class="absolute inset-0 bg-white/50 pointer-events-none"></div>
             
@@ -38,11 +38,11 @@
         </div>
 
         <!-- Selection Side -->
-        <div class="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center h-full max-h-[50vh] lg:max-h-[70vh]">
-            <h1 class="text-3xl lg:text-4xl font-bold tracking-tight mb-2 shrink-0" data-i18n="tpl_title">Choose Frame</h1>
-            <p class="text-gray-500 text-sm mb-6 lg:mb-10 shrink-0" data-i18n="tpl_desc">Select a frame style that matches your mood.</p>
+        <div class="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 md:mb-2 shrink-0" data-i18n="tpl_title">Choose Frame</h1>
+            <p class="text-gray-500 text-xs md:text-sm mb-4 lg:mb-8 shrink-0" data-i18n="tpl_desc">Select a frame style that matches your mood.</p>
 
-            <div class="grid grid-cols-2 gap-3 lg:gap-4 overflow-y-auto pr-2 pb-12 no-scrollbar h-full items-start content-start">
+            <div class="grid grid-cols-2 gap-3 lg:gap-4 pb-8 items-start">
                 
                 <div class="selection-card selected p-6 text-center" data-template="light">
                     <div class="w-16 h-16 rounded-full border border-gray-200 mx-auto mb-4 bg-white shadow-sm flex items-center justify-center">
@@ -95,7 +95,7 @@
         </button>
     </div>
 
-    <script src="shared.js?v=2.2"></script>
+    <script src="shared.js?v=2.3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('preview-container');

@@ -62,7 +62,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-hidden flex">
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col-reverse lg:flex-row overflow-y-auto">
 
     <!-- Header -->
     <header class="kiosk-header">
@@ -70,49 +70,49 @@
     </header>
 
     <!-- Left Side: Digital Downloads -->
-    <div class="w-1/2 flex flex-col justify-center px-16 fade-up-enter z-10 pt-16">
-        <h1 class="text-4xl font-bold tracking-tight mb-2" data-i18n="print_title">Your photos are ready.</h1>
-        <p class="text-gray-500 text-sm mb-12" data-i18n="print_desc">Scan the QR code to save to your digital wallet.</p>
+    <div class="w-full lg:w-1/2 flex flex-col justify-center px-6 py-8 md:px-12 lg:px-16 fade-up-enter z-10 pt-20 lg:pt-16">
+        <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-2" data-i18n="print_title">Your photos are ready.</h1>
+        <p class="text-gray-500 text-xs md:text-sm mb-6 md:mb-10" data-i18n="print_desc">Scan the QR code to save to your digital wallet.</p>
 
-        <div id="upload-status" class="flex items-center gap-3 text-sm font-medium text-gray-500 mb-8">
+        <div id="upload-status" class="flex items-center gap-3 text-sm font-medium text-gray-500 mb-6">
             <div class="spinner border-gray-300 w-5 h-5 border-2"></div>
             <span data-i18n="uploading">Uploading to Cloud...</span>
         </div>
 
-        <div id="qr-container" class="hidden flex gap-8">
+        <div id="qr-container" class="hidden flex flex-wrap gap-4 md:gap-8 justify-center lg:justify-start mb-6">
             <!-- Normal QR -->
             <div class="flex flex-col items-center">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3">
-                    <div id="qr-color" class="w-32 h-32 flex items-center justify-center bg-gray-50"></div>
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                    <div id="qr-color" class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex items-center justify-center bg-gray-50"></div>
                 </div>
-                <span class="text-xs font-semibold tracking-widest text-gray-900 uppercase" data-i18n="print_color">Premium Color</span>
+                <span class="text-[10px] sm:text-xs font-semibold tracking-widest text-gray-900 uppercase" data-i18n="print_color">Premium Color</span>
             </div>
             <!-- Dithered QR -->
             <div class="flex flex-col items-center">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-3">
-                    <div id="qr-dithered" class="w-32 h-32 flex items-center justify-center bg-gray-50"></div>
+                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
+                    <div id="qr-dithered" class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex items-center justify-center bg-gray-50"></div>
                 </div>
-                <span class="text-xs font-semibold tracking-widest text-gray-500 uppercase" data-i18n="print_retro">Retro Edition</span>
+                <span class="text-[10px] sm:text-xs font-semibold tracking-widest text-gray-500 uppercase" data-i18n="print_retro">Retro Edition</span>
             </div>
         </div>
 
-        <div class="mt-16 flex gap-4">
-            <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-8 py-3 flex items-center gap-2">
+        <div class="mt-4 md:mt-8 flex flex-col sm:flex-row gap-3">
+            <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-6 py-3 flex items-center justify-center gap-2 w-full sm:w-auto">
                 <span class="material-symbols-outlined text-sm">receipt_long</span>
                 <span data-i18n="btn_print">Print Receipt</span>
             </button>
-            <button onclick="window.location.href='home.html'" class="btn-modern btn-secondary text-sm px-8 py-3" data-i18n="btn_finish">
+            <button onclick="window.location.href='home.html'" class="btn-modern btn-secondary text-sm px-6 py-3 w-full sm:w-auto text-center" data-i18n="btn_finish">
                 Finish Session
             </button>
         </div>
     </div>
 
     <!-- Right Side: The Print Preview -->
-    <div class="w-1/2 bg-gray-100 relative shadow-inner overflow-hidden flex items-start justify-center pt-24 no-print">
+    <div class="w-full lg:w-1/2 bg-gray-100 relative shadow-inner overflow-hidden flex items-center justify-center p-6 pt-20 lg:pt-24 no-print min-h-[45vh] lg:min-h-screen">
         <!-- The actual print strip sliding down -->
-        <div class="relative print-slide-down">
+        <div class="relative print-slide-down flex items-center justify-center max-h-full">
             <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-12 bg-white rounded-t-xl shadow-lg z-20 hidden"></div>
-            <img id="final-result" class="w-[280px] shadow-2xl rounded-sm z-10 relative bg-white" src="" alt="Final Strip" />
+            <img id="final-result" class="max-h-[50vh] lg:max-h-[75vh] w-auto max-w-full shadow-2xl rounded-sm z-10 relative bg-white object-contain" src="" alt="Final Strip" />
         </div>
     </div>
 
@@ -123,8 +123,32 @@
         <p style="font-family: 'Prompt', sans-serif; font-size: 10px; text-align: center; margin-top: 10px;">Thank you for using Photo Booth!</p>
     </div>
 
-    <script src="shared.js?v=2.2"></script>
+    <!-- Print Copy Quantity Selection Modal -->
+    <div id="copy-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-900">
+                <span class="material-symbols-outlined text-2xl">print</span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-1">เลือกจำนวนที่ต้องการพิมพ์</h3>
+            <p class="text-xs text-gray-500 mb-6">สูงสุดไม่เกิน <span id="modal-max-copies-text">3</span> แผ่นต่อการพิมพ์</p>
+
+            <div class="flex items-center justify-center gap-4 mb-8">
+                <button onclick="changeSelectedCopyCount(-1)" class="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl font-bold flex items-center justify-center transition active:scale-95 text-gray-800">−</button>
+                <span id="selected-copy-count" class="text-5xl font-black text-gray-900 w-16 text-center">1</span>
+                <button onclick="changeSelectedCopyCount(1)" class="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-2xl text-2xl font-bold flex items-center justify-center transition active:scale-95 text-gray-800">+</button>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeCopyModal()" class="flex-1 btn-modern btn-secondary text-sm py-3">ยกเลิก</button>
+                <button onclick="confirmAndExecutePrint()" class="flex-1 btn-modern btn-primary text-sm py-3">พิมพ์รูปภาพ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js?v=2.3"></script>
     <script>
+        let currentSelectedCopies = 1;
+
         document.addEventListener('DOMContentLoaded', async () => {
             const finalResult = document.getElementById('final-result');
             const printResult = document.getElementById('print-result');
@@ -215,17 +239,56 @@
 
         function handlePrint() {
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            if (paperCount > 0) {
-                paperCount--;
+            if (paperCount <= 0) return;
+
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const maxCopies = Math.min(parseInt(printerConfig.maxCopies || '1'), 3);
+            const allowChoice = printerConfig.allowCopyChoice || false;
+
+            if (allowChoice && maxCopies > 1) {
+                currentSelectedCopies = 1;
+                document.getElementById('selected-copy-count').innerText = '1';
+                document.getElementById('modal-max-copies-text').innerText = maxCopies.toString();
+                document.getElementById('copy-modal').classList.remove('hidden');
+            } else {
+                executePrint(Math.min(maxCopies, paperCount));
+            }
+        }
+
+        function changeSelectedCopyCount(delta) {
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const maxCopies = Math.min(parseInt(printerConfig.maxCopies || '1'), 3);
+            currentSelectedCopies = Math.max(1, Math.min(maxCopies, currentSelectedCopies + delta));
+            document.getElementById('selected-copy-count').innerText = currentSelectedCopies;
+        }
+
+        function closeCopyModal() {
+            document.getElementById('copy-modal').classList.add('hidden');
+        }
+
+        function confirmAndExecutePrint() {
+            closeCopyModal();
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            const countToPrint = Math.min(currentSelectedCopies, paperCount);
+            executePrint(countToPrint);
+        }
+
+        function executePrint(copies) {
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount >= copies) {
+                paperCount -= copies;
                 localStorage.setItem('kiosk_paper', paperCount.toString());
-                window.print();
+
+                for (let i = 0; i < copies; i++) {
+                    window.print();
+                }
                 
-                // Disable button after 1 print
+                // Disable button after printing
                 const printBtn = document.getElementById('btn-print');
                 printBtn.disabled = true;
                 printBtn.classList.replace('btn-primary', 'bg-gray-300');
                 printBtn.classList.add('text-gray-500', 'cursor-not-allowed');
-                printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Printed';
+                printBtn.innerHTML = `<span class="material-symbols-outlined text-sm">check_circle</span> Printed (${copies})`;
             }
         }
     </script>

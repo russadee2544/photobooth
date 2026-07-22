@@ -74,7 +74,7 @@
     <!-- Flash Overlay -->
     <div id="flash-overlay" class="flash-overlay"></div>
 
-    <script src="shared.js?v=2.2"></script>
+    <script src="shared.js?v=2.5"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const video = document.getElementById('video-feed');
@@ -110,17 +110,20 @@
             let useDemo = false;
             let currentStream = null;
 
-            // Resize guide box to match ratio
+            // Resize guide box to match ratio (Defaults to 3:4 Vertical Portrait)
             function updateGuideBox() {
                 const w = window.innerWidth;
                 const h = window.innerHeight;
                 
-                const maxW = w * 0.85;
-                const maxH = h * 0.7; // Leave room for UI
+                const maxW = w * 0.95;
+                const maxH = h * 0.95;
 
-                let targetRatio = 1;
+                // Default to 3:4 Vertical Portrait frame
+                let targetRatio = 3 / 4;
                 if (ratio === '16x9') {
                     targetRatio = 16 / 9;
+                } else if (ratio === '1x1') {
+                    targetRatio = 1;
                 }
 
                 let guideW = maxW;
@@ -135,6 +138,7 @@
                 cropGuide.style.height = guideH + 'px';
             }
             window.addEventListener('resize', updateGuideBox);
+            video.addEventListener('loadedmetadata', updateGuideBox);
             updateGuideBox();
 
             // Setup Camera
@@ -143,7 +147,13 @@
                     currentStream.getTracks().forEach(track => track.stop());
                 }
                 try {
-                    const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
+                    const constraints = { 
+                        video: { 
+                            width: { ideal: 1080 }, 
+                            height: { ideal: 1440 },
+                            aspectRatio: { ideal: 0.75 } 
+                        } 
+                    };
                     if (deviceId) { constraints.video.deviceId = { exact: deviceId }; } 
                     else { constraints.video.facingMode = 'user'; }
 
@@ -246,9 +256,8 @@
                     const windowW = window.innerWidth;
                     const windowH = window.innerHeight;
 
-                    // Compute object-cover video dimensions on screen
+                    // Compute object-contain video dimensions on screen
                     const videoRatio = vw / vh;
-                    const windowRatio = windowW / windowH;
                     let drawW = windowW;
                     let drawH = windowW / videoRatio;
                     if (drawH < windowH) {

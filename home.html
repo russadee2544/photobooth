@@ -64,29 +64,27 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-grow flex items-center justify-center relative z-10 p-8" id="main-content">
+    <main class="flex-grow flex items-center justify-center relative z-10 p-4 sm:p-8" id="main-content">
         <div class="text-center fade-up-enter flex flex-col items-center">
-            <h1 class="text-6xl md:text-8xl font-black tracking-tighter text-gray-900 mb-6 drop-shadow-sm uppercase">
+            <h1 class="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-gray-900 mb-4 md:mb-6 drop-shadow-sm uppercase">
                 Memories
             </h1>
-            <p class="text-gray-500 text-xl md:text-2xl mb-16 tracking-wide font-light max-w-lg mx-auto" data-i18n="home_subtitle">
+            <p class="text-base sm:text-xl md:text-2xl mb-8 md:mb-16 tracking-wide font-light max-w-lg mx-auto" data-i18n="home_subtitle">
                 Premium digital photo booth experience.
             </p>
 
-            <button onclick="startSession()" class="btn-modern btn-primary text-2xl px-16 py-8 group animate-bounce rounded-full shadow-2xl" data-i18n="home_start">
+            <button onclick="startSession()" class="btn-modern btn-primary text-xl sm:text-2xl px-10 py-5 sm:px-16 sm:py-7 group animate-bounce rounded-full shadow-2xl" data-i18n="home_start">
                 Tap to Start
-                <span class="material-symbols-outlined ml-2 group-hover:translate-x-2 transition-transform text-3xl">east</span>
+                <span class="material-symbols-outlined ml-2 group-hover:translate-x-2 transition-transform text-2xl sm:text-3xl">east</span>
             </button>
         </div>
     </main>
 
-
-
     <!-- Admin PIN Modal -->
-    <div id="admin-modal" class="fixed inset-0 bg-gray-900/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
-        <h2 class="text-3xl font-bold mb-8 text-white tracking-widest uppercase">Admin Access</h2>
-        <div class="flex gap-4 mb-8">
-            <input type="password" id="admin-pin" class="bg-gray-800 border border-gray-600 rounded-lg text-white text-4xl text-center w-64 h-20 tracking-[1em]" placeholder="****" maxlength="4">
+    <div id="admin-modal" class="fixed inset-0 bg-gray-900/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-white tracking-widest uppercase">Admin Access</h2>
+        <div class="flex gap-4 mb-6">
+            <input type="password" id="admin-pin" class="bg-gray-800 border border-gray-600 rounded-lg text-white text-3xl sm:text-4xl text-center w-48 sm:w-64 h-16 sm:h-20 tracking-[1em]" placeholder="****" maxlength="4">
         </div>
         <div class="flex gap-4">
             <button onclick="hideAdminModal()" class="text-gray-400 hover:text-white px-6 py-3 font-medium">Cancel</button>
@@ -95,15 +93,15 @@
     </div>
 
     <!-- Footer -->
-    <footer class="fixed bottom-0 left-0 w-full p-8 flex justify-between z-50 text-xs font-medium text-gray-400">
-        <span class="tracking-widest uppercase">©2024 PHOTO BOOTH KOREA</span>
+    <footer class="fixed bottom-0 left-0 w-full p-4 sm:p-8 flex justify-between z-50 text-[10px] sm:text-xs font-medium text-gray-400">
+        <span id="footer-copyright-status" class="tracking-widest uppercase">© PHOTO BOOTH</span>
         <div class="flex gap-6">
             <a href="#" class="hover:text-gray-900 transition-colors">Privacy</a>
             <a href="#" class="hover:text-gray-900 transition-colors">Terms</a>
         </div>
     </footer>
 
-    <script src="shared.js?v=2.2"></script>
+    <script src="shared.js?v=2.4"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             new IdleTimer(60000, 'home.html').start(); // timeout to itself just to clear session

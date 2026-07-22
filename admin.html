@@ -6,7 +6,7 @@
     <title>PHOTO BOOTH — Admin Control</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Inter:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&family=Mali:wght@400;600;700&family=Niramit:wght@400;600;700&family=Prompt:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&family=Sriracha&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script>
@@ -18,14 +18,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
 </head>
-<body class="bg-gray-900 text-white font-sans min-h-screen overflow-y-auto relative flex flex-col p-8">
+<body class="bg-gray-900 text-white font-sans min-h-screen overflow-y-auto relative flex flex-col p-4 sm:p-8">
     
-    <header class="flex justify-between items-center mb-12 border-b border-gray-800 pb-4">
+    <header class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-8 sm:mb-12 border-b border-gray-800 pb-4">
         <div>
-            <h1 class="text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
-            <p class="text-gray-400 text-sm">System configuration and hardware status.</p>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
+            <p class="text-gray-400 text-xs sm:text-sm">System configuration and hardware status.</p>
         </div>
-        <button onclick="window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-6 py-2 hover:bg-gray-700">Exit Admin</button>
+        <button onclick="window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-6 py-2 hover:bg-gray-700 text-sm">Exit Admin</button>
     </header>
 
     <main class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl w-full mx-auto">
@@ -79,6 +79,124 @@
             <button onclick="refillPaper()" class="w-full bg-gray-700 text-white py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors">
                 Refill Paper Stack (100)
             </button>
+        </div>
+        <!-- ======================== PRINTER CONFIGURATION ======================== -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-blue">print</span>
+                Printer Configuration
+            </h2>
+
+            <!-- Connection Type Tabs -->
+            <div class="mb-6">
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Connection Type</label>
+                <div class="flex flex-wrap gap-3">
+                    <button id="pconn-usb" onclick="setPrinterConn('usb')" class="printer-conn-btn flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-700 transition-all">
+                        <span class="material-symbols-outlined text-xl">usb</span>
+                        <span class="font-semibold text-sm">USB</span>
+                    </button>
+                    <button id="pconn-bluetooth" onclick="setPrinterConn('bluetooth')" class="printer-conn-btn flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-700 transition-all">
+                        <span class="material-symbols-outlined text-xl">bluetooth</span>
+                        <span class="font-semibold text-sm">Bluetooth</span>
+                    </button>
+                    <button id="pconn-wifi" onclick="setPrinterConn('wifi')" class="printer-conn-btn flex items-center gap-2 px-5 py-3 rounded-xl border border-gray-600 text-gray-300 hover:bg-gray-700 transition-all">
+                        <span class="material-symbols-outlined text-xl">wifi</span>
+                        <span class="font-semibold text-sm">Wi-Fi / Network</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Connection-specific settings -->
+            <div id="printer-usb-settings" class="printer-settings-panel hidden mb-6 bg-gray-900 rounded-xl p-4 border border-gray-700">
+                <p class="text-sm text-gray-400 mb-3">เชื่อมต่อเครื่องพิมพ์ผ่านสาย USB กดปุ่มเพื่อเลือกเครื่องพิมพ์</p>
+                <button onclick="connectUSBPrinter()" class="flex items-center gap-2 bg-accent-blue hover:opacity-90 text-white px-5 py-3 rounded-xl font-bold text-sm transition">
+                    <span class="material-symbols-outlined text-sm">usb</span>
+                    <span>Select USB Printer</span>
+                </button>
+                <div id="usb-printer-status" class="mt-3 text-sm text-gray-500"></div>
+            </div>
+
+            <div id="printer-bluetooth-settings" class="printer-settings-panel hidden mb-6 bg-gray-900 rounded-xl p-4 border border-gray-700">
+                <p class="text-sm text-gray-400 mb-3">ค้นหาและเชื่อมต่อเครื่องพิมพ์ผ่าน Bluetooth</p>
+                <button onclick="connectBluetoothPrinter()" class="flex items-center gap-2 bg-accent-blue hover:opacity-90 text-white px-5 py-3 rounded-xl font-bold text-sm transition">
+                    <span class="material-symbols-outlined text-sm">bluetooth_searching</span>
+                    <span>Scan & Connect</span>
+                </button>
+                <div id="bt-printer-status" class="mt-3 text-sm text-gray-500"></div>
+                <div id="bt-device-list" class="mt-3 space-y-2"></div>
+            </div>
+
+            <div id="printer-wifi-settings" class="printer-settings-panel hidden mb-6 bg-gray-900 rounded-xl p-4 border border-gray-700">
+                <p class="text-sm text-gray-400 mb-3">กรอก IP Address หรือ Hostname ของเครื่องพิมพ์บนเครือข่ายเดียวกัน</p>
+                <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500 mb-1">Printer IP / Hostname</label>
+                        <input type="text" id="printer-ip-input" placeholder="e.g. 192.168.1.120"
+                            class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-3 text-sm focus:ring-2 focus:ring-accent-blue outline-none"
+                            oninput="savePrinterWifiConfig()">
+                    </div>
+                    <div class="w-28">
+                        <label class="block text-xs text-gray-500 mb-1">Port</label>
+                        <input type="number" id="printer-port-input" placeholder="9100" value="9100"
+                            class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-3 text-sm focus:ring-2 focus:ring-accent-blue outline-none"
+                            oninput="savePrinterWifiConfig()">
+                    </div>
+                    <button onclick="testWifiPrinter()" class="flex-shrink-0 flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-xl text-sm font-bold transition">
+                        <span class="material-symbols-outlined text-sm">network_check</span>
+                        Test
+                    </button>
+                </div>
+                <div id="wifi-printer-status" class="mt-3 text-sm text-gray-500"></div>
+            </div>
+
+            <!-- Current Connection Status -->
+            <div class="flex items-center gap-3 bg-gray-900 rounded-xl p-4 border border-gray-700 mb-6">
+                <div id="printer-status-dot" class="w-3 h-3 rounded-full bg-gray-600 flex-shrink-0"></div>
+                <div>
+                    <p class="text-sm font-semibold text-white" id="printer-status-label">ยังไม่ได้เชื่อมต่อเครื่องพิมพ์</p>
+                    <p class="text-xs text-gray-500" id="printer-status-detail">เลือกประเภทการเชื่อมต่อด้านบน</p>
+                </div>
+                <button onclick="sendTestPrint()" class="ml-auto flex-shrink-0 flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition">
+                    <span class="material-symbols-outlined text-sm">print</span>
+                    Test Print
+                </button>
+            </div>
+
+            <!-- Print Quantity Settings -->
+            <div class="border-t border-gray-700 pt-6">
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">จำนวนการพิมพ์ต่อ 1 Session</label>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <!-- Max copies per session -->
+                    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+                        <label class="block text-sm text-gray-300 font-medium mb-3">จำนวนสูงสุดต่อ Session</label>
+                        <div class="flex items-center gap-3">
+                            <button onclick="adjustMaxCopies(-1)" class="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold flex items-center justify-center transition">−</button>
+                            <span id="max-copies-display" class="text-4xl font-black text-accent-mint w-12 text-center">1</span>
+                            <button onclick="adjustMaxCopies(1)" class="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold flex items-center justify-center transition">+</button>
+                            <span class="text-gray-500 text-sm">/ ครั้ง (สูงสุด 3)</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">กำหนดจำนวนสูงสุดที่อนุญาตพิมพ์ต่อ session</p>
+                    </div>
+
+                    <!-- Let user choose copies -->
+                    <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+                        <label class="block text-sm text-gray-300 font-medium mb-3">ให้ผู้ใช้เลือกจำนวนก่อนพิมพ์</label>
+                        <div class="flex items-center gap-3">
+                            <button id="toggle-copy-choice" onclick="toggleCopyChoice()" class="relative w-12 h-7 rounded-full border-2 transition-all duration-300 border-gray-600 bg-gray-700">
+                                <div id="toggle-copy-knob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-gray-400 rounded-full transition-all duration-300"></div>
+                            </button>
+                            <span id="copy-choice-label" class="text-sm text-gray-400">ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">เมื่อเปิด ผู้ใช้จะเห็น popup เลือกจำนวนสำเนาก่อนพิมพ์</p>
+                    </div>
+                </div>
+
+                <button onclick="savePrinterConfig()" class="mt-4 w-full sm:w-auto flex items-center justify-center gap-2 bg-accent-mint text-gray-900 font-bold px-8 py-3 rounded-xl hover:opacity-90 transition text-sm">
+                    <span class="material-symbols-outlined text-sm">save</span>
+                    บันทึกการตั้งค่าเครื่องพิมพ์
+                </button>
+            </div>
         </div>
 
         <!-- Cloud Analytics -->
@@ -195,17 +313,36 @@
 
                     <div id="hf-header-text-ui" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content</label>
-                            <input type="text" id="hf-header-text" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1" placeholder="e.g. MEMORIES" oninput="updateLivePreview()">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
+                                <!-- Formatting Toolbar -->
+                                <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
+                                    <button type="button" id="hf-header-bold-btn" onclick="toggleStyle('header', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
+                                    <button type="button" id="hf-header-italic-btn" onclick="toggleStyle('header', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
+                                    <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
+                                    <button type="button" id="hf-header-align-left-btn" onclick="setTextAlign('header', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
+                                    <button type="button" id="hf-header-align-center-btn" onclick="setTextAlign('header', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
+                                    <button type="button" id="hf-header-align-right-btn" onclick="setTextAlign('header', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
+                                </div>
+                            </div>
+                            <input type="hidden" id="hf-header-bold" value="false">
+                            <input type="hidden" id="hf-header-italic" value="false">
+                            <input type="hidden" id="hf-header-align" value="center">
+                            <textarea id="hf-header-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
                                 <select id="hf-header-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
                                     <option value="Inter">Inter (English)</option>
-                                    <option value="Prompt">Prompt (Thai)</option>
-                                    <option value="Kanit">Kanit (Thai)</option>
-                                    <option value="Sarabun">Sarabun (Thai)</option>
+                                    <option value="Prompt">Prompt (Thai Standard)</option>
+                                    <option value="Kanit">Kanit (Thai Modern)</option>
+                                    <option value="Sarabun">Sarabun (Thai Formal)</option>
+                                    <option value="Mali">Mali (Thai Cute / Script)</option>
+                                    <option value="Charm">Charm (Thai Elegant Script)</option>
+                                    <option value="Chonburi">Chonburi (Thai Bold Display)</option>
+                                    <option value="Sriracha">Sriracha (Thai Handwriting)</option>
+                                    <option value="Niramit">Niramit (Thai Formal Serif)</option>
                                 </select>
                             </div>
                             <div>
@@ -248,17 +385,36 @@
 
                     <div id="hf-footer-text-ui" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content</label>
-                            <input type="text" id="hf-footer-text" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1" placeholder="e.g. Thank you!" oninput="updateLivePreview()">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
+                                <!-- Formatting Toolbar -->
+                                <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
+                                    <button type="button" id="hf-footer-bold-btn" onclick="toggleStyle('footer', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
+                                    <button type="button" id="hf-footer-italic-btn" onclick="toggleStyle('footer', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
+                                    <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
+                                    <button type="button" id="hf-footer-align-left-btn" onclick="setTextAlign('footer', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
+                                    <button type="button" id="hf-footer-align-center-btn" onclick="setTextAlign('footer', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
+                                    <button type="button" id="hf-footer-align-right-btn" onclick="setTextAlign('footer', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
+                                </div>
+                            </div>
+                            <input type="hidden" id="hf-footer-bold" value="false">
+                            <input type="hidden" id="hf-footer-italic" value="false">
+                            <input type="hidden" id="hf-footer-align" value="center">
+                            <textarea id="hf-footer-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
                                 <select id="hf-footer-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
                                     <option value="Inter">Inter (English)</option>
-                                    <option value="Prompt">Prompt (Thai)</option>
-                                    <option value="Kanit">Kanit (Thai)</option>
-                                    <option value="Sarabun">Sarabun (Thai)</option>
+                                    <option value="Prompt">Prompt (Thai Standard)</option>
+                                    <option value="Kanit">Kanit (Thai Modern)</option>
+                                    <option value="Sarabun">Sarabun (Thai Formal)</option>
+                                    <option value="Mali">Mali (Thai Cute / Script)</option>
+                                    <option value="Charm">Charm (Thai Elegant Script)</option>
+                                    <option value="Chonburi">Chonburi (Thai Bold Display)</option>
+                                    <option value="Sriracha">Sriracha (Thai Handwriting)</option>
+                                    <option value="Niramit">Niramit (Thai Formal Serif)</option>
                                 </select>
                             </div>
                             <div>
@@ -399,7 +555,7 @@
         Saved successfully!
     </div>
 
-    <script src="shared.js?v=2.2"></script>
+    <script src="shared.js?v=2.3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             updatePaperUI();
@@ -408,6 +564,7 @@
             loadLayoutSizesAdmin();
             loadCustomThemesAdmin();
             loadGlobalBranding();
+            initPrinterConfig();
         });
 
         function setHeaderMode(mode) {
@@ -472,6 +629,63 @@
             }
         }
 
+        function toggleStyle(section, style) {
+            const input = document.getElementById(`hf-${section}-${style}`);
+            const btn = document.getElementById(`hf-${section}-${style}-btn`);
+            const isTrue = input.value === 'true';
+            input.value = (!isTrue).toString();
+            
+            btn.classList.toggle('bg-gray-700', !isTrue);
+            btn.classList.toggle('text-accent-mint', !isTrue);
+            btn.classList.toggle('border-gray-600', !isTrue);
+            btn.classList.toggle('text-gray-400', isTrue);
+            
+            updateLivePreview();
+        }
+
+        function setTextAlign(section, align) {
+            document.getElementById(`hf-${section}-align`).value = align;
+            ['left', 'center', 'right'].forEach(a => {
+                const btn = document.getElementById(`hf-${section}-align-${a}-btn`);
+                if (btn) {
+                    const isSelected = a === align;
+                    btn.classList.toggle('bg-gray-700', isSelected);
+                    btn.classList.toggle('text-accent-mint', isSelected);
+                    btn.classList.toggle('text-gray-400', !isSelected);
+                }
+            });
+            updateLivePreview();
+        }
+
+        function drawMultilineText(ctx, text, areaX, areaY, areaWidth, areaHeight, options) {
+            if (!text) return;
+            const { font = 'Inter', size = 24, color = '#000000', bold = false, italic = false, align = 'center', scale = 2 } = options;
+
+            const fontWeight = bold ? 'bold' : 'normal';
+            const fontStyle = italic ? 'italic' : 'normal';
+            const computedSize = Number(size) * scale;
+            const lineHeight = computedSize * 1.35;
+
+            ctx.font = `${fontStyle} ${fontWeight} ${computedSize}px "${font}", sans-serif`;
+            ctx.fillStyle = color;
+            ctx.textAlign = align;
+
+            const lines = text.split('\n');
+            const totalTextHeight = lines.length * lineHeight;
+            
+            let startY = areaY + (areaHeight - totalTextHeight) / 2 + (computedSize * 0.85);
+            let startX = areaX + areaWidth / 2;
+            if (align === 'left') {
+                startX = areaX + 40 * scale;
+            } else if (align === 'right') {
+                startX = areaX + areaWidth - (40 * scale);
+            }
+
+            lines.forEach((line, index) => {
+                ctx.fillText(line, startX, startY + (index * lineHeight));
+            });
+        }
+
         function saveGlobalBranding() {
             const theme = document.getElementById('branding-theme-select').value;
             const data = {
@@ -482,6 +696,9 @@
                     size: document.getElementById('hf-header-size').value,
                     color: document.getElementById('hf-header-color').value,
                     bg: document.getElementById('hf-header-bg').value,
+                    bold: document.getElementById('hf-header-bold').value === 'true',
+                    italic: document.getElementById('hf-header-italic').value === 'true',
+                    align: document.getElementById('hf-header-align').value || 'center',
                     base64: document.getElementById('hf-header-base64').value
                 },
                 footer: {
@@ -491,6 +708,9 @@
                     size: document.getElementById('hf-footer-size').value,
                     color: document.getElementById('hf-footer-color').value,
                     bg: document.getElementById('hf-footer-bg').value,
+                    bold: document.getElementById('hf-footer-bold').value === 'true',
+                    italic: document.getElementById('hf-footer-italic').value === 'true',
+                    align: document.getElementById('hf-footer-align').value || 'center',
                     base64: document.getElementById('hf-footer-base64').value
                 }
             };
@@ -509,6 +729,13 @@
             document.getElementById('hf-header-size').value = '24';
             document.getElementById('hf-header-color').value = '#000000';
             document.getElementById('hf-header-bg').value = '#FFFFFF';
+            document.getElementById('hf-header-bold').value = 'false';
+            document.getElementById('hf-header-italic').value = 'false';
+            setTextAlign('header', 'center');
+            toggleStyle('header', 'bold'); // reset UI state
+            document.getElementById('hf-header-bold').value = 'false';
+            document.getElementById('hf-header-bold-btn').className = "px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            document.getElementById('hf-header-italic-btn').className = "px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent";
             document.getElementById('hf-header-base64').value = '';
             document.getElementById('hf-header-preview').classList.add('hidden');
             
@@ -517,6 +744,11 @@
             document.getElementById('hf-footer-size').value = '18';
             document.getElementById('hf-footer-color').value = '#000000';
             document.getElementById('hf-footer-bg').value = '#FFFFFF';
+            document.getElementById('hf-footer-bold').value = 'false';
+            document.getElementById('hf-footer-italic').value = 'false';
+            setTextAlign('footer', 'center');
+            document.getElementById('hf-footer-bold-btn').className = "px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            document.getElementById('hf-footer-italic-btn').className = "px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent";
             document.getElementById('hf-footer-base64').value = '';
             document.getElementById('hf-footer-preview').classList.add('hidden');
 
@@ -533,6 +765,17 @@
             if(data.header.size) document.getElementById('hf-header-size').value = data.header.size;
             if(data.header.color) document.getElementById('hf-header-color').value = data.header.color;
             if(data.header.bg) document.getElementById('hf-header-bg').value = data.header.bg;
+            if(data.header.bold !== undefined) {
+                document.getElementById('hf-header-bold').value = data.header.bold.toString();
+                const btn = document.getElementById('hf-header-bold-btn');
+                btn.className = data.header.bold ? "px-2 py-0.5 text-xs font-bold rounded bg-gray-700 text-accent-mint border border-gray-600" : "px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            }
+            if(data.header.italic !== undefined) {
+                document.getElementById('hf-header-italic').value = data.header.italic.toString();
+                const btn = document.getElementById('hf-header-italic-btn');
+                btn.className = data.header.italic ? "px-2 py-0.5 text-xs italic rounded bg-gray-700 text-accent-mint border border-gray-600" : "px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            }
+            setTextAlign('header', data.header.align || 'center');
             document.getElementById('hf-header-base64').value = data.header.base64 || '';
             if (data.header.base64) {
                 const preview = document.getElementById('hf-header-preview');
@@ -546,6 +789,17 @@
             if(data.footer.size) document.getElementById('hf-footer-size').value = data.footer.size;
             if(data.footer.color) document.getElementById('hf-footer-color').value = data.footer.color;
             if(data.footer.bg) document.getElementById('hf-footer-bg').value = data.footer.bg;
+            if(data.footer.bold !== undefined) {
+                document.getElementById('hf-footer-bold').value = data.footer.bold.toString();
+                const btn = document.getElementById('hf-footer-bold-btn');
+                btn.className = data.footer.bold ? "px-2 py-0.5 text-xs font-bold rounded bg-gray-700 text-accent-mint border border-gray-600" : "px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            }
+            if(data.footer.italic !== undefined) {
+                document.getElementById('hf-footer-italic').value = data.footer.italic.toString();
+                const btn = document.getElementById('hf-footer-italic-btn');
+                btn.className = data.footer.italic ? "px-2 py-0.5 text-xs italic rounded bg-gray-700 text-accent-mint border border-gray-600" : "px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent";
+            }
+            setTextAlign('footer', data.footer.align || 'center');
             document.getElementById('hf-footer-base64').value = data.footer.base64 || '';
             if (data.footer.base64) {
                 const preview = document.getElementById('hf-footer-preview');
@@ -600,12 +854,15 @@
                     ctx.fillStyle = document.getElementById('hf-header-bg').value;
                     ctx.fillRect(0, 0, outputWidth, pt - 4);
                     
-                    ctx.fillStyle = document.getElementById('hf-header-color').value;
-                    ctx.textAlign = 'center';
-                    const hFont = document.getElementById('hf-header-font').value;
-                    const hSize = document.getElementById('hf-header-size').value || '24';
-                    ctx.font = `800 ${hSize * 2}px "${hFont}", sans-serif`;
-                    ctx.fillText(hText, outputWidth / 2, pt / 2 + (hSize * 0.8));
+                    drawMultilineText(ctx, hText, 0, 0, outputWidth, pt - 4, {
+                        font: document.getElementById('hf-header-font').value,
+                        size: document.getElementById('hf-header-size').value || 24,
+                        color: document.getElementById('hf-header-color').value,
+                        bold: document.getElementById('hf-header-bold').value === 'true',
+                        italic: document.getElementById('hf-header-italic').value === 'true',
+                        align: document.getElementById('hf-header-align').value || 'center',
+                        scale: 2
+                    });
                 }
             } else {
                 const hB64 = document.getElementById('hf-header-base64').value;
@@ -624,12 +881,15 @@
                     ctx.fillStyle = document.getElementById('hf-footer-bg').value;
                     ctx.fillRect(0, totalHeight - pb + 4, outputWidth, pb);
                     
-                    ctx.fillStyle = document.getElementById('hf-footer-color').value;
-                    ctx.textAlign = 'center';
-                    const fFont = document.getElementById('hf-footer-font').value;
-                    const fSize = document.getElementById('hf-footer-size').value || '18';
-                    ctx.font = `600 ${fSize * 2}px "${fFont}", sans-serif`;
-                    ctx.fillText(fText, outputWidth / 2, totalHeight - pb / 2 + (fSize * 0.8));
+                    drawMultilineText(ctx, fText, 0, totalHeight - pb + 4, outputWidth, pb, {
+                        font: document.getElementById('hf-footer-font').value,
+                        size: document.getElementById('hf-footer-size').value || 18,
+                        color: document.getElementById('hf-footer-color').value,
+                        bold: document.getElementById('hf-footer-bold').value === 'true',
+                        italic: document.getElementById('hf-footer-italic').value === 'true',
+                        align: document.getElementById('hf-footer-align').value || 'center',
+                        scale: 2
+                    });
                 }
             } else {
                 const fB64 = document.getElementById('hf-footer-base64').value;
@@ -717,14 +977,19 @@
                 document.getElementById('stat-total').innerText = total;
                 document.getElementById('stat-event').innerText = event;
                 document.getElementById('stat-normal').innerText = normal;
-                document.getElementById('stat-revenue').innerText = '฿' + (normal * 10).toLocaleString();
+                document.getElementById('stat-revenue').innerText = '฿' + (normal * 100).toLocaleString();
 
             } catch (e) {
                 console.error("Analytics fetch error:", e);
-                document.getElementById('stat-total').innerText = 'Err';
-                document.getElementById('stat-event').innerText = 'Err';
-                document.getElementById('stat-normal').innerText = 'Err';
-                document.getElementById('stat-revenue').innerText = 'Err';
+                const localSessions = JSON.parse(localStorage.getItem('local_kiosk_sessions') || '[]');
+                let total = localSessions.length;
+                let event = localSessions.filter(d => d.kiosk_mode === 'event').length;
+                let normal = localSessions.filter(d => d.kiosk_mode === 'normal').length;
+
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-event').innerText = event;
+                document.getElementById('stat-normal').innerText = normal;
+                document.getElementById('stat-revenue').innerText = '฿' + (normal * 100).toLocaleString();
             }
         }
 
@@ -1022,5 +1287,189 @@
             loadCustomThemesAdmin();
         }
     </script>
+<script>
+// ======================== PRINTER CONFIGURATION ========================
+var currentPrinterConn = 'none';
+var maxCopies = 1;
+var allowCopyChoice = false;
+
+function initPrinterConfig() {
+    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    currentPrinterConn = saved.conn || 'none';
+    maxCopies = Math.min(parseInt(saved.maxCopies || '1'), 3);
+    allowCopyChoice = saved.allowCopyChoice || false;
+    document.getElementById('max-copies-display').innerText = maxCopies;
+    updateCopyChoiceToggle();
+    if (currentPrinterConn !== 'none') {
+        setPrinterConnUI(currentPrinterConn);
+        if (currentPrinterConn === 'wifi') {
+            document.getElementById('printer-ip-input').value = saved.wifiIp || '';
+            document.getElementById('printer-port-input').value = saved.wifiPort || 9100;
+        }
+        setPrinterStatusConnected(currentPrinterConn, saved.deviceName || '');
+    }
+}
+
+function setPrinterConn(type) {
+    currentPrinterConn = type;
+    setPrinterConnUI(type);
+}
+
+function setPrinterConnUI(type) {
+    document.querySelectorAll('.printer-conn-btn').forEach(function(b) {
+        b.classList.remove('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
+        b.classList.add('border-gray-600', 'text-gray-300');
+    });
+    var btn = document.getElementById('pconn-' + type);
+    if (btn) {
+        btn.classList.add('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
+        btn.classList.remove('border-gray-600', 'text-gray-300');
+    }
+    document.querySelectorAll('.printer-settings-panel').forEach(function(p) { p.classList.add('hidden'); });
+    var panel = document.getElementById('printer-' + type + '-settings');
+    if (panel) panel.classList.remove('hidden');
+}
+
+async function connectUSBPrinter() {
+    var statusEl = document.getElementById('usb-printer-status');
+    if (!('usb' in navigator)) {
+        statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ WebUSB — กรุณาใช้ Chrome บน PC/Mac</span>';
+        return;
+    }
+    try {
+        statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังค้นหาเครื่องพิมพ์ USB...</span>';
+        var device = await navigator.usb.requestDevice({ filters: [] });
+        await device.open();
+        var name = device.productName || 'USB Printer';
+        statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
+        setPrinterStatusConnected('usb', name);
+        var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+        saved.conn = 'usb'; saved.deviceName = name;
+        localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+    } catch(e) {
+        statusEl.innerHTML = '<span class="text-gray-500">ยกเลิก หรือไม่พบเครื่องพิมพ์</span>';
+    }
+}
+
+async function connectBluetoothPrinter() {
+    var statusEl = document.getElementById('bt-printer-status');
+    if (!('bluetooth' in navigator)) {
+        statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth — ลองใช้ Chrome บน Android หรือ PC</span>';
+        return;
+    }
+    try {
+        statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังสแกน Bluetooth...</span>';
+        var device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['generic_access']
+        });
+        var name = device.name || 'Bluetooth Printer';
+        statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
+        setPrinterStatusConnected('bluetooth', name);
+        var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+        saved.conn = 'bluetooth'; saved.deviceName = name;
+        localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+    } catch(e) {
+        if (e.name !== 'NotFoundError') {
+            statusEl.innerHTML = '<span class="text-red-400">เกิดข้อผิดพลาด: ' + e.message + '</span>';
+        } else {
+            statusEl.innerHTML = '<span class="text-gray-500">ยกเลิกการเลือก</span>';
+        }
+    }
+}
+
+function savePrinterWifiConfig() {
+    var ip = document.getElementById('printer-ip-input').value.trim();
+    var port = document.getElementById('printer-port-input').value.trim() || '9100';
+    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    saved.wifiIp = ip; saved.wifiPort = port;
+    localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+}
+
+async function testWifiPrinter() {
+    var ip = document.getElementById('printer-ip-input').value.trim();
+    var statusEl = document.getElementById('wifi-printer-status');
+    if (!ip) { statusEl.innerHTML = '<span class="text-red-400">กรุณากรอก IP ก่อน</span>'; return; }
+    statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังทดสอบการเชื่อมต่อ...</span>';
+    try {
+        var ctrl = new AbortController();
+        setTimeout(function() { ctrl.abort(); }, 3000);
+        await fetch('http://' + ip + '/', { mode: 'no-cors', signal: ctrl.signal });
+        statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
+        setPrinterStatusConnected('wifi', ip);
+    } catch(e) {
+        if (e.name === 'AbortError') {
+            statusEl.innerHTML = '<span class="text-red-400">⚠️ ไม่ตอบสนอง — ตรวจสอบ IP และเครือข่าย</span>';
+        } else {
+            statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
+            setPrinterStatusConnected('wifi', ip);
+        }
+    }
+}
+
+function setPrinterStatusConnected(type, name) {
+    var dot = document.getElementById('printer-status-dot');
+    var label = document.getElementById('printer-status-label');
+    var detail = document.getElementById('printer-status-detail');
+    var icons = { usb: 'USB', bluetooth: 'Bluetooth', wifi: 'Wi-Fi / Network' };
+    dot.className = 'w-3 h-3 rounded-full bg-green-400 flex-shrink-0 animate-pulse';
+    label.innerText = 'เชื่อมต่อแล้ว — ' + (icons[type] || type);
+    detail.innerText = name ? 'อุปกรณ์: ' + name : 'พร้อมพิมพ์';
+}
+
+function sendTestPrint() {
+    var cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    if (!cfg.conn || cfg.conn === 'none') {
+        showToast('กรุณาเชื่อมต่อเครื่องพิมพ์ก่อน');
+        return;
+    }
+    showToast('ส่งคำสั่งทดสอบการพิมพ์แล้ว ✓');
+    window.print();
+}
+
+function adjustMaxCopies(delta) {
+    maxCopies = Math.max(1, Math.min(3, maxCopies + delta));
+    document.getElementById('max-copies-display').innerText = maxCopies;
+}
+
+function toggleCopyChoice() {
+    allowCopyChoice = !allowCopyChoice;
+    updateCopyChoiceToggle();
+}
+
+function updateCopyChoiceToggle() {
+    var btn = document.getElementById('toggle-copy-choice');
+    var knob = document.getElementById('toggle-copy-knob');
+    var lbl = document.getElementById('copy-choice-label');
+    if (allowCopyChoice) {
+        btn.style.background = 'rgba(186,255,102,0.15)';
+        btn.style.borderColor = '#BAFF66';
+        knob.style.transform = 'translateX(20px)';
+        knob.style.background = '#BAFF66';
+        lbl.innerText = 'เปิด — ผู้ใช้เลือกจำนวนสำเนาก่อนพิมพ์';
+        lbl.style.color = '#BAFF66';
+    } else {
+        btn.style.background = '#374151';
+        btn.style.borderColor = '#4b5563';
+        knob.style.transform = 'translateX(0)';
+        knob.style.background = '#9ca3af';
+        lbl.innerText = 'ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง';
+        lbl.style.color = '#9ca3af';
+    }
+}
+
+function savePrinterConfig() {
+    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    saved.conn = currentPrinterConn;
+    saved.maxCopies = maxCopies;
+    saved.allowCopyChoice = allowCopyChoice;
+    if (currentPrinterConn === 'wifi') {
+        saved.wifiIp = (document.getElementById('printer-ip-input').value || '').trim();
+        saved.wifiPort = (document.getElementById('printer-port-input').value || '9100').trim();
+    }
+    localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+    showToast('บันทึกการตั้งค่าเครื่องพิมพ์เรียบร้อย ✓');
+}
+</script>
 </body>
 </html>

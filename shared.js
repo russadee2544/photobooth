@@ -630,21 +630,52 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                     const gBrand = JSON.parse(localStorage.getItem('kiosk_branding_' + templateName) || '{}');
 
                     const applyBrandingAndResolve = async () => {
-                        // 1. Preload any needed custom fonts
-                        const brandFonts = [
-                            { name: 'Prompt', url: 'https://fonts.gstatic.com/s/prompt/v10/-W__XJnvUD7dzB2KZeLQ.woff2' },
-                            { name: 'Kanit', url: 'https://fonts.gstatic.com/s/kanit/v7/nKKU-Go6G5tXcraQI2GAdA.woff2' },
-                            { name: 'Sarabun', url: 'https://fonts.gstatic.com/s/sarabun/v13/DtVmJx26TKEr37c9YHZ5jbM.woff2' }
-                        ];
+                        // Helper for multiline text
+                        const drawMultilineBrandingText = (ctx, text, areaX, areaY, areaWidth, areaHeight, options) => {
+                            if (!text) return;
+                            const { font = 'Inter', size = 24, color = '#000000', bold = false, italic = false, align = 'center', scale = 1 } = options;
+
+                            const fontWeight = bold ? 'bold' : 'normal';
+                            const fontStyle = italic ? 'italic' : 'normal';
+                            const computedSize = Number(size) * scale;
+                            const lineHeight = computedSize * 1.35;
+
+                            ctx.font = `${fontStyle} ${fontWeight} ${computedSize}px "${font}", sans-serif`;
+                            ctx.fillStyle = color;
+                            ctx.textAlign = align;
+
+                            const lines = text.split('\n');
+                            const totalTextHeight = lines.length * lineHeight;
+                            
+                            let startY = areaY + (areaHeight - totalTextHeight) / 2 + (computedSize * 0.85);
+                            let startX = areaX + areaWidth / 2;
+                            if (align === 'left') {
+                                startX = areaX + 40 * scale;
+                            } else if (align === 'right') {
+                                startX = areaX + areaWidth - (40 * scale);
+                            }
+
+                            lines.forEach((line, index) => {
+                                ctx.fillText(line, startX, startY + (index * lineHeight));
+                            });
+                        };
+
+                        // 1. Preload any needed Google Fonts
                         const fontsNeeded = new Set();
                         if (gBrand.header && gBrand.header.mode === 'text' && gBrand.header.text && gBrand.header.font) fontsNeeded.add(gBrand.header.font);
                         if (gBrand.footer && gBrand.footer.mode === 'text' && gBrand.footer.text && gBrand.footer.font) fontsNeeded.add(gBrand.footer.font);
                         
                         await Promise.all([...fontsNeeded].map(fontName => {
-                            const fd = brandFonts.find(f => f.name === fontName);
-                            if (!fd) return Promise.resolve();
-                            const face = new FontFace(fontName, `url(${fd.url})`);
-                            return face.load().then(loaded => { document.fonts.add(loaded); }).catch(() => {});
+                            if (!fontName || fontName === 'Inter') return Promise.resolve();
+                            const linkId = `gfont-${fontName}`;
+                            if (!document.getElementById(linkId)) {
+                                const link = document.createElement('link');
+                                link.id = linkId;
+                                link.rel = 'stylesheet';
+                                link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:ital,wght@0,400;0,700;1,400;1,700&display=swap`;
+                                document.head.appendChild(link);
+                            }
+                            return document.fonts.load(`16px "${fontName}"`).catch(() => {});
                         }));
 
                         // 2. Draw header
@@ -652,12 +683,16 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                             if (gBrand.header.mode === 'text' && gBrand.header.text) {
                                 ctx.fillStyle = gBrand.header.bg || bg;
                                 ctx.fillRect(0, 0, outputWidth, pt - 2*scale);
-                                ctx.fillStyle = gBrand.header.color || text;
-                                ctx.textAlign = 'center';
-                                const hFont = gBrand.header.font || 'Inter';
-                                const hSize = Number(gBrand.header.size) || 24;
-                                ctx.font = `800 ${hSize * scale}px "${hFont}", sans-serif`;
-                                ctx.fillText(gBrand.header.text, outputWidth / 2, pt / 2 + (hSize * scale * 0.4));
+                                
+                                drawMultilineBrandingText(ctx, gBrand.header.text, 0, 0, outputWidth, pt - 2*scale, {
+                                    font: gBrand.header.font || 'Inter',
+                                    size: gBrand.header.size || 24,
+                                    color: gBrand.header.color || text,
+                                    bold: !!gBrand.header.bold,
+                                    italic: !!gBrand.header.italic,
+                                    align: gBrand.header.align || 'center',
+                                    scale: scale
+                                });
                             } else if (gBrand.header.mode === 'image' && gBrand.header.base64) {
                                 await new Promise(res => {
                                     const himg = new Image();
@@ -673,12 +708,16 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                             if (gBrand.footer.mode === 'text' && gBrand.footer.text) {
                                 ctx.fillStyle = gBrand.footer.bg || bg;
                                 ctx.fillRect(0, totalHeight - pb + 2*scale, outputWidth, pb);
-                                ctx.fillStyle = gBrand.footer.color || text;
-                                ctx.textAlign = 'center';
-                                const fFont = gBrand.footer.font || 'Inter';
-                                const fSize = Number(gBrand.footer.size) || 18;
-                                ctx.font = `600 ${fSize * scale}px "${fFont}", sans-serif`;
-                                ctx.fillText(gBrand.footer.text, outputWidth / 2, totalHeight - pb / 2 + (fSize * scale * 0.4));
+                                
+                                drawMultilineBrandingText(ctx, gBrand.footer.text, 0, totalHeight - pb + 2*scale, outputWidth, pb, {
+                                    font: gBrand.footer.font || 'Inter',
+                                    size: gBrand.footer.size || 18,
+                                    color: gBrand.footer.color || text,
+                                    bold: !!gBrand.footer.bold,
+                                    italic: !!gBrand.footer.italic,
+                                    align: gBrand.footer.align || 'center',
+                                    scale: scale
+                                });
                             } else if (gBrand.footer.mode === 'image' && gBrand.footer.base64) {
                                 await new Promise(res => {
                                     const fimg = new Image();
@@ -804,20 +843,13 @@ function triggerFlash() {
     setTimeout(() => overlay.classList.remove('flash-active'), 500);
 }
 
-// ======================== EVENT BANNER ========================
+// ======================== EVENT BANNER & FOOTER STATUS ========================
 function checkAndInjectEventBanner() {
-    if (Kiosk.mode === 'event') {
-        const header = document.querySelector('.kiosk-header');
-        if (header && !document.getElementById('event-banner')) {
-            const banner = document.createElement('div');
-            banner.id = 'event-banner';
-            banner.className = 'absolute top-0 right-6 h-12 px-6 bg-accent-blue text-white rounded-b-xl text-sm font-bold tracking-widest shadow-lg flex items-center justify-center gap-2 z-50';
-            banner.innerHTML = `<span class="material-symbols-outlined text-lg">stars</span> EVENT: ${Kiosk.eventName}`;
-            header.appendChild(banner);
-            // Hide normal brand if screen is small
-            const brand = header.querySelector('.kiosk-brand');
-            if (brand) brand.style.display = 'none'; 
-        }
+    const statusEl = document.getElementById('footer-copyright-status');
+    const modeStatus = Kiosk.mode === 'event' ? `EVENT (${Kiosk.eventName || 'EVENT MODE'})` : 'NORMAL';
+    
+    if (statusEl) {
+        statusEl.textContent = `© PHOTO BOOTH • ${modeStatus}`;
     }
 }
 
