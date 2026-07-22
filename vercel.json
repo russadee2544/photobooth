@@ -2,5 +2,16 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/home", "destination": "/home.html" },
+    { "source": "/layout", "destination": "/layout.html" },
+    { "source": "/capture", "destination": "/capture.html" },
+    { "source": "/retake", "destination": "/retake.html" },
+    { "source": "/template", "destination": "/template.html" },
+    { "source": "/payment", "destination": "/payment.html" },
+    { "source": "/processing", "destination": "/processing.html" },
+    { "source": "/print", "destination": "/print.html" }
+  ]
 }
