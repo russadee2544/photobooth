@@ -160,7 +160,12 @@
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                         throw new Error("getUserMedia is not supported");
                     }
-                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    try {
+                        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    } catch (primaryErr) {
+                        console.warn("Primary camera constraints failed, attempting fallback...", primaryErr);
+                        currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    }
                     video.srcObject = currentStream;
                     video.play();
                     
