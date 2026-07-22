@@ -4,7 +4,7 @@
   "description": "Retro Dither Photo Booth Screens",
   "scripts": {
     "dev": "vite",
-    "build": "npx vite build"
+    "build": "chmod +x node_modules/.bin/vite && vite build"
   },
   "devDependencies": {
     "vite": "^5.0.0"
