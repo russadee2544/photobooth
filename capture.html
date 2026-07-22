@@ -41,7 +41,7 @@
 
     <!-- Camera Viewfinder -->
     <main class="absolute inset-0 z-0 flex items-center justify-center bg-black overflow-hidden">
-        <video id="video-feed" autoplay playsinline class="absolute w-full h-full object-cover"></video>
+        <video id="video-feed" autoplay playsinline class="absolute w-full h-full object-contain"></video>
         
         <!-- Crop Guide Box -->
         <div id="crop-guide" class="relative z-10 border-2 border-white/50 border-dashed transition-all duration-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
@@ -110,13 +110,24 @@
             let useDemo = false;
             let currentStream = null;
 
-            // Resize guide box to match ratio (Defaults to 3:4 Vertical Portrait)
+            // Resize guide box to match ratio and fit inside visible video stream
             function updateGuideBox() {
                 const w = window.innerWidth;
                 const h = window.innerHeight;
                 
-                const maxW = w * 0.95;
-                const maxH = h * 0.95;
+                const vw = video.videoWidth || 1920;
+                const vh = video.videoHeight || 1080;
+                const videoRatio = vw / vh;
+
+                let drawW = w;
+                let drawH = w / videoRatio;
+                if (drawH > h) {
+                    drawH = h;
+                    drawW = h * videoRatio;
+                }
+
+                const maxW = drawW * 0.95;
+                const maxH = drawH * 0.95;
 
                 // Default to 3:4 Vertical Portrait frame
                 let targetRatio = 3 / 4;
@@ -141,7 +152,7 @@
             video.addEventListener('loadedmetadata', updateGuideBox);
             updateGuideBox();
 
-            // Setup Camera
+            // Setup Camera (Request full wide 1920x1080 resolution)
             async function startCamera(deviceId = null) {
                 if (currentStream) {
                     currentStream.getTracks().forEach(track => track.stop());
@@ -149,9 +160,8 @@
                 try {
                     const constraints = { 
                         video: { 
-                            width: { ideal: 1080 }, 
-                            height: { ideal: 1440 },
-                            aspectRatio: { ideal: 0.75 } 
+                            width: { ideal: 1920 }, 
+                            height: { ideal: 1080 }
                         } 
                     };
                     if (deviceId) { constraints.video.deviceId = { exact: deviceId }; } 
@@ -255,7 +265,6 @@
                     photos.push(canvas.toDataURL('image/jpeg', 0.9));
                 } else {
                     // We crop the video exactly as the crop guide is showing!
-                    // Video covers the screen.
                     const vw = video.videoWidth;
                     const vh = video.videoHeight;
                     const windowW = window.innerWidth;
@@ -265,7 +274,7 @@
                     const videoRatio = vw / vh;
                     let drawW = windowW;
                     let drawH = windowW / videoRatio;
-                    if (drawH < windowH) {
+                    if (drawH > windowH) {
                         drawH = windowH;
                         drawW = windowH * videoRatio;
                     }
@@ -295,7 +304,7 @@
                     canvas.height = cropH;
                     const ctx = canvas.getContext('2d');
                     
-                    // Mirror image if using front camera (we always flip here to be safe)
+                    // Mirror image if using front camera
                     ctx.translate(canvas.width, 0);
                     ctx.scale(-1, 1);
                     
