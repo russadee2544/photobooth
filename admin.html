@@ -717,9 +717,18 @@
                     base64: document.getElementById('hf-footer-base64').value
                 }
             };
-            localStorage.setItem('kiosk_branding_' + theme, JSON.stringify(data));
-            showToast('Theme Branding Saved');
-            updateLivePreview();
+            const presetThemes = ['light', 'dark', 'mint', 'blue', 'exhibition'];
+            if (presetThemes.includes(theme)) {
+                showToast('Saving to Database...');
+                savePresetBrandingToDB(theme, data).then(() => {
+                    showToast('Preset Theme Branding Saved to Database!');
+                    updateLivePreview();
+                });
+            } else {
+                localStorage.setItem('kiosk_branding_' + theme, JSON.stringify(data));
+                showToast('Theme Branding Saved (Local)');
+                updateLivePreview();
+            }
         }
 
         function loadGlobalBranding() {

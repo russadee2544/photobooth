@@ -1029,54 +1029,112 @@ async function updateLayoutSizes(updatesArray) {
     } catch(e) { console.error('Update layout sizes error:', e); return false; }
 }
 
-// ======================== CUSTOM THEMES (SUPABASE) ========================
-async function fetchCustomThemes() {
+// ======================== PRESET THEMES BRANDING (SUPABASE DATABASE) ========================
+const PRESET_THEME_IDS = ['light', 'dark', 'mint', 'blue', 'exhibition'];
+
+async function savePresetBrandingToDB(themeName, brandingData) {
+    localStorage.setItem('kiosk_branding_' + themeName, JSON.stringify(brandingData));
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?order=created_at.desc`, {
+        const recordName = 'preset_branding_' + themeName;
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?name=eq.${recordName}`, {
             headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
         });
-        if(res.ok) return await res.json();
-    } catch(e) { console.error('Fetch custom themes error:', e); }
-    return [];
+        const existing = checkRes.ok ? await checkRes.json() : [];
+
+        const payload = {
+            name: recordName,
+            theme_type: 'preset_branding',
+            header_text: JSON.stringify(brandingData)
+        };
+
+        if (existing.length > 0) {
+            await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?name=eq.${recordName}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            await fetch(`${SUPABASE_URL}/rest/v1/custom_themes`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+        }
+        return true;
+    } catch(e) {
+        console.error('Save preset branding to DB error:', e);
+        return false;
+    }
+}
+
+async function syncPresetBrandingFromDB() {
+    try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?theme_type=eq.preset_branding`, {
+            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
+        });
+        if (res.ok) {
+            const list = await res.json();
+            list.forEach(item => {
+                if (item.name && item.name.startsWith('preset_branding_') && item.header_text) {
+                    const themeName = item.name.replace('preset_branding_', '');
+                    try {
+                        const brandingData = JSON.parse(item.header_text);
+                        localStorage.setItem('kiosk_branding_' + themeName, JSON.stringify(brandingData));
+                    } catch(err) {}
+                }
+            });
+        }
+    } catch(e) {
+        console.error('Sync preset branding error:', e);
+    }
+}
+
+// Trigger initial sync from DB
+syncPresetBrandingFromDB();
+
+// ======================== CUSTOM THEMES (LOCAL STORAGE PER MACHINE) ========================
+function getLocalCustomThemes() {
+    try {
+        const raw = localStorage.getItem('kiosk_local_custom_themes');
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+}
+
+function saveLocalCustomThemes(themes) {
+    localStorage.setItem('kiosk_local_custom_themes', JSON.stringify(themes));
+}
+
+async function fetchCustomThemes() {
+    return getLocalCustomThemes();
 }
 
 async function fetchCustomThemeById(id) {
-    try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?id=eq.${id}`, {
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
-        });
-        if(res.ok) {
-            const data = await res.json();
-            if(data.length > 0) return data[0];
-        }
-    } catch(e) { console.error('Fetch custom theme error:', e); }
-    return null;
+    const list = getLocalCustomThemes();
+    return list.find(t => t.id === id) || null;
 }
 
 async function insertCustomTheme(themeObj) {
-    try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(themeObj)
-        });
-        return res.ok;
-    } catch(e) { console.error('Insert custom theme error:', e); return false; }
+    const list = getLocalCustomThemes();
+    themeObj.id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    themeObj.created_at = new Date().toISOString();
+    list.unshift(themeObj);
+    saveLocalCustomThemes(list);
+    return true;
 }
 
 async function removeCustomTheme(id) {
-    try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/custom_themes?id=eq.${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY }
-        });
-        return res.ok;
-    } catch(e) { console.error('Remove custom theme error:', e); return false; }
+    let list = getLocalCustomThemes();
+    list = list.filter(t => t.id !== id);
+    saveLocalCustomThemes(list);
+    return true;
 }
 
 // ======================== INIT ========================
@@ -1084,4 +1142,6 @@ document.addEventListener('DOMContentLoaded', () => {
     preventBackNavigation();
     applyLanguage();
     checkAndInjectEventBanner();
+    syncPresetBrandingFromDB();
 });
+
