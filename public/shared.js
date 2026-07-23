@@ -174,8 +174,16 @@ function applyLanguage() {
 
 // Call applyLanguage on load to ensure UI starts with correct language
 if (typeof document !== 'undefined') {
-    document.addEventListener('DOMContentLoaded', applyLanguage);
+    document.addEventListener('DOMContentLoaded', () => {
+        applyLanguage();
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.warn('SW registration failed:', err);
+            });
+        }
+    });
 }
+
 
 class IdleTimer {
     constructor(timeoutMs, redirectUrl) {
