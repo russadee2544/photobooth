@@ -4,17 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Print & Save</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
     <link rel="stylesheet" href="shared.css">
-    <style>
+    <style id="dynamic-print-style">
         .print-slide-down {
             animation: slide-down 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -23,11 +15,11 @@
             100% { transform: translateY(0); opacity: 1; }
         }
 
-        /* Thermal Printer Styles */
+        /* Thermal / Photo Printer Styles */
         @media print {
             @page {
                 margin: 0;
-                size: 80mm auto; /* Standard thermal receipt size */
+                size: 4in 6in; /* Default to 4x6" */
             }
             body * {
                 visibility: hidden;
@@ -41,7 +33,7 @@
                 top: 0;
                 width: 100%;
                 margin: 0;
-                padding: 10px;
+                padding: 0;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -50,7 +42,6 @@
             #print-section img {
                 width: 100%;
                 max-width: 100%;
-                filter: grayscale(100%);
             }
             .no-print {
                 display: none !important;
@@ -101,8 +92,8 @@
 
         <div class="mt-4 md:mt-8 flex flex-col sm:flex-row gap-3">
             <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-6 py-3 flex items-center justify-center gap-2 w-full sm:w-auto">
-                <span class="material-symbols-outlined text-sm">receipt_long</span>
-                <span data-i18n="btn_print">Print Receipt</span>
+                <span class="material-symbols-outlined text-sm">print</span>
+                <span id="btn-print-text" data-i18n="btn_print">Print Photo</span>
             </button>
             <button onclick="window.location.href='home.html'" class="btn-modern btn-secondary text-sm px-6 py-3 w-full sm:w-auto text-center" data-i18n="btn_finish">
                 Finish Session
@@ -119,11 +110,9 @@
         </div>
     </div>
 
-    <!-- Hidden section strictly for the thermal printer -->
+    <!-- Hidden section strictly for the printer -->
     <div id="print-section" class="hidden">
-        <h2 style="font-family: 'Prompt', sans-serif; font-size: 16px; text-align: center; margin-bottom: 10px;">MEMORIES</h2>
         <img id="print-result" src="" alt="Print Strip" />
-        <p style="font-family: 'Prompt', sans-serif; font-size: 10px; text-align: center; margin-top: 10px;">Thank you for using Photo Booth!</p>
     </div>
 
     <!-- Print Copy Quantity Selection Modal -->
@@ -148,6 +137,10 @@
         </div>
     </div>
 
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity z-[60]">
+    </div>
+
     <script src="shared.js?v=2.3"></script>
     <script>
         let currentSelectedCopies = 1;
@@ -158,9 +151,21 @@
             const uploadStatus = document.getElementById('upload-status');
             const qrContainer = document.getElementById('qr-container');
 
-            if (Session.result) {
-                finalResult.src = Session.result;
-                printResult.src = Session.dithered; // Thermal printer uses the dithered version!
+            const paperMode = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
+            applyDynamicPrintStyles(paperMode);
+
+            // Load composed results from IndexedDB (primary) / localStorage (legacy)
+            const result = (await SessionAsync.get('result')) || Session.result;
+            const dithered = (await SessionAsync.get('dithered')) || Session.dithered;
+            if (result) {
+                Session.result = result;
+                Session.dithered = dithered;
+                finalResult.src = result;
+                if (paperMode.startsWith('photo')) {
+                    printResult.src = result; // Full color HD for photo printers
+                } else {
+                    printResult.src = dithered || result; // Dithered B&W for thermal receipt
+                }
             } else {
                 window.location.href = 'home.html';
                 return;
@@ -226,7 +231,7 @@
                     correctLevel: QRCode.CorrectLevel.L
                 });
 
-                // Phase 4: Log Session Analytics to Cloud
+                // Log Session Analytics to Cloud
                 logSessionToCloud(Session.colorCloudUrl, Session.ditheredCloudUrl);
 
             } catch (error) {
@@ -239,6 +244,50 @@
                 window.location.href = 'home.html';
             }, 90000);
         });
+
+        function applyDynamicPrintStyles(paperMode) {
+            let styleEl = document.getElementById('dynamic-print-style');
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = 'dynamic-print-style';
+                document.head.appendChild(styleEl);
+            }
+            let pageSize = '4in 6in';
+            let isPhoto = true;
+
+            if (paperMode === 'photo4x6_dual') pageSize = '4in 6in';
+            else if (paperMode === 'photo2x6_single') pageSize = '2in 6in';
+            else if (paperMode === 'photo5x7') pageSize = '5in 7in';
+            else if (paperMode === 'thermal58') { pageSize = '58mm auto'; isPhoto = false; }
+            else if (paperMode === 'thermal80') { pageSize = '80mm auto'; isPhoto = false; }
+            else if (paperMode === 'thermal100') { pageSize = '100mm auto'; isPhoto = false; }
+
+            styleEl.innerHTML = `
+                .print-slide-down { animation: slide-down 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                @keyframes slide-down { 0% { transform: translateY(-100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+                #print-section .print-copy { display: block; }
+                #print-section .print-copy:not(:last-child) { page-break-after: always; break-after: page; }
+                @media print {
+                    @page { size: ${pageSize}; margin: 0; }
+                    body * { visibility: hidden; }
+                    #print-section, #print-section * { visibility: visible; }
+                    #print-section { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: white; }
+                    #print-section img { width: 100%; max-width: 100%; filter: ${isPhoto ? 'none' : 'grayscale(100%)'}; }
+                    #print-section .print-copy { margin: 0; }
+                    .no-print { display: none !important; }
+                }
+            `;
+
+            const btnText = document.getElementById('btn-print-text');
+            if (btnText) {
+                if (paperMode === 'photo4x6_dual') btnText.innerText = 'พิมพ์รูปภาพ 4x6 นิ้ว (Dual Strip)';
+                else if (paperMode === 'photo2x6_single') btnText.innerText = 'พิมพ์รูปภาพ 2x6 นิ้ว';
+                else if (paperMode === 'photo5x7') btnText.innerText = 'พิมพ์รูปภาพ 5x7 นิ้ว';
+                else if (paperMode === 'thermal58') btnText.innerText = 'พิมพ์ใบเสร็จ (58mm)';
+                else if (paperMode === 'thermal80') btnText.innerText = 'พิมพ์ใบเสร็จ (80mm)';
+                else if (paperMode === 'thermal100') btnText.innerText = 'พิมพ์ใบเสร็จ (100mm)';
+            }
+        }
 
         function handlePrint() {
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
@@ -276,23 +325,66 @@
             executePrint(countToPrint);
         }
 
-        function executePrint(copies) {
-            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            if (paperCount >= copies) {
-                paperCount -= copies;
-                localStorage.setItem('kiosk_paper', paperCount.toString());
-
-                for (let i = 0; i < copies; i++) {
-                    window.print();
-                }
-                
-                // Disable button after printing
-                const printBtn = document.getElementById('btn-print');
+        function markPrinted(copies) {
+            // Disable button after printing
+            const printBtn = document.getElementById('btn-print');
+            if (printBtn) {
                 printBtn.disabled = true;
                 printBtn.classList.replace('btn-primary', 'bg-gray-300');
                 printBtn.classList.add('text-gray-500', 'cursor-not-allowed');
                 printBtn.innerHTML = `<span class="material-symbols-outlined text-sm">check_circle</span> Printed (${copies})`;
             }
+        }
+
+        // Print N copies in a single browser print pass (one copy per sheet).
+        function printViaDialog(copies) {
+            const section = document.getElementById('print-section');
+            const baseImg = document.getElementById('print-result');
+            if (!baseImg || !baseImg.src) return;
+
+            // Remove stale clones
+            section.querySelectorAll('.print-copy').forEach(el => el.remove());
+
+            for (let i = 0; i < copies; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'print-copy';
+                const img = document.createElement('img');
+                img.src = baseImg.src;
+                wrapper.appendChild(img);
+                section.appendChild(wrapper);
+            }
+
+            window.addEventListener('afterprint', () => {
+                section.querySelectorAll('.print-copy').forEach(el => el.remove());
+                markPrinted(copies);
+            }, { once: true });
+            window.print();
+        }
+
+        // Real ESC/POS print via WebUSB (thermal printers) when configured as USB.
+        async function executePrint(copies) {
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount < copies) return;
+            paperCount -= copies;
+            localStorage.setItem('kiosk_paper', paperCount.toString());
+
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const paperMode = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
+            const isThermal = paperMode.startsWith('thermal');
+
+            if (printerConfig.conn === 'usb' && isThermal) {
+                try {
+                    await printViaUSB(paperMode, copies);
+                    markPrinted(copies);
+                    return;
+                } catch (err) {
+                    console.warn('USB ESC/POS print failed, falling back to browser dialog:', err);
+                    const toast = document.getElementById('toast');
+                    if (toast) { toast.innerText = 'WebUSB printer failed — ใช้กล่องพิมพ์แทน'; toast.classList.remove('opacity-0'); setTimeout(() => toast.classList.add('opacity-0'), 3000); }
+                }
+            }
+
+            printViaDialog(copies);
         }
     </script>
 </body>

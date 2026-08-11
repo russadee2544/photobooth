@@ -12,6 +12,7 @@ export default defineConfig({
         retake: resolve(__dirname, 'retake.html'),
         template: resolve(__dirname, 'template.html'),
         payment: resolve(__dirname, 'payment.html'),
+        filter: resolve(__dirname, 'filter.html'),
         processing: resolve(__dirname, 'processing.html'),
         print: resolve(__dirname, 'print.html'),
         admin: resolve(__dirname, 'admin.html')

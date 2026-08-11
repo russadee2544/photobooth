@@ -4,14 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Admin Control</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Inter:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700&family=Mali:wght@400;600;700&family=Niramit:wght@400;600;700&family=Prompt:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&family=Sriracha&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Kanit:wght@300;400;500;600;700&family=Mali:wght@400;600;700&family=Niramit:wght@400;600;700&family=Sarabun:wght@300;400;500;600;700&family=Sriracha&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="shared.css">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,39 +19,40 @@
     <header class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-8 sm:mb-12 border-b border-gray-800 pb-4">
         <div>
             <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
-            <p class="text-gray-400 text-xs sm:text-sm">System configuration and hardware status.</p>
+            <p class="text-gray-400 text-xs sm:text-sm">System configuration, print modes, and hardware status.</p>
         </div>
         <button onclick="window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-6 py-2 hover:bg-gray-700 text-sm">Exit Admin</button>
     </header>
 
     <main class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl w-full mx-auto">
         
-        <!-- Mode Configuration -->
+        <!-- Operating Mode Configuration (Top Left) -->
         <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
-            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
-                <span class="material-symbols-outlined text-accent-blue">settings</span>
-                Operating Mode
+            <h2 class="text-xl font-bold mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-yellow-400">tune</span>
+                โหมดการทำงานของตู้ (Kiosk Operating Mode)
             </h2>
-            
-            <div class="flex gap-4 mb-6">
-                <button id="btn-normal" onclick="setMode('normal')" class="flex-1 py-4 border border-gray-600 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-700 transition-colors">
-                    <span class="material-symbols-outlined text-3xl">payments</span>
-                    <span class="font-medium">Normal Mode</span>
-                    <span class="text-xs text-gray-400">(Pay-per-use)</span>
+            <p class="text-gray-400 text-xs mb-6">เลือกสลับโหมดใช้งานระหว่างโหมดถ่ายฟรีงานอีเวนต์ หรือโหมดปกติ (ชำระเงิน/คูปอง)</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <button type="button" id="btn-event" onclick="setMode('event')" class="w-full p-4 border border-gray-600 rounded-xl flex flex-col items-center justify-center gap-2 bg-gray-900 hover:bg-gray-700 transition-all text-center">
+                    <span class="material-symbols-outlined text-3xl text-accent-mint">stars</span>
+                    <span class="font-bold text-sm text-white">🎉 Event Mode</span>
+                    <span class="text-[11px] text-gray-400">ถ่ายภาพฟรีงานอีเวนต์/งานแต่ง</span>
                 </button>
-                <button id="btn-event" onclick="setMode('event')" class="flex-1 py-4 border border-gray-600 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-700 transition-colors">
-                    <span class="material-symbols-outlined text-3xl">stars</span>
-                    <span class="font-medium">Event Mode</span>
-                    <span class="text-xs text-gray-400">(Free-to-use)</span>
+                <button type="button" id="btn-normal" onclick="setMode('normal')" class="w-full p-4 border border-gray-600 rounded-xl flex flex-col items-center justify-center gap-2 bg-gray-900 hover:bg-gray-700 transition-all text-center">
+                    <span class="material-symbols-outlined text-3xl text-accent-blue">payments</span>
+                    <span class="font-bold text-sm text-white">🏪 Normal Mode</span>
+                    <span class="text-[11px] text-gray-400">โหมดทั่วไป (หยอดเหรียญ/คูปอง)</span>
                 </button>
             </div>
 
-            <div id="event-config-box" class="space-y-4 hidden">
+            <div id="event-config-box" class="space-y-3 hidden bg-gray-900 p-4 rounded-xl border border-gray-700">
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Event Sponsor / Name</label>
-                    <input type="text" id="event-name" class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3" placeholder="e.g. Wedding of John & Jane">
+                    <input type="text" id="event-name" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-3 text-sm focus:ring-2 focus:ring-accent-mint outline-none" placeholder="e.g. Wedding of John & Jane">
                 </div>
-                <button onclick="saveEventConfig()" class="w-full bg-accent-blue text-white py-3 rounded-lg font-bold">Save Event Info</button>
+                <button type="button" onclick="saveEventConfig()" class="w-full bg-accent-blue text-white py-2.5 rounded-lg font-bold text-sm hover:opacity-90 transition">Save Event Info</button>
             </div>
         </div>
 
@@ -83,6 +77,68 @@
                 Refill Paper Stack (100)
             </button>
         </div>
+
+        <!-- Print Mode & Paper Size Configuration -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-mint">print</span>
+                โหมดการพิมพ์ & ขนาดกระดาษ (Print Mode & Paper Size)
+            </h2>
+            <p class="text-gray-400 text-sm mb-6">เลือกขนาดกระดาษและรูปแบบการพิมพ์หลักของตู้โฟโต้บูธ</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Option 1: 4x6" Dual Strip -->
+                <button type="button" onclick="setPaperMode('photo4x6_dual')" id="pm-card-photo4x6_dual" class="paper-mode-card border-2 border-accent-mint bg-accent-mint/10 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">📸 4x6" Dual 2x6 Strip</span>
+                        <span class="text-xs bg-accent-mint text-gray-900 px-2 py-0.5 rounded-full font-bold">แนะนำ</span>
+                    </div>
+                    <p class="text-xs text-gray-300">รูปภาพ 4x6 นิ้ว HD พิมพ์ 2 แถบคู่เหมือนกันสำหรับตัดแบ่งครึ่ง</p>
+                </button>
+
+                <!-- Option 2: 2x6" Single Strip -->
+                <button type="button" onclick="setPaperMode('photo2x6_single')" id="pm-card-photo2x6_single" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">📸 2x6" Single Strip</span>
+                    </div>
+                    <p class="text-xs text-gray-400">รูปภาพริบบิ้นเดี่ยว 2x6 นิ้วสไตล์คลาสสิก</p>
+                </button>
+
+                <!-- Option 3: Thermal Receipt 58mm -->
+                <button type="button" onclick="setPaperMode('thermal58')" id="pm-card-thermal58" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">🧾 Thermal 58mm</span>
+                        <span class="text-xs bg-accent-coral/20 text-accent-coral px-2 py-0.5 rounded-full font-bold">คาเฟ่</span>
+                    </div>
+                    <p class="text-xs text-gray-400">ใบเสร็จความร้อนขนาดเล็ก 58mm เหมาะสำหรับตู้คาเฟ่</p>
+                </button>
+
+                <!-- Option 4: Thermal Receipt 80mm -->
+                <button type="button" onclick="setPaperMode('thermal80')" id="pm-card-thermal80" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">🧾 Thermal 80mm</span>
+                    </div>
+                    <p class="text-xs text-gray-400">ใบเสร็จความร้อนม้วนขนาด 80mm (ปรับขยายพื้นที่รูปสูงสุด)</p>
+                </button>
+
+                <!-- Option 5: Thermal Receipt 100mm -->
+                <button type="button" onclick="setPaperMode('thermal100')" id="pm-card-thermal100" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">🧾 Thermal 100mm</span>
+                    </div>
+                    <p class="text-xs text-gray-400">ใบเสร็จความร้อนม้วนขนาดใหญ่ 100mm</p>
+                </button>
+
+                <!-- Option 6: 5x7" Photo Card -->
+                <button type="button" onclick="setPaperMode('photo5x7')" id="pm-card-photo5x7" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">📸 5x7" Photo Card</span>
+                    </div>
+                    <p class="text-xs text-gray-400">การ์ดรูปถ่ายโฟโต้บูธขนาดใหญ่พิเศษ 5x7 นิ้ว</p>
+                </button>
+            </div>
+        </div>
+
         <!-- ======================== PRINTER CONFIGURATION ======================== -->
         <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
@@ -253,18 +309,18 @@
                     <span id="rc-total" class="text-3xl font-bold text-white">-</span>
                 </div>
                 <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Available Today</span>
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Available (Unused)</span>
                     <span id="rc-available" class="text-3xl font-bold text-accent-mint">-</span>
                 </div>
                 <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Used Today</span>
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Used (All-time)</span>
                     <span id="rc-used" class="text-3xl font-bold text-accent-coral">-</span>
                 </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="flex gap-4 mb-6">
-                <button id="gen-btn" onclick="handleGenerateCodes()" class="flex-1 bg-accent-blue text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                <button id="gen-btn" onclick="handleGenerateCodes()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-green-400 transition-colors">
                     <span class="material-symbols-outlined">add_circle</span>
                     Generate 50 Codes
                 </button>
@@ -296,172 +352,172 @@
                     <option value="dark">Dark Theme (Retro Ticket)</option>
                     <option value="mint">Mint Theme (Web Browser)</option>
                     <option value="blue">Blue Theme (Music Player)</option>
-                    <!-- Custom themes injected here -->
                 </select>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                <!-- Header Settings -->
-                <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
-                    <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
-                        Header 
-                        <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Top area</span>
-                    </h3>
-                    
-                    <div class="flex gap-4 mb-4">
-                        <button id="hf-header-mode-text" onclick="setHeaderMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
-                        <button id="hf-header-mode-image" onclick="setHeaderMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
-                    </div>
+                <!-- Header & Footer Settings -->
+                <div class="space-y-6">
+                    <!-- Header Settings -->
+                    <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
+                        <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
+                            Header 
+                            <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Top area</span>
+                        </h3>
+                        
+                        <div class="flex gap-4 mb-4">
+                            <button id="hf-header-mode-text" onclick="setHeaderMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
+                            <button id="hf-header-mode-image" onclick="setHeaderMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
+                        </div>
 
-                    <div id="hf-header-text-ui" class="space-y-4">
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
-                                <!-- Formatting Toolbar -->
-                                <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
-                                    <button type="button" id="hf-header-bold-btn" onclick="toggleStyle('header', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
-                                    <button type="button" id="hf-header-italic-btn" onclick="toggleStyle('header', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
-                                    <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
-                                    <button type="button" id="hf-header-align-left-btn" onclick="setTextAlign('header', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
-                                    <button type="button" id="hf-header-align-center-btn" onclick="setTextAlign('header', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
-                                    <button type="button" id="hf-header-align-right-btn" onclick="setTextAlign('header', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
+                        <div id="hf-header-text-ui" class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
+                                    <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
+                                        <button type="button" id="hf-header-bold-btn" onclick="toggleStyle('header', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
+                                        <button type="button" id="hf-header-italic-btn" onclick="toggleStyle('header', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
+                                        <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
+                                        <button type="button" id="hf-header-align-left-btn" onclick="setTextAlign('header', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
+                                        <button type="button" id="hf-header-align-center-btn" onclick="setTextAlign('header', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
+                                        <button type="button" id="hf-header-align-right-btn" onclick="setTextAlign('header', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="hf-header-bold" value="false">
+                                <input type="hidden" id="hf-header-italic" value="false">
+                                <input type="hidden" id="hf-header-align" value="center">
+                                <textarea id="hf-header-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
+                                    <select id="hf-header-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
+                                        <option value="Inter">Inter (English)</option>
+                                        <option value="Prompt">Prompt (Thai Standard)</option>
+                                        <option value="Kanit">Kanit (Thai Modern)</option>
+                                        <option value="Sarabun">Sarabun (Thai Formal)</option>
+                                        <option value="Mali">Mali (Thai Script)</option>
+                                        <option value="Charm">Charm (Thai Script)</option>
+                                        <option value="Chonburi">Chonburi (Thai Display)</option>
+                                        <option value="Sriracha">Sriracha (Thai Script)</option>
+                                        <option value="Niramit">Niramit (Thai Serif)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
+                                    <input type="number" id="hf-header-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="24" oninput="updateLivePreview()">
                                 </div>
                             </div>
-                            <input type="hidden" id="hf-header-bold" value="false">
-                            <input type="hidden" id="hf-header-italic" value="false">
-                            <input type="hidden" id="hf-header-align" value="center">
-                            <textarea id="hf-header-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
-                                <select id="hf-header-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
-                                    <option value="Inter">Inter (English)</option>
-                                    <option value="Prompt">Prompt (Thai Standard)</option>
-                                    <option value="Kanit">Kanit (Thai Modern)</option>
-                                    <option value="Sarabun">Sarabun (Thai Formal)</option>
-                                    <option value="Mali">Mali (Thai Cute / Script)</option>
-                                    <option value="Charm">Charm (Thai Elegant Script)</option>
-                                    <option value="Chonburi">Chonburi (Thai Bold Display)</option>
-                                    <option value="Sriracha">Sriracha (Thai Handwriting)</option>
-                                    <option value="Niramit">Niramit (Thai Formal Serif)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
-                                <input type="number" id="hf-header-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="24" oninput="updateLivePreview()">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
+                                    <input type="color" id="hf-header-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
+                                    <input type="color" id="hf-header-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
+                                </div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
-                                <input type="color" id="hf-header-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
-                                <input type="color" id="hf-header-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
-                            </div>
+                        <div id="hf-header-image-ui" class="space-y-3 hidden">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
+                            <input type="file" id="hf-header-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleHeaderUpload(event)">
+                            <input type="hidden" id="hf-header-base64">
+                            <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 750 px</p>
+                            <img id="hf-header-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
                         </div>
                     </div>
 
-                    <div id="hf-header-image-ui" class="space-y-3 hidden">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
-                        <input type="file" id="hf-header-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleHeaderUpload(event)">
-                        <input type="hidden" id="hf-header-base64">
-                        <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 750 px (กว้าง 8 ซม. x สูง 5 ซม.)</p>
-                        <img id="hf-header-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
+                    <!-- Footer Settings -->
+                    <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
+                        <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
+                            Footer 
+                            <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Bottom area</span>
+                        </h3>
+                        
+                        <div class="flex gap-4 mb-4">
+                            <button id="hf-footer-mode-text" onclick="setFooterMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
+                            <button id="hf-footer-mode-image" onclick="setFooterMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
+                        </div>
+
+                        <div id="hf-footer-text-ui" class="space-y-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
+                                    <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
+                                        <button type="button" id="hf-footer-bold-btn" onclick="toggleStyle('footer', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
+                                        <button type="button" id="hf-footer-italic-btn" onclick="toggleStyle('footer', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
+                                        <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
+                                        <button type="button" id="hf-footer-align-left-btn" onclick="setTextAlign('footer', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
+                                        <button type="button" id="hf-footer-align-center-btn" onclick="setTextAlign('footer', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
+                                        <button type="button" id="hf-footer-align-right-btn" onclick="setTextAlign('footer', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="hf-footer-bold" value="false">
+                                <input type="hidden" id="hf-footer-italic" value="false">
+                                <input type="hidden" id="hf-footer-align" value="center">
+                                <textarea id="hf-footer-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
+                                    <select id="hf-footer-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
+                                        <option value="Inter">Inter (English)</option>
+                                        <option value="Prompt">Prompt (Thai Standard)</option>
+                                        <option value="Kanit">Kanit (Thai Modern)</option>
+                                        <option value="Sarabun">Sarabun (Thai Formal)</option>
+                                        <option value="Mali">Mali (Thai Script)</option>
+                                        <option value="Charm">Charm (Thai Script)</option>
+                                        <option value="Chonburi">Chonburi (Thai Display)</option>
+                                        <option value="Sriracha">Sriracha (Thai Script)</option>
+                                        <option value="Niramit">Niramit (Thai Serif)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
+                                    <input type="number" id="hf-footer-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="18" oninput="updateLivePreview()">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
+                                    <input type="color" id="hf-footer-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
+                                    <input type="color" id="hf-footer-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="hf-footer-image-ui" class="space-y-3 hidden">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
+                            <input type="file" id="hf-footer-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleFooterUpload(event)">
+                            <input type="hidden" id="hf-footer-base64">
+                            <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 375 px</p>
+                            <img id="hf-footer-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Footer Settings -->
-                <div class="bg-gray-900 rounded-xl p-5 border border-gray-700">
-                    <h3 class="text-md font-bold text-gray-200 mb-4 flex justify-between items-center">
-                        Footer 
-                        <span class="text-xs font-normal text-gray-500 bg-gray-800 px-2 py-1 rounded">Bottom area</span>
-                    </h3>
-                    
-                    <div class="flex gap-4 mb-4">
-                        <button id="hf-footer-mode-text" onclick="setFooterMode('text')" class="flex-1 py-2 border border-accent-mint bg-accent-mint/10 rounded-lg font-bold text-accent-mint text-sm">Text Mode</button>
-                        <button id="hf-footer-mode-image" onclick="setFooterMode('image')" class="flex-1 py-2 border border-gray-600 rounded-lg font-bold text-gray-400 hover:bg-gray-700 text-sm">Image Mode</button>
-                    </div>
-
-                    <div id="hf-footer-text-ui" class="space-y-4">
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Content (Multi-line)</label>
-                                <!-- Formatting Toolbar -->
-                                <div class="flex items-center gap-1 bg-gray-800 p-1 rounded-lg border border-gray-700">
-                                    <button type="button" id="hf-footer-bold-btn" onclick="toggleStyle('footer', 'bold')" class="px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent">B</button>
-                                    <button type="button" id="hf-footer-italic-btn" onclick="toggleStyle('footer', 'italic')" class="px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent">I</button>
-                                    <div class="h-3 w-px bg-gray-700 mx-0.5"></div>
-                                    <button type="button" id="hf-footer-align-left-btn" onclick="setTextAlign('footer', 'left')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_left</span></button>
-                                    <button type="button" id="hf-footer-align-center-btn" onclick="setTextAlign('footer', 'center')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent bg-gray-700 text-accent-mint"><span class="material-symbols-outlined text-xs">format_align_center</span></button>
-                                    <button type="button" id="hf-footer-align-right-btn" onclick="setTextAlign('footer', 'right')" class="p-0.5 rounded hover:bg-gray-700 text-gray-400 border border-transparent"><span class="material-symbols-outlined text-xs">format_align_right</span></button>
-                                </div>
-                            </div>
-                            <input type="hidden" id="hf-footer-bold" value="false">
-                            <input type="hidden" id="hf-footer-italic" value="false">
-                            <input type="hidden" id="hf-footer-align" value="center">
-                            <textarea id="hf-footer-text" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 text-sm focus:outline-none focus:border-accent-mint resize-y" placeholder="Enter text (Press Enter for multi-line)" oninput="updateLivePreview()"></textarea>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Font</label>
-                                <select id="hf-footer-font" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" onchange="updateLivePreview()">
-                                    <option value="Inter">Inter (English)</option>
-                                    <option value="Prompt">Prompt (Thai Standard)</option>
-                                    <option value="Kanit">Kanit (Thai Modern)</option>
-                                    <option value="Sarabun">Sarabun (Thai Formal)</option>
-                                    <option value="Mali">Mali (Thai Cute / Script)</option>
-                                    <option value="Charm">Charm (Thai Elegant Script)</option>
-                                    <option value="Chonburi">Chonburi (Thai Bold Display)</option>
-                                    <option value="Sriracha">Sriracha (Thai Handwriting)</option>
-                                    <option value="Niramit">Niramit (Thai Formal Serif)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Size</label>
-                                <input type="number" id="hf-footer-size" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2 mt-1 text-sm" value="18" oninput="updateLivePreview()">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">Text Color</label>
-                                <input type="color" id="hf-footer-color" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#000000" oninput="updateLivePreview()">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase">BG Color</label>
-                                <input type="color" id="hf-footer-bg" class="w-full bg-gray-800 border border-gray-600 rounded-lg h-10 p-1 mt-1 cursor-pointer" value="#FFFFFF" oninput="updateLivePreview()">
-                            </div>
+                <!-- Column 2: Live Preview & Compact Save Button -->
+                <div class="flex flex-col justify-between items-center bg-gray-900 rounded-xl p-5 border border-gray-700 h-full">
+                    <div class="w-full text-center">
+                        <h3 class="text-md font-bold text-gray-200 mb-4 flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-purple-400">preview</span>
+                            Live Preview
+                        </h3>
+                        <div class="flex justify-center bg-gray-950 p-4 rounded-lg border border-gray-800">
+                            <canvas id="branding-preview-canvas" width="400" height="600" class="shadow-2xl border border-gray-600 bg-white" style="max-height: 420px; width: auto; object-fit: contain;"></canvas>
                         </div>
                     </div>
 
-                    <div id="hf-footer-image-ui" class="space-y-3 hidden">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase">Upload Image (PNG/JPG)</label>
-                        <input type="file" id="hf-footer-file" accept="image/png, image/jpeg" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-2" onchange="handleFooterUpload(event)">
-                        <input type="hidden" id="hf-footer-base64">
-                        <p class="text-xs text-gray-400 mt-1">ขนาดแนะนำ: กว้าง 1200 x สูง 375 px (กว้าง 8 ซม. x สูง 2.5 ซม.)</p>
-                        <img id="hf-footer-preview" class="max-h-20 object-contain bg-gray-800 rounded-lg border border-gray-600 hidden mt-2">
-                    </div>
+                    <button type="button" onclick="saveGlobalBranding()" class="w-full max-w-xs mt-6 bg-accent-blue text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition-all shadow-md text-sm shrink-0">
+                        Save Theme Branding
+                    </button>
                 </div>
 
             </div>
-
-            <!-- Live Preview -->
-            <div class="mt-8 border-t border-gray-700 pt-6">
-                <h3 class="text-md font-bold text-gray-200 mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-purple-400">preview</span>
-                    Live Preview
-                </h3>
-                <div class="flex justify-center bg-gray-900 p-8 rounded-lg border border-gray-700">
-                    <canvas id="branding-preview-canvas" width="400" height="600" class="shadow-2xl border border-gray-600 bg-white" style="max-height: 600px; width: auto;"></canvas>
-                </div>
-            </div>
-
-            <button onclick="saveGlobalBranding()" class="w-full mt-6 bg-accent-blue text-white py-3 rounded-lg font-bold hover:opacity-90 transition-opacity">
-                Save Theme Branding
-            </button>
         </div>
 
         <!-- Layout Sizes Manager -->
@@ -558,16 +614,61 @@
         Saved successfully!
     </div>
 
+    <!-- Admin PIN Gate -->
+    <div id="admin-gate" class="fixed inset-0 bg-gray-950 z-[300] flex flex-col items-center justify-center p-6">
+        <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-6">
+            <span class="material-symbols-outlined text-accent-mint text-3xl">lock</span>
+        </div>
+        <h2 class="text-2xl font-bold mb-2 text-white">Admin Access</h2>
+        <p class="text-gray-400 text-sm mb-8">กรุณากรอกรหัส PIN เพื่อเข้าสู่ระบบควบคุมตู้</p>
+        <input type="password" id="gate-pin" maxlength="6" placeholder="••••••"
+            class="bg-gray-900 border border-gray-600 rounded-lg text-white text-3xl text-center w-52 py-4 tracking-[0.4em] focus:outline-none focus:border-accent-mint">
+        <div id="gate-error" class="text-accent-coral text-sm font-medium mt-4 h-5 opacity-0 transition-opacity">รหัสไม่ถูกต้อง</div>
+        <button onclick="submitGatePin()" class="mt-6 bg-accent-mint text-gray-900 px-10 py-4 rounded-xl font-bold hover:opacity-90 transition-all">
+            เข้าสู่ระบบ
+        </button>
+    </div>
+
     <script src="shared.js?v=2.3"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        function initAdmin() {
+            updateUI();
             updatePaperUI();
+            updatePaperModeUI();
             fetchAnalytics();
             loadRedeemData();
             loadLayoutSizesAdmin();
             loadCustomThemesAdmin();
             loadGlobalBranding();
             initPrinterConfig();
+        }
+
+        function showAdminGate() {
+            const gate = document.getElementById('admin-gate');
+            if (gate) gate.classList.remove('hidden');
+            setTimeout(() => document.getElementById('gate-pin').focus(), 100);
+        }
+
+        async function submitGatePin() {
+            const pin = document.getElementById('gate-pin').value;
+            const ok = await adminVerifyPin(pin);
+            if (ok) {
+                document.getElementById('admin-gate').classList.add('hidden');
+                initAdmin();
+            } else {
+                const err = document.getElementById('gate-error');
+                err.classList.remove('opacity-0');
+                err.classList.add('opacity-100');
+                setTimeout(() => err.classList.remove('opacity-100'), 1500);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof isAdminAuthed !== 'function' || !isAdminAuthed()) {
+                showAdminGate();
+                return;
+            }
+            initAdmin();
         });
 
         function setHeaderMode(mode) {
@@ -744,7 +845,7 @@
             document.getElementById('hf-header-bold').value = 'false';
             document.getElementById('hf-header-italic').value = 'false';
             setTextAlign('header', 'center');
-            toggleStyle('header', 'bold'); // reset UI state
+            toggleStyle('header', 'bold');
             document.getElementById('hf-header-bold').value = 'false';
             document.getElementById('hf-header-bold-btn').className = "px-2 py-0.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 border border-transparent";
             document.getElementById('hf-header-italic-btn').className = "px-2 py-0.5 text-xs italic rounded hover:bg-gray-700 text-gray-400 border border-transparent";
@@ -826,28 +927,24 @@
             if(!canvas) return;
             const ctx = canvas.getContext('2d');
             
-            // Fixed dimensions for 3_1x1 strip representation
             const outputWidth = 1200;
-            const pt = 750; // 5cm at 300dpi scale=2
-            const pb = 375; // 2.5cm at 300dpi scale=2
+            const pt = 750;
+            const pb = 375;
             const photoWidth = 1100;
             const photoHeight = 733;
-            const ps = 50; // padding between photos
+            const ps = 50;
             const count = 3;
             const totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
             
-            // Set canvas size for high-res drawing, scaled down via CSS
             canvas.width = outputWidth;
             canvas.height = totalHeight;
 
-            // Fill base template background
             const theme = document.getElementById('branding-theme-select').value;
             ctx.fillStyle = theme === 'dark' || theme === 'blue' ? '#000000' : 
                             theme === 'mint' ? '#F2FFF5' : 
                             theme === 'exhibition' ? '#F5F5F5' : '#FFFFFF';
             ctx.fillRect(0, 0, outputWidth, totalHeight);
 
-            // Draw placeholder photos
             for (let i = 0; i < count; i++) {
                 const y = pt + (i * photoHeight) + (i * ps);
                 ctx.fillStyle = '#CCCCCC';
@@ -858,7 +955,6 @@
                 ctx.fillText('Photo ' + (i+1), outputWidth/2, y + photoHeight/2 + 25);
             }
 
-            // Draw Header
             const hMode = document.getElementById('hf-header-text-ui').classList.contains('hidden') ? 'image' : 'text';
             if (hMode === 'text') {
                 const hText = document.getElementById('hf-header-text').value;
@@ -885,7 +981,6 @@
                 }
             }
 
-            // Draw Footer
             const fMode = document.getElementById('hf-footer-text-ui').classList.contains('hidden') ? 'image' : 'text';
             if (fMode === 'text') {
                 const fText = document.getElementById('hf-footer-text').value;
@@ -914,30 +1009,65 @@
         }
 
         function updateUI() {
-            const mode = Kiosk.mode;
-            document.getElementById('btn-normal').classList.toggle('border-accent-blue', mode === 'normal');
-            document.getElementById('btn-normal').classList.toggle('bg-accent-blue/10', mode === 'normal');
-            
-            document.getElementById('btn-event').classList.toggle('border-accent-blue', mode === 'event');
-            document.getElementById('btn-event').classList.toggle('bg-accent-blue/10', mode === 'event');
+            const mode = (typeof Kiosk !== 'undefined' && Kiosk.mode) ? Kiosk.mode : 'event';
+            const btnEvent = document.getElementById('btn-event');
+            const btnNormal = document.getElementById('btn-normal');
 
-            if (mode === 'event') {
-                document.getElementById('event-config-box').classList.remove('hidden');
-                document.getElementById('event-name').value = Kiosk.eventName;
-            } else {
-                document.getElementById('event-config-box').classList.add('hidden');
+            if (btnEvent) {
+                btnEvent.className = mode === 'event' 
+                    ? 'w-full p-4 border-2 border-accent-mint bg-accent-mint/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-all text-center' 
+                    : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
+            }
+            if (btnNormal) {
+                btnNormal.className = mode === 'normal' 
+                    ? 'w-full p-4 border-2 border-accent-blue bg-accent-blue/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-all text-center' 
+                    : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
+            }
+
+            const eventBox = document.getElementById('event-config-box');
+            if (eventBox) {
+                if (mode === 'event') {
+                    eventBox.classList.remove('hidden');
+                    document.getElementById('event-name').value = Kiosk.eventName || '';
+                } else {
+                    eventBox.classList.add('hidden');
+                }
             }
         }
 
         function setMode(mode) {
-            Kiosk.mode = mode;
-            updateUI();
-            showToast('Mode updated: ' + mode.toUpperCase());
+            if (typeof Kiosk !== 'undefined') {
+                Kiosk.mode = mode;
+                updateUI();
+                showToast('เปลี่ยนโหมดการทำงานเรียบร้อย: ' + (mode === 'event' ? 'Event Mode' : 'Normal Mode'));
+            }
+        }
+
+        function setPaperMode(mode) {
+            if (typeof Kiosk !== 'undefined') {
+                Kiosk.paperMode = mode;
+                updatePaperModeUI();
+                showToast('เปลี่ยนโหมดการพิมพ์เรียบร้อย ✓');
+            }
+        }
+
+        function updatePaperModeUI() {
+            var active = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
+            ['photo4x6_dual', 'photo2x6_single', 'thermal58', 'thermal80', 'thermal100', 'photo5x7'].forEach(function(m) {
+                var card = document.getElementById('pm-card-' + m);
+                if (card) {
+                    if (m === active) {
+                        card.className = 'paper-mode-card border-2 border-accent-mint bg-accent-mint/10 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all';
+                    } else {
+                        card.className = 'paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all hover:bg-gray-800';
+                    }
+                }
+            });
         }
 
         function saveEventConfig() {
             Kiosk.eventName = document.getElementById('event-name').value;
-            showToast('Event info saved');
+            showToast('บันทึกชื่อ Event เรียบร้อย');
         }
 
         function getPaper() {
@@ -947,29 +1077,26 @@
         function updatePaperUI() {
             const count = getPaper();
             const countEl = document.getElementById('paper-count');
-            countEl.innerText = count;
-            
-            if (count < 20) {
-                countEl.className = 'text-2xl font-bold text-accent-coral';
-            } else {
-                countEl.className = 'text-2xl font-bold text-accent-mint';
+            if (countEl) {
+                countEl.innerText = count;
+                countEl.className = count < 20 ? 'text-2xl font-bold text-accent-coral' : 'text-2xl font-bold text-accent-mint';
             }
         }
 
         function refillPaper() {
             localStorage.setItem('kiosk_paper', '100');
             updatePaperUI();
-            showToast('Paper refilled to 100');
+            showToast('Refilled paper stack (100 sheets)');
         }
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
+            if (!toast) return;
             toast.innerText = msg;
             toast.classList.remove('opacity-0');
             setTimeout(() => toast.classList.add('opacity-0'), 2000);
         }
 
-        // Phase 4: Fetch Analytics from Supabase
         async function fetchAnalytics() {
             try {
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/kiosk_sessions?select=kiosk_mode`, {
@@ -992,20 +1119,13 @@
                 document.getElementById('stat-revenue').innerText = '฿' + (normal * 100).toLocaleString();
 
             } catch (e) {
-                console.error("Analytics fetch error:", e);
-                const localSessions = JSON.parse(localStorage.getItem('local_kiosk_sessions') || '[]');
-                let total = localSessions.length;
-                let event = localSessions.filter(d => d.kiosk_mode === 'event').length;
-                let normal = localSessions.filter(d => d.kiosk_mode === 'normal').length;
-
-                document.getElementById('stat-total').innerText = total;
-                document.getElementById('stat-event').innerText = event;
-                document.getElementById('stat-normal').innerText = normal;
-                document.getElementById('stat-revenue').innerText = '฿' + (normal * 100).toLocaleString();
+                console.error('Analytics fetch failed:', e);
+                document.getElementById('stat-total').innerText = '0';
+                document.getElementById('stat-event').innerText = '0';
+                document.getElementById('stat-normal').innerText = '0';
+                document.getElementById('stat-revenue').innerText = '฿0';
             }
         }
-
-        // ======================== REDEEM CODE ADMIN ========================
 
         let allRedeemCodes = [];
         let lastBatchId = null;
@@ -1014,19 +1134,19 @@
             allRedeemCodes = await fetchRedeemCodes();
             
             const total = allRedeemCodes.length;
-            const usedCount = allRedeemCodes.filter(c => c.usedToday).length;
-            const availableCount = total - usedCount;
+            const now = new Date();
+            const usedCount = allRedeemCodes.filter(c => c.is_used).length;
+            const expiredCount = allRedeemCodes.filter(c => c.isExpired && !c.is_used).length;
+            const availableCount = total - usedCount - expiredCount;
 
             document.getElementById('rc-total').innerText = total;
             document.getElementById('rc-available').innerText = availableCount;
             document.getElementById('rc-used').innerText = usedCount;
 
-            // Find last batch
             if (allRedeemCodes.length > 0) {
                 lastBatchId = allRedeemCodes[0].batch_id;
             }
 
-            // Render code grid
             const grid = document.getElementById('code-grid');
             if (total === 0) {
                 grid.innerHTML = '<span class="text-gray-500 text-sm col-span-full">No codes yet. Click "Generate 50 Codes" to create your first batch.</span>';
@@ -1036,11 +1156,20 @@
             grid.innerHTML = '';
             allRedeemCodes.forEach(c => {
                 const chip = document.createElement('div');
-                chip.className = `px-2 py-1.5 rounded text-xs font-mono font-bold tracking-wide ${
-                    c.usedToday
-                        ? 'bg-accent-coral/20 text-accent-coral line-through opacity-60'
-                        : 'bg-accent-mint/20 text-accent-mint'
-                }`;
+                let cls, title;
+                if (c.is_used) {
+                    cls = 'bg-accent-coral/20 text-accent-coral line-through opacity-60';
+                    title = `Used on ${c.used_at ? new Date(c.used_at).toLocaleString('th-TH') : '?'}`;
+                } else if (c.isExpired) {
+                    cls = 'bg-gray-700 text-gray-500 line-through opacity-50';
+                    title = 'Expired';
+                } else {
+                    const expStr = c.expires_at ? new Date(c.expires_at).toLocaleDateString('th-TH') : '?';
+                    cls = 'bg-accent-mint/20 text-accent-mint';
+                    title = `Expires: ${expStr}`;
+                }
+                chip.className = `px-2 py-1.5 rounded text-xs font-mono font-bold tracking-wide cursor-default ${cls}`;
+                chip.title = title;
                 chip.innerText = c.code;
                 grid.appendChild(chip);
             });
@@ -1066,22 +1195,19 @@
         }
 
         function handlePrintCodes() {
-            // Get codes to print — latest batch or all available
             let codesToPrint = allRedeemCodes;
             if (lastBatchId) {
                 const batchCodes = allRedeemCodes.filter(c => c.batch_id === lastBatchId);
                 if (batchCodes.length > 0) codesToPrint = batchCodes;
             }
 
-            // Only print available (not used today)
-            codesToPrint = codesToPrint.filter(c => !c.usedToday);
+            codesToPrint = codesToPrint.filter(c => !c.is_used && !c.isExpired);
 
             if (codesToPrint.length === 0) {
                 showToast('No available codes to print');
                 return;
             }
 
-            // Build print window
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -1145,9 +1271,6 @@
             printWindow.document.close();
         }
 
-
-
-        // ======================== LAYOUT SIZES & THEME BUILDER ========================
         let currentThemeType = 'text';
 
         function setThemeType(type) {
@@ -1225,7 +1348,6 @@
             const list = document.getElementById('custom-themes-list');
             const brandingSelect = document.getElementById('branding-theme-select');
             
-            // Clean up old custom themes from select
             Array.from(brandingSelect.options).forEach(opt => {
                 if (opt.value.startsWith('custom_')) {
                     opt.remove();
@@ -1238,7 +1360,6 @@
             }
             list.innerHTML = '';
             themes.forEach(t => {
-                // Add to list
                 list.innerHTML += `
                     <div class="bg-gray-800 p-3 rounded-lg flex justify-between items-center border border-gray-700">
                         <div>
@@ -1248,7 +1369,6 @@
                         <button onclick="deleteCustomTheme('${t.id}')" class="text-gray-500 hover:text-accent-coral material-symbols-outlined transition-colors">delete</button>
                     </div>
                 `;
-                // Add to branding select
                 const option = document.createElement('option');
                 option.value = t.id;
                 option.text = `Custom: ${t.name}`;
@@ -1282,7 +1402,6 @@
             await insertCustomTheme(payload); 
             showToast('Theme saved successfully!');
             
-            // Reset
             document.getElementById('tb-name').value = '';
             document.getElementById('tb-png-base64').value = '';
             document.getElementById('tb-png-file').value = '';
@@ -1298,190 +1417,188 @@
             showToast('Theme deleted');
             loadCustomThemesAdmin();
         }
+
+        var currentPrinterConn = 'none';
+        var maxCopies = 1;
+        var allowCopyChoice = false;
+
+        function initPrinterConfig() {
+            var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            currentPrinterConn = saved.conn || 'none';
+            maxCopies = Math.min(parseInt(saved.maxCopies || '1'), 3);
+            allowCopyChoice = saved.allowCopyChoice || false;
+            document.getElementById('max-copies-display').innerText = maxCopies;
+            updateCopyChoiceToggle();
+            if (currentPrinterConn !== 'none') {
+                setPrinterConnUI(currentPrinterConn);
+                if (currentPrinterConn === 'wifi') {
+                    document.getElementById('printer-ip-input').value = saved.wifiIp || '';
+                    document.getElementById('printer-port-input').value = saved.wifiPort || 9100;
+                }
+                setPrinterStatusConnected(currentPrinterConn, saved.deviceName || '');
+            }
+        }
+
+        function setPrinterConn(type) {
+            currentPrinterConn = type;
+            setPrinterConnUI(type);
+        }
+
+        function setPrinterConnUI(type) {
+            document.querySelectorAll('.printer-conn-btn').forEach(function(b) {
+                b.classList.remove('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
+                b.classList.add('border-gray-600', 'text-gray-300');
+            });
+            var btn = document.getElementById('pconn-' + type);
+            if (btn) {
+                btn.classList.add('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
+                btn.classList.remove('border-gray-600', 'text-gray-300');
+            }
+            document.querySelectorAll('.printer-settings-panel').forEach(function(p) { p.classList.add('hidden'); });
+            var panel = document.getElementById('printer-' + type + '-settings');
+            if (panel) panel.classList.remove('hidden');
+        }
+
+        async function connectUSBPrinter() {
+            var statusEl = document.getElementById('usb-printer-status');
+            if (!('usb' in navigator)) {
+                statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ WebUSB — กรุณาใช้ Chrome บน PC/Mac</span>';
+                return;
+            }
+            try {
+                statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังค้นหาเครื่องพิมพ์ USB...</span>';
+                var device = await navigator.usb.requestDevice({ filters: [] });
+                await device.open();
+                var name = device.productName || 'USB Printer';
+                statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
+                setPrinterStatusConnected('usb', name);
+                var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+                saved.conn = 'usb'; saved.deviceName = name;
+                localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+            } catch(e) {
+                statusEl.innerHTML = '<span class="text-gray-500">ยกเลิก หรือไม่พบเครื่องพิมพ์</span>';
+            }
+        }
+
+        async function connectBluetoothPrinter() {
+            var statusEl = document.getElementById('bt-printer-status');
+            if (!('bluetooth' in navigator)) {
+                statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth — ลองใช้ Chrome บน Android หรือ PC</span>';
+                return;
+            }
+            try {
+                statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังสแกน Bluetooth...</span>';
+                var device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['generic_access']
+                });
+                var name = device.name || 'Bluetooth Printer';
+                statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
+                setPrinterStatusConnected('bluetooth', name);
+                var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+                saved.conn = 'bluetooth'; saved.deviceName = name;
+                localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+            } catch(e) {
+                if (e.name !== 'NotFoundError') {
+                    statusEl.innerHTML = '<span class="text-red-400">เกิดข้อผิดพลาด: ' + e.message + '</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="text-gray-500">ยกเลิกการเลือก</span>';
+                }
+            }
+        }
+
+        function savePrinterWifiConfig() {
+            var ip = document.getElementById('printer-ip-input').value.trim();
+            var port = document.getElementById('printer-port-input').value.trim() || '9100';
+            var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            saved.wifiIp = ip; saved.wifiPort = port;
+            localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+        }
+
+        async function testWifiPrinter() {
+            var ip = document.getElementById('printer-ip-input').value.trim();
+            var statusEl = document.getElementById('wifi-printer-status');
+            if (!ip) { statusEl.innerHTML = '<span class="text-red-400">กรุณากรอก IP ก่อน</span>'; return; }
+            statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังทดสอบการเชื่อมต่อ...</span>';
+            try {
+                var ctrl = new AbortController();
+                setTimeout(function() { ctrl.abort(); }, 3000);
+                await fetch('http://' + ip + '/', { mode: 'no-cors', signal: ctrl.signal });
+                statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
+                setPrinterStatusConnected('wifi', ip);
+            } catch(e) {
+                if (e.name === 'AbortError') {
+                    statusEl.innerHTML = '<span class="text-red-400">⚠️ ไม่ตอบสนอง — ตรวจสอบ IP และเครือข่าย</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
+                    setPrinterStatusConnected('wifi', ip);
+                }
+            }
+        }
+
+        function setPrinterStatusConnected(type, name) {
+            var dot = document.getElementById('printer-status-dot');
+            var label = document.getElementById('printer-status-label');
+            var detail = document.getElementById('printer-status-detail');
+            var icons = { usb: 'USB', bluetooth: 'Bluetooth', wifi: 'Wi-Fi / Network' };
+            dot.className = 'w-3 h-3 rounded-full bg-green-400 flex-shrink-0 animate-pulse';
+            label.innerText = 'เชื่อมต่อแล้ว — ' + (icons[type] || type);
+            detail.innerText = name ? 'อุปกรณ์: ' + name : 'พร้อมพิมพ์';
+        }
+
+        function sendTestPrint() {
+            var cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            if (!cfg.conn || cfg.conn === 'none') {
+                showToast('กรุณาเชื่อมต่อเครื่องพิมพ์ก่อน');
+                return;
+            }
+            showToast('ส่งคำสั่งทดสอบการพิมพ์แล้ว ✓');
+            window.print();
+        }
+
+        function adjustMaxCopies(delta) {
+            maxCopies = Math.max(1, Math.min(3, maxCopies + delta));
+            document.getElementById('max-copies-display').innerText = maxCopies;
+        }
+
+        function toggleCopyChoice() {
+            allowCopyChoice = !allowCopyChoice;
+            updateCopyChoiceToggle();
+        }
+
+        function updateCopyChoiceToggle() {
+            var btn = document.getElementById('toggle-copy-choice');
+            var knob = document.getElementById('toggle-copy-knob');
+            var lbl = document.getElementById('copy-choice-label');
+            if (allowCopyChoice) {
+                btn.style.background = 'rgba(186,255,102,0.15)';
+                btn.style.borderColor = '#BAFF66';
+                knob.style.transform = 'translateX(20px)';
+                knob.style.background = '#BAFF66';
+                lbl.innerText = 'เปิด — ผู้ใช้เลือกจำนวนสำเนาก่อนพิมพ์';
+                lbl.style.color = '#BAFF66';
+            } else {
+                btn.style.background = '#374151';
+                btn.style.borderColor = '#4b5563';
+                knob.style.transform = 'translateX(0)';
+                knob.style.background = '#9ca3af';
+                lbl.innerText = 'ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง';
+                lbl.style.color = '#9ca3af';
+            }
+        }
+
+        function savePrinterConfig() {
+            var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            saved.conn = currentPrinterConn;
+            saved.maxCopies = maxCopies;
+            saved.allowCopyChoice = allowCopyChoice;
+            if (currentPrinterConn === 'wifi') {
+                saved.wifiIp = (document.getElementById('printer-ip-input').value || '').trim();
+                saved.wifiPort = (document.getElementById('printer-port-input').value || '9100').trim();
+            }
+            localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+            showToast('บันทึกการตั้งค่าเครื่องพิมพ์เรียบร้อย ✓');
+        }
     </script>
-<script>
-// ======================== PRINTER CONFIGURATION ========================
-var currentPrinterConn = 'none';
-var maxCopies = 1;
-var allowCopyChoice = false;
-
-function initPrinterConfig() {
-    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-    currentPrinterConn = saved.conn || 'none';
-    maxCopies = Math.min(parseInt(saved.maxCopies || '1'), 3);
-    allowCopyChoice = saved.allowCopyChoice || false;
-    document.getElementById('max-copies-display').innerText = maxCopies;
-    updateCopyChoiceToggle();
-    if (currentPrinterConn !== 'none') {
-        setPrinterConnUI(currentPrinterConn);
-        if (currentPrinterConn === 'wifi') {
-            document.getElementById('printer-ip-input').value = saved.wifiIp || '';
-            document.getElementById('printer-port-input').value = saved.wifiPort || 9100;
-        }
-        setPrinterStatusConnected(currentPrinterConn, saved.deviceName || '');
-    }
-}
-
-function setPrinterConn(type) {
-    currentPrinterConn = type;
-    setPrinterConnUI(type);
-}
-
-function setPrinterConnUI(type) {
-    document.querySelectorAll('.printer-conn-btn').forEach(function(b) {
-        b.classList.remove('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
-        b.classList.add('border-gray-600', 'text-gray-300');
-    });
-    var btn = document.getElementById('pconn-' + type);
-    if (btn) {
-        btn.classList.add('border-accent-blue', 'bg-gray-700', 'text-accent-blue');
-        btn.classList.remove('border-gray-600', 'text-gray-300');
-    }
-    document.querySelectorAll('.printer-settings-panel').forEach(function(p) { p.classList.add('hidden'); });
-    var panel = document.getElementById('printer-' + type + '-settings');
-    if (panel) panel.classList.remove('hidden');
-}
-
-async function connectUSBPrinter() {
-    var statusEl = document.getElementById('usb-printer-status');
-    if (!('usb' in navigator)) {
-        statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ WebUSB — กรุณาใช้ Chrome บน PC/Mac</span>';
-        return;
-    }
-    try {
-        statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังค้นหาเครื่องพิมพ์ USB...</span>';
-        var device = await navigator.usb.requestDevice({ filters: [] });
-        await device.open();
-        var name = device.productName || 'USB Printer';
-        statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
-        setPrinterStatusConnected('usb', name);
-        var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-        saved.conn = 'usb'; saved.deviceName = name;
-        localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
-    } catch(e) {
-        statusEl.innerHTML = '<span class="text-gray-500">ยกเลิก หรือไม่พบเครื่องพิมพ์</span>';
-    }
-}
-
-async function connectBluetoothPrinter() {
-    var statusEl = document.getElementById('bt-printer-status');
-    if (!('bluetooth' in navigator)) {
-        statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth — ลองใช้ Chrome บน Android หรือ PC</span>';
-        return;
-    }
-    try {
-        statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังสแกน Bluetooth...</span>';
-        var device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: ['generic_access']
-        });
-        var name = device.name || 'Bluetooth Printer';
-        statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
-        setPrinterStatusConnected('bluetooth', name);
-        var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-        saved.conn = 'bluetooth'; saved.deviceName = name;
-        localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
-    } catch(e) {
-        if (e.name !== 'NotFoundError') {
-            statusEl.innerHTML = '<span class="text-red-400">เกิดข้อผิดพลาด: ' + e.message + '</span>';
-        } else {
-            statusEl.innerHTML = '<span class="text-gray-500">ยกเลิกการเลือก</span>';
-        }
-    }
-}
-
-function savePrinterWifiConfig() {
-    var ip = document.getElementById('printer-ip-input').value.trim();
-    var port = document.getElementById('printer-port-input').value.trim() || '9100';
-    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-    saved.wifiIp = ip; saved.wifiPort = port;
-    localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
-}
-
-async function testWifiPrinter() {
-    var ip = document.getElementById('printer-ip-input').value.trim();
-    var statusEl = document.getElementById('wifi-printer-status');
-    if (!ip) { statusEl.innerHTML = '<span class="text-red-400">กรุณากรอก IP ก่อน</span>'; return; }
-    statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังทดสอบการเชื่อมต่อ...</span>';
-    try {
-        var ctrl = new AbortController();
-        setTimeout(function() { ctrl.abort(); }, 3000);
-        await fetch('http://' + ip + '/', { mode: 'no-cors', signal: ctrl.signal });
-        statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
-        setPrinterStatusConnected('wifi', ip);
-    } catch(e) {
-        if (e.name === 'AbortError') {
-            statusEl.innerHTML = '<span class="text-red-400">⚠️ ไม่ตอบสนอง — ตรวจสอบ IP และเครือข่าย</span>';
-        } else {
-            statusEl.innerHTML = '<span class="text-green-400">✓ พบอุปกรณ์ที่ ' + ip + '</span>';
-            setPrinterStatusConnected('wifi', ip);
-        }
-    }
-}
-
-function setPrinterStatusConnected(type, name) {
-    var dot = document.getElementById('printer-status-dot');
-    var label = document.getElementById('printer-status-label');
-    var detail = document.getElementById('printer-status-detail');
-    var icons = { usb: 'USB', bluetooth: 'Bluetooth', wifi: 'Wi-Fi / Network' };
-    dot.className = 'w-3 h-3 rounded-full bg-green-400 flex-shrink-0 animate-pulse';
-    label.innerText = 'เชื่อมต่อแล้ว — ' + (icons[type] || type);
-    detail.innerText = name ? 'อุปกรณ์: ' + name : 'พร้อมพิมพ์';
-}
-
-function sendTestPrint() {
-    var cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-    if (!cfg.conn || cfg.conn === 'none') {
-        showToast('กรุณาเชื่อมต่อเครื่องพิมพ์ก่อน');
-        return;
-    }
-    showToast('ส่งคำสั่งทดสอบการพิมพ์แล้ว ✓');
-    window.print();
-}
-
-function adjustMaxCopies(delta) {
-    maxCopies = Math.max(1, Math.min(3, maxCopies + delta));
-    document.getElementById('max-copies-display').innerText = maxCopies;
-}
-
-function toggleCopyChoice() {
-    allowCopyChoice = !allowCopyChoice;
-    updateCopyChoiceToggle();
-}
-
-function updateCopyChoiceToggle() {
-    var btn = document.getElementById('toggle-copy-choice');
-    var knob = document.getElementById('toggle-copy-knob');
-    var lbl = document.getElementById('copy-choice-label');
-    if (allowCopyChoice) {
-        btn.style.background = 'rgba(186,255,102,0.15)';
-        btn.style.borderColor = '#BAFF66';
-        knob.style.transform = 'translateX(20px)';
-        knob.style.background = '#BAFF66';
-        lbl.innerText = 'เปิด — ผู้ใช้เลือกจำนวนสำเนาก่อนพิมพ์';
-        lbl.style.color = '#BAFF66';
-    } else {
-        btn.style.background = '#374151';
-        btn.style.borderColor = '#4b5563';
-        knob.style.transform = 'translateX(0)';
-        knob.style.background = '#9ca3af';
-        lbl.innerText = 'ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง';
-        lbl.style.color = '#9ca3af';
-    }
-}
-
-function savePrinterConfig() {
-    var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-    saved.conn = currentPrinterConn;
-    saved.maxCopies = maxCopies;
-    saved.allowCopyChoice = allowCopyChoice;
-    if (currentPrinterConn === 'wifi') {
-        saved.wifiIp = (document.getElementById('printer-ip-input').value || '').trim();
-        saved.wifiPort = (document.getElementById('printer-port-input').value || '9100').trim();
-    }
-    localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
-    showToast('บันทึกการตั้งค่าเครื่องพิมพ์เรียบร้อย ✓');
-}
-</script>
 </body>
 </html>

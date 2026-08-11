@@ -8,32 +8,42 @@ const SUPABASE_BUCKET = 'photobooth';
 
 const Session = {
     set(key, val) {
-        localStorage.setItem('pb_' + key, JSON.stringify(val));
+        if (typeof window !== 'undefined') {
+            window['_pb_mem_' + key] = val;
+        }
+        try {
+            localStorage.setItem('pb_' + key, JSON.stringify(val));
+        } catch (e) {
+            console.warn('localStorage setItem failed for pb_' + key + ':', e);
+        }
     },
     get(key) {
-        const val = localStorage.getItem('pb_' + key);
-        return val ? JSON.parse(val) : null;
+        try {
+            const val = localStorage.getItem('pb_' + key);
+            if (val) return JSON.parse(val);
+        } catch (e) {}
+        if (typeof window !== 'undefined' && window['_pb_mem_' + key] !== undefined) {
+            return window['_pb_mem_' + key];
+        }
+        return null;
     },
     clear() {
-        const lang = localStorage.getItem('pb_lang');
-        const cam = localStorage.getItem('pb_camera_id');
-        const kMode = localStorage.getItem('kiosk_mode');
-        const kEvent = localStorage.getItem('kiosk_event_name');
-        
-        // Preserve ALL branding keys before clearing
-        const brandingKeys = Object.keys(localStorage).filter(k => k.startsWith('kiosk_branding_'));
-        const brandingData = {};
-        brandingKeys.forEach(k => { brandingData[k] = localStorage.getItem(k); });
-        
+        if (typeof window !== 'undefined') {
+            Object.keys(window).forEach(k => {
+                if (k.startsWith('_pb_mem_')) delete window[k];
+            });
+        }
+        // Session data = everything NOT prefixed kiosk_/pb_lang/pb_camera_id.
+        // Preserve ALL kiosk_* (operating mode, paper, printer config, branding, custom themes)
+        // so admin settings survive idle-timeouts and new sessions.
+        const keep = {};
+        Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('kiosk_') || k === 'pb_lang' || k === 'pb_camera_id') {
+                keep[k] = localStorage.getItem(k);
+            }
+        });
         localStorage.clear();
-        
-        if (lang) localStorage.setItem('pb_lang', lang);
-        if (cam) localStorage.setItem('pb_camera_id', cam);
-        if (kMode) localStorage.setItem('kiosk_mode', kMode);
-        if (kEvent) localStorage.setItem('kiosk_event_name', kEvent);
-        
-        // Restore branding keys
-        Object.entries(brandingData).forEach(([k, v]) => localStorage.setItem(k, v));
+        Object.entries(keep).forEach(([k, v]) => localStorage.setItem(k, v));
     }
 };
 
@@ -41,15 +51,119 @@ const Kiosk = {
     get mode() { return localStorage.getItem('kiosk_mode') || 'normal'; },
     set mode(v) { localStorage.setItem('kiosk_mode', v); },
     get eventName() { return localStorage.getItem('kiosk_event_name') || ''; },
-    set eventName(v) { localStorage.setItem('kiosk_event_name', v); }
+    set eventName(v) { localStorage.setItem('kiosk_event_name', v); },
+    get paperMode() { return localStorage.getItem('kiosk_paper_mode') || 'photo4x6_dual'; },
+    set paperMode(v) { localStorage.setItem('kiosk_paper_mode', v); }
 };
 
-['layout', 'photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl'].forEach(key => {
+['layout', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter'].forEach(key => {
     Object.defineProperty(Session, key, {
         get: function() { return this.get(key); },
         set: function(v) { this.set(key, v); }
     });
 });
+
+// ============================================================
+// INDEXEDDB STORAGE for large payloads (photos, composed result)
+// localStorage quota (~5MB) is too small for 4 base64 photos +
+// the composed strip + dithered PNG. Big payloads live in IDB.
+// ============================================================
+const PB_DB = (() => {
+    const DB_NAME = 'photobooth';
+    const STORE = 'kv';
+    let dbPromise = null;
+
+    function open() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) { reject(new Error('IndexedDB not supported')); return; }
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(STORE)) {
+                    req.result.createObjectStore(STORE);
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+        return dbPromise;
+    }
+
+    async function set(key, val) {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).put(val, key);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function get(key) {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readonly');
+            const req = tx.objectStore(STORE).get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function del(key) {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).delete(key);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function clear() {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).clear();
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    return { set, get, del, clear };
+})();
+
+// Async variants of Session for LARGE keys (photos / composed result).
+// Primary: IndexedDB. Fallback: localStorage (for older cached sessions).
+const SessionAsync = {
+    // Large payloads that must NOT go through localStorage (quota)
+    largeKeys: ['raw_photos', 'photos', 'result', 'dithered'],
+    async set(key, val) {
+        window['_pb_mem_' + key] = val;
+        if (this.largeKeys.includes(key)) {
+            await PB_DB.set(key, val).catch(e => console.warn('IDB set failed for', key, e));
+            try { localStorage.setItem('pb_' + key, JSON.stringify(val)); }
+            catch (e) { /* quota exceeded - IDB is the source of truth */ }
+        } else {
+            Session.set(key, val);
+        }
+    },
+    async get(key) {
+        if (this.largeKeys.includes(key)) {
+            try {
+                const idbVal = await PB_DB.get(key);
+                if (idbVal !== undefined) { window['_pb_mem_' + key] = idbVal; return idbVal; }
+            } catch (e) { console.warn('IDB get failed for', key, e); }
+            const lsVal = Session.get(key);
+            if (lsVal) return lsVal;
+            return window['_pb_mem_' + key] !== undefined ? window['_pb_mem_' + key] : null;
+        }
+        return Session.get(key);
+    },
+    async clear() {
+        for (const k of this.largeKeys) { await PB_DB.del(k).catch(() => {}); }
+        Session.clear();
+    }
+};
 
 const i18n = {
     "en": {
@@ -213,32 +327,136 @@ class IdleTimer {
     }
 }
 
-class CameraManager {
-    constructor(videoEl) {
-        this.videoEl = videoEl;
-        this.stream = null;
-    }
-    async start(deviceId = null) {
-        try {
-            const constraints = { video: { width: { ideal: 1920 }, height: { ideal: 1080 } } };
-            if (deviceId) constraints.video.deviceId = { exact: deviceId };
-            else constraints.video.facingMode = 'user';
-            
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            this.videoEl.srcObject = this.stream;
-            this.videoEl.play();
-            return true;
-        } catch (e) {
-            console.error(e);
-            return false;
+// ============================================================
+// ESC/POS PRINTER (WebUSB) - real printer output for thermal modes
+// ============================================================
+const ESC_POS = {
+    // Printer dot widths per paper mode (common 58mm/80mm/100mm heads)
+    dotWidth: { thermal58: 384, thermal80: 576, thermal100: 832 },
+    // Max printable dots (head height) - keep conservative for roll printers
+    maxHeightDots: 40000,
+
+    // Convert a canvas (dithered B&W preferred) to a monochrome raster
+    // scaled to target printer width. Returns { dotsPerLine, bytes, width, height }
+    rasterize(canvas, targetWidth) {
+        const srcW = canvas.width, srcH = canvas.height;
+        const scale = targetWidth / srcW;
+        const outW = Math.round(srcW * scale);
+        const outH = Math.round(srcH * scale);
+        // floor to byte boundary per line
+        const paddedW = Math.ceil(outW / 8) * 8;
+
+        const tmp = document.createElement('canvas');
+        tmp.width = outW;
+        tmp.height = outH;
+        const ctx = tmp.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, outW, outH);
+        const imgData = ctx.getImageData(0, 0, outW, outH);
+        const d = imgData.data;
+
+        const bytesPerLine = paddedW / 8;
+        const data = new Uint8Array(outH * bytesPerLine);
+        for (let y = 0; y < outH; y++) {
+            for (let x = 0; x < outW; x++) {
+                const lum = (d[(y * outW + x) * 4] * 0.299 +
+                            d[(y * outW + x) * 4 + 1] * 0.587 +
+                            d[(y * outW + x) * 4 + 2] * 0.114);
+                // thermal printers burn the dot -> "dark pixel" = 0 bit
+                if (lum < 128) {
+                    const byteIdx = y * bytesPerLine + (x >> 3);
+                    data[byteIdx] |= (0x80 >> (x & 7));
+                }
+            }
         }
-    }
-    stop() {
-        if (this.stream) {
-            this.stream.getTracks().forEach(t => t.stop());
-            this.stream = null;
+        return { width: outW, height: outH, paddedW, bytesPerLine, data };
+    },
+
+    // Build full ESC/POS byte payload for raster bit image (GS v 0)
+    buildPayload(canvas, paperMode, copies = 1) {
+        const width = this.dotWidth[paperMode] || 384;
+        const raster = this.rasterize(canvas, width);
+        const bytesPerLine = raster.bytesPerLine;
+        const xL = bytesPerLine & 0xFF, xH = (bytesPerLine >> 8) & 0xFF;
+        const yL = raster.height & 0xFF, yH = (raster.height >> 8) & 0xFF;
+
+        const header = [0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH];
+        const chunk = new Uint8Array(header.length + raster.data.length);
+        chunk.set(header, 0);
+        chunk.set(raster.data, header.length);
+
+        // Compose final payload: init + raster (xN) + feed + cut
+        const feed = [0x1D, 0x64, 0x03];  // feed 3 dots... use GS L 3 lines
+        const cut = [0x1D, 0x56, 0x41, 0x30]; // partial cut
+        let totalLen = chunk.length * copies + 3 + cut.length;
+        const out = new Uint8Array(totalLen);
+        let off = 0;
+        for (let i = 0; i < copies; i++) {
+            out.set(chunk, off); off += chunk.length;
         }
+        out.set(feed, off); off += feed.length;
+        out.set(cut, off);
+        return out;
     }
+};
+
+const USBPrinter = {
+    connected: null,
+    endpoint: null,
+    async connect() {
+        if (this.connected) return this.connected;
+        if (!('usb' in navigator)) throw new Error('WebUSB not supported');
+        const device = await navigator.usb.requestDevice({ filters: [] });
+        await device.open();
+        // Claim first interface with a bulk OUT endpoint
+        let endpoint = null;
+        for (const config of device.configurations) {
+            for (const iface of config.interfaces) {
+                if (iface.alternate) { try { await device.selectAlternateInterface(iface.interfaceNumber, 0); } catch (e) {} }
+                for (const ep of iface.endpoints) {
+                    if (ep.direction === 'out' && ep.type === 'bulk') { endpoint = ep.endpointNumber; break; }
+                }
+                if (endpoint) { await device.claimInterface(iface.interfaceNumber); break; }
+            }
+            if (endpoint) break;
+        }
+        if (!endpoint) throw new Error('No bulk OUT endpoint found');
+        this.connected = device;
+        this.endpoint = endpoint;
+        return device;
+    },
+    async send(bytes) {
+        const device = this.connected || await this.connect();
+        await device.transferOut(this.endpoint, bytes);
+    },
+    async disconnect() {
+        if (this.connected) { try { await this.connected.close(); } catch (e) {} }
+        this.connected = null;
+        this.endpoint = null;
+    }
+};
+
+// Print the dithered result to a real thermal printer via WebUSB.
+// Falls back to the browser print dialog if WebUSB is unavailable/denied.
+async function printViaUSB(paperMode, copies = 1) {
+    if (!ESC_POS.dotWidth[paperMode]) throw new Error('Paper mode not supported by ESC/POS');
+    const ditheredCanvas = await dataUrlToCanvas(Session.dithered || Session.result);
+    const payload = ESC_POS.buildPayload(ditheredCanvas, paperMode, copies);
+    await USBPrinter.connect();
+    await USBPrinter.send(payload);
+}
+
+function dataUrlToCanvas(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = img.width; c.height = img.height;
+            c.getContext('2d').drawImage(img, 0, 0);
+            resolve(c);
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = dataUrl;
+    });
 }
 
 function floydSteinbergDither(imageData) {
@@ -270,7 +488,31 @@ function floydSteinbergDither(imageData) {
     return imageData;
 }
 
-function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '3_1x1') {
+// Run Floyd-Steinberg dithering off the main thread via a Web Worker.
+// Falls back to synchronous processing when workers are unavailable.
+let ditherWorker = null;
+function ditherImageData(imageData) {
+    return new Promise((resolve) => {
+        if (ditherWorker === null && typeof Worker !== 'undefined') {
+            try {
+                ditherWorker = new Worker('/dither-worker.js');
+            } catch (e) { ditherWorker = false; }
+        }
+        if (ditherWorker) {
+            const buffer = imageData.data.buffer.slice(0);
+            const w = imageData.width, h = imageData.height;
+            ditherWorker.onmessage = (e) => {
+                resolve(new ImageData(new Uint8ClampedArray(e.data.buffer), e.data.width, e.data.height));
+            };
+            ditherWorker.onerror = () => { ditherWorker = false; resolve(floydSteinbergDither(imageData)); };
+            ditherWorker.postMessage({ width: w, height: h, buffer }, [buffer]);
+        } else {
+            resolve(floydSteinbergDither(imageData));
+        }
+    });
+}
+
+function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '3_1x1', layoutSize = null) {
     const photoCount = photos.length;
     const scale = outputWidth / 600;
     
@@ -282,6 +524,17 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
     let pb = 187.5 * scale; // padding bottom (2.5cm)
     let px = 24 * scale; // padding x (left/right)
     let ps = 16 * scale; // photo spacing
+
+    // Admin-configured Layout Sizes (physical cm) are honored for the strip dimensions
+    let forcedHeight = null;
+    if (layoutSize && layoutSize.width_cm && layoutSize.height_cm) {
+        const pxPerCm = outputWidth / layoutSize.width_cm;
+        pt = 5 * pxPerCm;
+        pb = 2.5 * pxPerCm;
+        px = 0.32 * pxPerCm;
+        ps = 0.21 * pxPerCm;
+        forcedHeight = Math.round(layoutSize.height_cm * pxPerCm);
+    }
     
     let bg = '#FFFFFF';
     let text = '#000000';
@@ -321,7 +574,16 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
         } else {
             photoHeight = photoWidth; // 1:1
         }
-        totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+        if (forcedHeight) {
+            const availH = forcedHeight - pt - pb - (ps * (count - 1));
+            if (photoHeight > 0 && availH / count < photoHeight) {
+                photoHeight = Math.max(1, Math.floor(availH / count));
+                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : photoHeight;
+            }
+            totalHeight = forcedHeight;
+        } else {
+            totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+        }
         
         for (let i = 0; i < count; i++) {
             coords.push({ x: px, y: pt + i * (photoHeight + ps) });
@@ -333,7 +595,16 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
         } else {
             photoHeight = photoWidth; // 1:1
         }
-        totalHeight = pt + pb + (photoHeight * 2) + ps;
+        if (forcedHeight) {
+            const availH = forcedHeight - pt - pb - ps;
+            if (availH / 2 < photoHeight) {
+                photoHeight = Math.max(1, Math.floor(availH / 2));
+                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : photoHeight;
+            }
+            totalHeight = forcedHeight;
+        } else {
+            totalHeight = pt + pb + (photoHeight * 2) + ps;
+        }
 
         coords.push({ x: px, y: pt }); // Top-Left
         coords.push({ x: px + photoWidth + ps, y: pt }); // Top-Right
@@ -342,7 +613,13 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
     } else {
         photoWidth = availableWidth;
         photoHeight = photoWidth;
-        totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+        if (forcedHeight) {
+            const availH = forcedHeight - pt - pb - (ps * (count - 1));
+            photoHeight = Math.max(1, Math.floor(availH / count));
+            totalHeight = forcedHeight;
+        } else {
+            totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+        }
         for (let i = 0; i < count; i++) {
             coords.push({ x: px, y: pt + i * (photoHeight + ps) });
         }
@@ -763,6 +1040,216 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
     });
 }
 
+// ============================================================
+// DUAL 2x6 STRIP ON 4x6" CANVAS (1200 x 1800 px)
+// ============================================================
+function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThemeObj = null, layoutStr = '4', layoutSize = null) {
+    const scale = outputWidth / 1200;
+    const canvasWidth = outputWidth;
+    const canvasHeight = Math.round(outputWidth * (1800 / 1200));
+    const stripWidth = canvasWidth / 2;
+
+    let pt = 60 * scale;
+    let pb = 50 * scale;
+    let px = 18 * scale;
+    let ps = 10 * scale;
+
+    // Admin-configured Layout Sizes (physical cm per strip) drive paddings
+    if (layoutSize && layoutSize.width_cm && layoutSize.height_cm) {
+        const pxPerCm = stripWidth / layoutSize.width_cm;
+        pt = Math.round(0.55 * pxPerCm);
+        pb = Math.round(0.45 * pxPerCm);
+        px = Math.round(0.12 * pxPerCm);
+        ps = Math.round(0.09 * pxPerCm);
+    }
+
+    let bg = '#FFFFFF';
+    let text = '#000000';
+
+    if (customThemeObj && customThemeObj.theme_type === 'text') {
+        bg = customThemeObj.bg_color || '#FFFFFF';
+        text = customThemeObj.text_color || '#000000';
+    } else if (templateName === 'dark') {
+        bg = '#F9F9F9';
+    }
+
+    const availW = stripWidth - px * 2;
+    const availH = canvasHeight - pt - pb;
+
+    let photoCount = photos.length;
+    let countStr = String(photoCount);
+    if (layoutStr && layoutStr.includes('_')) {
+        countStr = layoutStr.split('_')[0];
+    } else if (layoutStr && layoutStr.includes('-cut')) {
+        countStr = layoutStr.split('-')[0];
+    }
+    const count = parseInt(countStr, 10) || photoCount || 4;
+
+    let photoWidth = availW;
+    let photoHeight = Math.floor((availH - ps * (count - 1)) / count);
+
+    let leftCoords = [];
+    let rightCoords = [];
+
+    for (let i = 0; i < count; i++) {
+        const yPos = pt + i * (photoHeight + ps);
+        leftCoords.push({ x: px, y: yPos });
+        rightCoords.push({ x: stripWidth + px, y: yPos });
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    return new Promise((resolve) => {
+        let loaded = 0;
+        const images = [];
+
+        if (photos.length === 0) {
+            ctx.fillStyle = text;
+            ctx.font = `600 ${24*scale}px "Inter", "Prompt", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('NO PHOTOS', canvasWidth / 2, canvasHeight / 2);
+            resolve(canvas);
+            return;
+        }
+
+        photos.forEach((src, i) => {
+            const img = new Image();
+            img.onload = () => {
+                images[i] = img;
+                checkLoaded();
+            };
+            img.onerror = () => {
+                images[i] = null;
+                checkLoaded();
+            };
+
+            function checkLoaded() {
+                loaded++;
+                if (loaded === photos.length) {
+                    (async () => {
+                        images.forEach((im, idx) => {
+                            if (!im || idx >= count) return;
+
+                            const imgRatio = im.width / im.height;
+                            const boxRatio = photoWidth / photoHeight;
+                            let srcX = 0, srcY = 0, srcW = im.width, srcH = im.height;
+
+                            if (imgRatio > boxRatio) {
+                                srcW = im.height * boxRatio;
+                                srcX = (im.width - srcW) / 2;
+                            } else {
+                                srcH = im.width / boxRatio;
+                                srcY = (im.height - srcH) / 2;
+                            }
+
+                            // Left Strip
+                            const lx = leftCoords[idx].x;
+                            const ly = leftCoords[idx].y;
+                            ctx.drawImage(im, srcX, srcY, srcW, srcH, lx, ly, photoWidth, photoHeight);
+                            ctx.strokeStyle = '#000000';
+                            ctx.lineWidth = 1.5 * scale;
+                            ctx.strokeRect(lx, ly, photoWidth, photoHeight);
+
+                            // Right Strip (Identical Dual Strip)
+                            const rx = rightCoords[idx].x;
+                            const ry = rightCoords[idx].y;
+                            ctx.drawImage(im, srcX, srcY, srcW, srcH, rx, ry, photoWidth, photoHeight);
+                            ctx.strokeRect(rx, ry, photoWidth, photoHeight);
+                        });
+
+                        // Middle Cut Line
+                        ctx.strokeStyle = '#CCCCCC';
+                        ctx.lineWidth = 1.5 * scale;
+                        ctx.setLineDash([8 * scale, 8 * scale]);
+                        ctx.beginPath();
+                        ctx.moveTo(stripWidth, 0);
+                        ctx.lineTo(stripWidth, canvasHeight);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // Headers & Footers on Left and Right
+                        const drawStripHeaderFooter = (stripOffsetX) => {
+                            ctx.fillStyle = text;
+                            ctx.textAlign = 'center';
+
+                            if (templateName === 'light') {
+                                ctx.font = `800 ${16*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('MEMORIES', stripOffsetX + stripWidth / 2, canvasHeight - pb / 2);
+                                const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.');
+                                ctx.font = `500 ${9*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillStyle = '#666666';
+                                ctx.fillText(dateStr, stripOffsetX + stripWidth / 2, canvasHeight - pb / 2 + 14*scale);
+                            } else if (templateName === 'dark') {
+                                ctx.fillStyle = '#000000';
+                                ctx.fillRect(stripOffsetX + px, 12*scale, availW, 36*scale);
+                                ctx.fillStyle = '#FFFFFF';
+                                ctx.font = `800 ${18*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('MEMORIES', stripOffsetX + stripWidth / 2, 12*scale + 25*scale);
+                            } else if (templateName === 'mint') {
+                                ctx.font = `600 ${12*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('memories.com', stripOffsetX + stripWidth / 2, 32*scale);
+                                ctx.font = `500 ${10*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('captured moments.', stripOffsetX + stripWidth / 2, canvasHeight - 15*scale);
+                            } else if (templateName === 'blue') {
+                                ctx.fillStyle = '#000000';
+                                ctx.font = `600 ${12*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('NOW PLAYING', stripOffsetX + stripWidth / 2, 32*scale);
+                                ctx.font = `700 ${14*scale}px "Inter", "Prompt", sans-serif`;
+                                ctx.fillText('Memories', stripOffsetX + stripWidth / 2, canvasHeight - 18*scale);
+                            }
+                        };
+
+                        drawStripHeaderFooter(0);
+                        drawStripHeaderFooter(stripWidth);
+
+                        if (customThemeObj && customThemeObj.theme_type === 'png' && customThemeObj.png_image) {
+                            const overlayImg = new Image();
+                            overlayImg.onload = () => {
+                                ctx.drawImage(overlayImg, 0, 0, stripWidth, canvasHeight);
+                                ctx.drawImage(overlayImg, stripWidth, 0, stripWidth, canvasHeight);
+                                resolve(canvas);
+                            };
+                            overlayImg.onerror = () => resolve(canvas);
+                            overlayImg.src = customThemeObj.png_image;
+                        } else {
+                            resolve(canvas);
+                        }
+                    })();
+                }
+            };
+            img.src = src;
+        });
+    });
+}
+
+async function composePhotoByMode(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '4', layoutSize = null) {
+    const mode = Kiosk.paperMode || 'photo4x6_dual';
+    if (mode === 'photo4x6_dual') {
+        return await composeDualStrip4x6(photos, templateName, outputWidth, customThemeObj, layoutStr, layoutSize);
+    } else {
+        return await composeStrip(photos, templateName, outputWidth, customThemeObj, layoutStr, layoutSize);
+    }
+}
+
+// Fetch the admin-configured Layout Size (cm) for a layout string like '3_1x1' or '4'
+async function fetchLayoutSizeFor(layoutStr) {
+    let countStr = '4';
+    if (layoutStr && layoutStr.includes('_')) countStr = layoutStr.split('_')[0];
+    else if (layoutStr) countStr = String(layoutStr).split('-')[0];
+    const sizes = await fetchLayoutSizes();
+    const found = sizes.find(s => String(s.layout_id) === String(countStr));
+    if (found && found.width_cm && found.height_cm) {
+        return { width_cm: Number(found.width_cm), height_cm: Number(found.height_cm) };
+    }
+    return null;
+}
+
 // ======================== SUPABASE UPLOAD ========================
 async function uploadToCloud(dataUrl, filename) {
     // Convert data URL to blob
@@ -797,12 +1284,16 @@ async function uploadToCloud(dataUrl, filename) {
 
 async function logSessionToCloud(colorUrl, ditheredUrl) {
     try {
+        const isCafeMode = Kiosk.mode !== 'event';
         const payload = {
             kiosk_mode: Kiosk.mode,
             event_name: Kiosk.mode === 'event' ? Kiosk.eventName : null,
             layout: Session.layout,
             color_url: colorUrl,
-            dithered_url: ditheredUrl
+            dithered_url: ditheredUrl,
+            is_cafe_mode: isCafeMode,
+            // Café Mode: photos expire in 24 hours; Event Mode: no expiry (keep)
+            expires_at: isCafeMode ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null
         };
 
         const res = await fetch(`${SUPABASE_URL}/rest/v1/kiosk_sessions`, {
@@ -861,145 +1352,140 @@ function checkAndInjectEventBanner() {
     }
 }
 
-// ======================== REDEEM CODE SYSTEM ========================
+// ======================== REDEEM CODE SYSTEM (Secure, via RPC) ========================
 
-// Validate a redeem code: check existence + not used today
+// Call a Postgres RPC function through the REST API.
+async function rpc(name, args = {}) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(args)
+    });
+    if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`RPC ${name} failed: ${res.status} ${errText}`);
+    }
+    return res.json();
+}
+
+// Validate a redeem code: checked + single-use enforced atomically on the SERVER.
 async function validateRedeemCode(code) {
-    code = code.toUpperCase().trim();
-    
-    // Check format: 2 letters + 4 digits
+    code = String(code || '').toUpperCase().trim();
     if (!/^[A-Z]{2}\d{4}$/.test(code)) {
         return { valid: false, error: 'invalid_format' };
     }
-
     try {
-        // Check if code exists
-        const codeRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/redeem_codes?code=eq.${code}&select=code`,
-            { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
-        );
-        const codeData = await codeRes.json();
-        if (!codeData || codeData.length === 0) {
-            return { valid: false, error: 'not_found' };
-        }
-
-        // Check if used today
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const usageRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/redeem_usage?code=eq.${code}&used_date=eq.${today}&select=id`,
-            { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
-        );
-        const usageData = await usageRes.json();
-        if (usageData && usageData.length > 0) {
-            return { valid: false, error: 'used_today' };
-        }
-
-        return { valid: true, error: null };
+        const result = await rpc('redeem_validate', { p_code: code });
+        return { valid: !!result.valid, error: result.error || null };
     } catch (e) {
         console.error('Redeem validation error:', e);
         return { valid: false, error: 'network_error' };
     }
 }
 
-// Mark a code as used today
+// Redeem a code: single-use marked atomically on the server.
 async function markCodeUsed(code) {
-    code = code.toUpperCase().trim();
-    const today = new Date().toISOString().split('T')[0];
+    code = String(code || '').toUpperCase().trim();
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/redeem_usage`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ code: code, used_date: today })
-        });
-        return res.ok;
+        const result = await rpc('redeem_use', { p_code: code });
+        return !!(result && result.success);
     } catch (e) {
         console.error('Mark code used error:', e);
         return false;
     }
 }
 
-// Generate N redeem codes (default 50), save to Supabase
-async function generateRedeemCodes(count = 50) {
-    // Fetch existing codes to avoid duplicates
-    let existingCodes = new Set();
+// Generate N redeem codes (admin only - guarded by RPC security definer + RLS)
+async function generateRedeemCodes(count = 50, expiresDays = 7, adminKey = getAdminPin()) {
     try {
-        const res = await fetch(
-            `${SUPABASE_URL}/rest/v1/redeem_codes?select=code`,
-            { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
-        );
-        const data = await res.json();
-        data.forEach(d => existingCodes.add(d.code));
-    } catch (e) {
-        console.error('Fetch existing codes error:', e);
-    }
-
-    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // exclude I, O to avoid confusion
-    const newCodes = [];
-    const batchId = 'B' + Date.now();
-
-    while (newCodes.length < count) {
-        const l1 = letters[Math.floor(Math.random() * letters.length)];
-        const l2 = letters[Math.floor(Math.random() * letters.length)];
-        const nums = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-        const code = l1 + l2 + nums;
-        if (!existingCodes.has(code) && !newCodes.includes(code)) {
-            newCodes.push(code);
+        const result = await rpc('redeem_generate', { p_count: count, p_expires_days: expiresDays, p_admin_key: adminKey || '' });
+        if (result && Array.isArray(result)) {
+            return { success: true, codes: result.map(r => r.code), batchId: result[0] ? result[0].batch_id : null, expiresAt: result[0] ? result[0].expires_at : null };
         }
-    }
-
-    // Insert batch to Supabase
-    const rows = newCodes.map(code => ({ code, batch_id: batchId }));
-    try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/redeem_codes`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(rows)
-        });
-        if (!res.ok) throw new Error('Insert failed: ' + res.status);
-        return { success: true, codes: newCodes, batchId };
+        if (result && result.success) {
+            return { success: true, codes: (result.codes || []).map(r => r.code), batchId: result.batch_id, expiresAt: result.expires_at };
+        }
+        return { success: false, codes: [], batchId: null };
     } catch (e) {
         console.error('Generate codes error:', e);
         return { success: false, codes: [], batchId: null };
     }
 }
 
-// Fetch all codes with today's usage status
-async function fetchRedeemCodes() {
-    const today = new Date().toISOString().split('T')[0];
+// Fetch all codes with single-use status (admin only - guarded by RLS)
+async function fetchRedeemCodes(adminKey = getAdminPin()) {
     try {
-        // Fetch all codes
-        const codesRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/redeem_codes?select=code,batch_id,created_at&order=created_at.desc`,
-            { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
-        );
-        const codes = await codesRes.json();
-
-        // Fetch today's usage
-        const usageRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/redeem_usage?used_date=eq.${today}&select=code`,
-            { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY } }
-        );
-        const usageData = await usageRes.json();
-        const usedToday = new Set(usageData.map(u => u.code));
-
+        const codes = await rpc('redeem_list', { p_admin_key: adminKey || '' });
+        const now = new Date();
         return codes.map(c => ({
             ...c,
-            usedToday: usedToday.has(c.code)
+            isExpired: c.expires_at ? new Date(c.expires_at) < now : false,
+            usedToday: c.is_used
         }));
     } catch (e) {
         console.error('Fetch redeem codes error:', e);
         return [];
     }
+}
+
+// ======================== ADMIN AUTH (server-verified PIN) ========================
+let cachedAdminPin = null;
+
+function getAdminPin() { return cachedAdminPin; }
+function isAdminAuthed() { return sessionStorage.getItem('pb_admin') === '1'; }
+
+// Verify the admin PIN against the server (bcrypt hash, not readable by clients)
+async function adminVerifyPin(pin) {
+    pin = String(pin || '').trim();
+    if (!pin) return false;
+    try {
+        const r = await rpc('admin_verify', { p_pin: pin });
+        if (r && r.valid) {
+            cachedAdminPin = pin;
+            try { sessionStorage.setItem('pb_admin', '1'); } catch (e) {}
+            return true;
+        }
+    } catch (e) {
+        console.error('Admin verify error:', e);
+    }
+    return false;
+}
+
+// ======================== FILTER SYSTEM ========================
+
+const FILTER_PRESETS = {
+    original:  { name: { th: 'ต้นฉบับ',    en: 'Original' },  css: 'none' },
+    bw:        { name: { th: 'ขาวดำ',      en: 'B&W' },       css: 'grayscale(100%)' },
+    vintage:   { name: { th: 'วินเทจ',     en: 'Vintage' },   css: 'sepia(55%) contrast(108%) brightness(96%)' },
+    bright:    { name: { th: 'สดใส',       en: 'Bright' },    css: 'brightness(115%) saturate(125%)' },
+    soft:      { name: { th: 'นุ่มนวล',   en: 'Soft' },      css: 'brightness(108%) contrast(88%) saturate(85%)' },
+    dramatic:  { name: { th: 'ดราม่า',    en: 'Dramatic' },  css: 'contrast(135%) saturate(130%) brightness(88%)' }
+};
+
+// Apply a CSS filter to an array of photo DataURLs via canvas (for processing)
+async function applyPhotosFilter(photos, filterName) {
+    const preset = FILTER_PRESETS[filterName];
+    if (!preset || preset.css === 'none') return photos;
+
+    return Promise.all(photos.map(src => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.filter = preset.css;
+            ctx.drawImage(img, 0, 0);
+            resolve(c.toDataURL('image/jpeg', 0.92));
+        };
+        img.onerror = () => resolve(src);
+        img.src = src;
+    })));
 }
 
 // ======================== LAYOUT SIZES (SUPABASE) ========================

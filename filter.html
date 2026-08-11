@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — Filter</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .filter-card {
+            border-radius: 16px;
+            border: 2.5px solid transparent;
+            background: #fff;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+            position: relative;
+        }
+        .filter-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+        }
+        .filter-card.selected {
+            border-color: #0A0A0A;
+            box-shadow: 0 0 0 4px rgba(10,10,10,0.10), 0 8px 24px rgba(0,0,0,0.10);
+        }
+        .filter-card.selected::after {
+            content: '';
+            position: absolute;
+            top: 8px; right: 8px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #0A0A0A;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+            background-size: 13px;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .filter-thumb {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            display: block;
+            transition: filter 0.1s;
+        }
+        .filter-label {
+            padding: 8px 10px 10px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0A0A0A;
+            letter-spacing: 0.02em;
+            background: #fff;
+        }
+        /* Big preview filters */
+        #big-preview { transition: filter 0.25s ease; }
+        .filter-original { filter: none; }
+        .filter-bw        { filter: grayscale(100%); }
+        .filter-vintage   { filter: sepia(55%) contrast(108%) brightness(96%); }
+        .filter-bright    { filter: brightness(115%) saturate(125%); }
+        .filter-soft      { filter: brightness(108%) contrast(88%) saturate(85%); }
+        .filter-dramatic  { filter: contrast(135%) saturate(130%) brightness(88%); }
+    </style>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MEMORIES">
+    <meta name="theme-color" content="#0A0A0A">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
+
+    <!-- Header -->
+    <header class="kiosk-header">
+        <button onclick="window.location.href='template.html'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_back">กลับ</span>
+        </button>
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div>
+    </header>
+
+    <main class="flex-grow pt-20 pb-28 px-4 sm:px-6 lg:px-12 flex flex-col lg:flex-row gap-6 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter">
+
+        <!-- Big Preview -->
+        <div class="w-full lg:w-1/2 flex items-center justify-center bg-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-[35vh] lg:min-h-[60vh] shrink-0">
+            <div class="absolute inset-0 bg-white/50 pointer-events-none"></div>
+            <div class="relative z-10 w-full h-full flex items-center justify-center">
+                <img
+                    id="big-preview"
+                    class="filter-original max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    src=""
+                    alt="Preview"
+                    style="display:none;"
+                >
+                <div id="big-placeholder" class="w-40 h-40 bg-gray-200 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-gray-400 text-5xl">image</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Selection Side -->
+        <div class="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 md:mb-2 shrink-0" id="filter-title">เลือก Filter</h1>
+            <p class="text-gray-500 text-xs md:text-sm mb-4 lg:mb-6 shrink-0" id="filter-desc">ปรับสีรูปให้เป็นสไตล์ที่คุณชอบ</p>
+
+            <!-- 2x3 Filter Grid -->
+            <div class="grid grid-cols-3 gap-3 pb-8" id="filter-grid">
+
+                <!-- Original -->
+                <div class="filter-card selected" data-filter="original">
+                    <img class="filter-thumb filter-original" id="thumb-original" src="" alt="Original">
+                    <div class="filter-label" id="label-original">ต้นฉบับ</div>
+                </div>
+
+                <!-- B&W -->
+                <div class="filter-card" data-filter="bw">
+                    <img class="filter-thumb filter-bw" id="thumb-bw" src="" alt="B&W">
+                    <div class="filter-label" id="label-bw">ขาวดำ</div>
+                </div>
+
+                <!-- Vintage -->
+                <div class="filter-card" data-filter="vintage">
+                    <img class="filter-thumb filter-vintage" id="thumb-vintage" src="" alt="Vintage">
+                    <div class="filter-label" id="label-vintage">วินเทจ</div>
+                </div>
+
+                <!-- Bright -->
+                <div class="filter-card" data-filter="bright">
+                    <img class="filter-thumb filter-bright" id="thumb-bright" src="" alt="Bright">
+                    <div class="filter-label" id="label-bright">สดใส</div>
+                </div>
+
+                <!-- Soft -->
+                <div class="filter-card" data-filter="soft">
+                    <img class="filter-thumb filter-soft" id="thumb-soft" src="" alt="Soft">
+                    <div class="filter-label" id="label-soft">นุ่มนวล</div>
+                </div>
+
+                <!-- Dramatic -->
+                <div class="filter-card" data-filter="dramatic">
+                    <img class="filter-thumb filter-dramatic" id="thumb-dramatic" src="" alt="Dramatic">
+                    <div class="filter-label" id="label-dramatic">ดราม่า</div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Bar -->
+    <div class="fixed bottom-0 left-0 w-full p-6 md:p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
+        <button onclick="saveAndContinue()" id="btn-continue" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group">
+            <span id="btn-continue-text">ดำเนินการต่อ</span>
+            <span class="material-symbols-outlined ml-2 text-sm group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+        </button>
+    </div>
+
+    <!-- Flash Overlay -->
+    <div id="flash-overlay" class="flash-overlay"></div>
+
+    <script src="shared.js?v=2.4"></script>
+    <script>
+        // Localization
+        const LABELS = {
+            th: {
+                title: 'เลือก Filter',
+                desc: 'ปรับสีรูปให้เป็นสไตล์ที่คุณชอบ',
+                btn: 'ดำเนินการต่อ',
+                original: 'ต้นฉบับ',
+                bw: 'ขาวดำ',
+                vintage: 'วินเทจ',
+                bright: 'สดใส',
+                soft: 'นุ่มนวล',
+                dramatic: 'ดราม่า',
+            },
+            en: {
+                title: 'Choose a Filter',
+                desc: 'Add a creative look to your photos.',
+                btn: 'Continue',
+                original: 'Original',
+                bw: 'B&W',
+                vintage: 'Vintage',
+                bright: 'Bright',
+                soft: 'Soft',
+                dramatic: 'Dramatic',
+            }
+        };
+
+        // CSS filter classes for big preview
+        const BIG_FILTER_CLASSES = {
+            original: 'filter-original',
+            bw:       'filter-bw',
+            vintage:  'filter-vintage',
+            bright:   'filter-bright',
+            soft:     'filter-soft',
+            dramatic: 'filter-dramatic',
+        };
+
+        let selectedFilter = 'original';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Apply language labels
+            const lang = getLanguage();
+            const L = LABELS[lang] || LABELS.th;
+            document.getElementById('filter-title').innerText = L.title;
+            document.getElementById('filter-desc').innerText = L.desc;
+            document.getElementById('btn-continue-text').innerText = L.btn;
+            document.getElementById('label-original').innerText = L.original;
+            document.getElementById('label-bw').innerText = L.bw;
+            document.getElementById('label-vintage').innerText = L.vintage;
+            document.getElementById('label-bright').innerText = L.bright;
+            document.getElementById('label-soft').innerText = L.soft;
+            document.getElementById('label-dramatic').innerText = L.dramatic;
+
+            // Load photos from session
+            const photos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
+            const previewSrc = photos.length > 0 ? photos[0] : null;
+
+            if (previewSrc) {
+                // Set all thumbnails to the first photo
+                ['original','bw','vintage','bright','soft','dramatic'].forEach(f => {
+                    const thumb = document.getElementById('thumb-' + f);
+                    if (thumb) thumb.src = previewSrc;
+                });
+
+                // Big preview
+                const bigPreview = document.getElementById('big-preview');
+                const placeholder = document.getElementById('big-placeholder');
+                bigPreview.src = previewSrc;
+                bigPreview.onload = () => {
+                    bigPreview.style.display = '';
+                    placeholder.style.display = 'none';
+                };
+            }
+
+            // Restore previously selected filter (if user navigates back)
+            const savedFilter = Session.filter || 'original';
+            selectFilter(savedFilter, false);
+
+            // Card click handlers
+            document.querySelectorAll('.filter-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    selectFilter(card.dataset.filter, true);
+                });
+            });
+
+            new IdleTimer(120000, 'home.html').start();
+        });
+
+        function selectFilter(filterName, animate) {
+            selectedFilter = filterName;
+            Session.filter = filterName;
+
+            // Update cards
+            document.querySelectorAll('.filter-card').forEach(card => {
+                if (card.dataset.filter === filterName) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            // Update big preview
+            const bigPreview = document.getElementById('big-preview');
+            // Remove all filter classes
+            Object.values(BIG_FILTER_CLASSES).forEach(cls => bigPreview.classList.remove(cls));
+            // Add selected filter class
+            bigPreview.classList.add(BIG_FILTER_CLASSES[filterName] || 'filter-original');
+
+            if (animate) {
+                bigPreview.style.opacity = '0.6';
+                setTimeout(() => { bigPreview.style.opacity = '1'; }, 150);
+            }
+        }
+
+        function saveAndContinue() {
+            Session.filter = selectedFilter;
+            window.location.href = 'processing.html';
+        }
+    </script>
+</body>
+</html>

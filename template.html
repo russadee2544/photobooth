@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Template</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
     <link rel="stylesheet" href="shared.css">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -100,24 +92,17 @@
 
     <script src="shared.js?v=2.3"></script>
     <script>
+        let globalPhotos = [];
+
         document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('preview-container');
             const gridContainer = document.querySelector('.grid.grid-cols-2');
-            let photos = [];
             
-            try {
-                if (Session.photos) photos = Session.photos;
-            } catch(e) {}
+            globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
 
-            // Load Custom Layout Size
-            const layoutSizes = await fetchLayoutSizes();
-            const currentLayoutStr = Session.layout || '4'; 
-            let layoutId = '4'; // default to 4 cut
-            if(currentLayoutStr === '1-cut') layoutId = '1';
-            if(currentLayoutStr === '2-cut') layoutId = '2';
-            if(currentLayoutStr === '3-cut') layoutId = '3';
-            if(currentLayoutStr === '4-cut') layoutId = '4';
-            const currentLayoutSize = layoutSizes.find(l => l.layout_id === layoutId) || null;
+            // Load Custom Layout Size (admin-configured physical cm per layout)
+            const currentLayoutStr = Session.layout || '4_1x1';
+            const currentLayoutSize = await fetchLayoutSizeFor(currentLayoutStr);
 
             // Load Custom Themes
             const customThemes = await fetchCustomThemes();
@@ -147,7 +132,7 @@
                 if(isCustom) {
                     themeObj = customThemes.find(t => t.id === templateId);
                 }
-                const canvas = await composeStrip(photos, templateId, 400, themeObj, currentLayoutStr); // 400px width for preview
+                const canvas = await composePhotoByMode(globalPhotos, templateId, 400, themeObj, currentLayoutStr, currentLayoutSize); // 400px width for preview
                 canvas.className = 'rounded-sm shadow-xl max-w-full max-h-full object-contain';
                 container.innerHTML = '';
                 container.appendChild(canvas);
@@ -174,7 +159,14 @@
         });
 
         function saveAndContinue() {
-            window.location.href = 'processing.html';
+            if (globalPhotos && globalPhotos.length > 0) {
+                Session.photos = globalPhotos;
+                SessionAsync.set('raw_photos', globalPhotos).then(() => {
+                    window.location.href = 'filter.html';
+                });
+            } else {
+                window.location.href = 'filter.html';
+            }
         }
     </script>
 </body>

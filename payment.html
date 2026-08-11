@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Redeem Code</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
     <link rel="stylesheet" href="shared.css">
     <style>
         @keyframes shake {
@@ -138,13 +130,15 @@
             en: {
                 invalid_format: 'Code must be 2 letters + 4 digits (e.g. AB1234)',
                 not_found: 'Invalid code. Please check and try again.',
-                used_today: 'This code has already been used today.',
+                already_used: 'This code has already been used.',
+                expired: 'This code has expired. Please get a new code.',
                 network_error: 'Connection error. Please try again.',
             },
             th: {
                 invalid_format: 'รหัสต้องเป็นตัวอักษร 2 ตัว + ตัวเลข 4 ตัว (เช่น AB1234)',
                 not_found: 'รหัสไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่',
-                used_today: 'รหัสนี้ถูกใช้ไปแล้ววันนี้',
+                already_used: 'รหัสนี้ถูกใช้ไปแล้ว กรุณาซื้อรหัสใหม่',
+                expired: 'รหัสหมดอายุแล้ว กรุณาซื้อรหัสใหม่',
                 network_error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่',
             }
         };
