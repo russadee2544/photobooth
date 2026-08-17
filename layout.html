@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Layout</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
     <link rel="stylesheet" href="shared.css">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,13 +29,15 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow pt-20 pb-36 px-4 sm:px-8 max-w-6xl mx-auto w-full flex flex-col justify-center relative z-10 fade-up-enter">
-        <div class="text-center mb-6 md:mb-12">
+    <main class="flex-grow pt-28 md:pt-32 pb-36 px-4 sm:px-8 max-w-6xl mx-auto w-full flex flex-col justify-start relative z-10 fade-up-enter">
+        <div class="text-center mb-5 md:mb-7">
             <h1 class="text-2xl md:text-4xl font-bold tracking-tight mb-2 uppercase" data-i18n="layout_title">Choose Your Layout</h1>
             <p class="text-gray-500 text-xs md:text-sm" data-i18n="layout_desc">Select a frame style that matches your mood.</p>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 max-w-4xl mx-auto w-full">
+        <div id="layout-format-summary" class="layout-format-summary max-w-4xl mx-auto w-full mb-4 md:mb-6" aria-live="polite"></div>
+
+        <div id="layout-grid" class="layout-standard-grid grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5 max-w-4xl mx-auto w-full">
             
             <!-- 1-CUT 1:1 -->
             <div class="selection-card p-6 flex flex-col items-center gap-4" data-layout="1_1x1">
@@ -144,22 +138,109 @@
         </button>
     </div>
 
-    <script src="shared.js?v=2.3"></script>
+    <script src="template-engine.js?v=1.0"></script>
+    <script src="shared.js?v=2.9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            Session.layout = '3_1x1';
-
-            const cards = document.querySelectorAll('.selection-card');
-            cards.forEach(card => {
-                card.addEventListener('click', () => {
-                    cards.forEach(c => c.classList.remove('selected'));
-                    card.classList.add('selected');
-                    Session.layout = card.dataset.layout;
-                });
+            const paperMode = Kiosk.paperMode;
+            const postcardMode = paperMode === 'photo4x6_postcard';
+            const wantedType = postcardMode ? '4x6' : '2x6';
+            const allowedPostcardCounts = new Set([1, 3, 4]);
+            const allowedPostcardLayouts = new Set(['1_1x1', '3_1x1', '4_1x1']);
+            const schemas = TemplateCatalog.load().filter(schema => {
+                if (!schema.enabled || schema.type !== wantedType || !isStandardPhotoCanvas(schema)) return false;
+                if (schema.templateId.startsWith('custom_')) return true;
+                return !postcardMode || (allowedPostcardCounts.has(schema.slots.length) && allowedPostcardLayouts.has(schema.layoutId));
             });
+
+            const uniqueSchemas = Array.from(new Map(schemas.map(schema => [schema.templateId, schema])).values());
+            const grid = document.getElementById('layout-grid');
+            grid.innerHTML = '';
+            uniqueSchemas.forEach(schema => appendLayoutCard(schema));
+
+            const initialTemplate = uniqueSchemas.find(schema => schema.slots.length === 3 && schema.orientation !== 'landscape') || uniqueSchemas[0];
+            if (initialTemplate) selectLayout(initialTemplate.templateId);
+            renderFormatSummary(paperMode, initialTemplate);
 
             new IdleTimer(60000, 'home.html').start();
         });
+
+        function isStandardPhotoCanvas(schema) {
+            if (schema.type === '2x6') return schema.canvas.width === 600 && schema.canvas.height === 1800 && schema.canvas.dpi === 300;
+            const portrait = schema.canvas.width === 1200 && schema.canvas.height === 1800;
+            const landscape = schema.canvas.width === 1800 && schema.canvas.height === 1200;
+            return (portrait || landscape) && schema.canvas.dpi === 300;
+        }
+
+        function appendLayoutCard(schema) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'selection-card layout-standard-card';
+            card.dataset.layout = schema.layoutId;
+            card.dataset.templateSchemaId = schema.templateId;
+            card.title = `${schema.name} · ${schema.canvas.width}×${schema.canvas.height}px · ${schema.canvas.dpi} DPI`;
+            card.onclick = () => selectLayout(schema.templateId);
+
+            const preview = document.createElement('div');
+            const shapeClass = schema.type === '2x6' ? 'is-strip' : schema.orientation === 'landscape' ? 'is-landscape' : 'is-portrait';
+            preview.className = `layout-canvas-preview ${shapeClass}`;
+            preview.style.aspectRatio = `${schema.canvas.width} / ${schema.canvas.height}`;
+            schema.slots.forEach(slot => {
+                const slotPreview = document.createElement('span');
+                slotPreview.className = 'layout-slot-preview';
+                slotPreview.style.left = `${slot.x / schema.canvas.width * 100}%`;
+                slotPreview.style.top = `${slot.y / schema.canvas.height * 100}%`;
+                slotPreview.style.width = `${slot.width / schema.canvas.width * 100}%`;
+                slotPreview.style.height = `${slot.height / schema.canvas.height * 100}%`;
+                slotPreview.style.transform = `rotate(${slot.rotation}deg)`;
+                preview.appendChild(slotPreview);
+            });
+            if (schema.overlay.url) {
+                const overlay = document.createElement('img');
+                overlay.src = schema.overlay.url;
+                overlay.alt = '';
+                overlay.className = 'layout-overlay-preview';
+                preview.appendChild(overlay);
+            }
+
+            const label = document.createElement('div');
+            label.className = 'layout-card-label';
+            const title = document.createElement('h2');
+            title.textContent = schema.templateId.startsWith('custom_') ? schema.name : `${schema.slots.length} รูป`;
+            const meta = document.createElement('p');
+            const ratio = PhotoTemplateEngine.parseLayout(schema.layoutId).ratio;
+            const orientation = schema.type === '2x6' ? 'VERTICAL STRIP' : schema.orientation === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT';
+            meta.textContent = `${ratio.toUpperCase()} · ${orientation}`;
+            const size = document.createElement('small');
+            size.textContent = `${schema.canvas.width} × ${schema.canvas.height} PX · ${schema.canvas.dpi} DPI`;
+            label.append(title, meta, size);
+            card.append(preview, label);
+            document.getElementById('layout-grid').appendChild(card);
+        }
+
+        function selectLayout(templateId) {
+            const schema = TemplateCatalog.find(templateId);
+            if (!schema) return;
+            document.querySelectorAll('.selection-card').forEach(card => {
+                const selected = card.dataset.templateSchemaId === templateId;
+                card.classList.toggle('selected', selected);
+                card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+            Session.layout = schema.layoutId;
+            Session.templateSchemaId = schema.templateId;
+            renderFormatSummary(Kiosk.paperMode, schema);
+        }
+
+        function renderFormatSummary(paperMode, schema) {
+            const summary = document.getElementById('layout-format-summary');
+            const isPostcard = schema && schema.type === '4x6';
+            const heading = isPostcard ? 'POSTCARD 4×6 นิ้ว' : 'PHOTO STRIP 2×6 นิ้ว';
+            const canvas = schema ? `${schema.canvas.width} × ${schema.canvas.height} PX` : '—';
+            const output = paperMode === 'photo4x6_dual'
+                ? 'MULTI-UP 2 แถบ → 1200 × 1800 PX'
+                : isPostcard ? 'พิมพ์เต็มแผ่น 4×6' : 'พิมพ์แถบเดี่ยว 600 × 1800 PX';
+            summary.innerHTML = `<div><strong>${heading}</strong><span>${canvas} · 300 DPI</span></div><small>${output}</small>`;
+        }
     </script>
 </body>
 </html>

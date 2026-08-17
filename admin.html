@@ -21,7 +21,10 @@
             <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
             <p class="text-gray-400 text-xs sm:text-sm">System configuration, print modes, and hardware status.</p>
         </div>
-        <button onclick="window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-6 py-2 hover:bg-gray-700 text-sm">Exit Admin</button>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="showChangePinModal()" class="btn-modern bg-gray-800 text-white px-5 py-2 hover:bg-gray-700 text-sm">Change PIN</button>
+            <button onclick="adminLogout(); window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-5 py-2 hover:bg-gray-700 text-sm">Exit Admin</button>
+        </div>
     </header>
 
     <main class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl w-full mx-auto">
@@ -40,10 +43,10 @@
                     <span class="font-bold text-sm text-white">🎉 Event Mode</span>
                     <span class="text-[11px] text-gray-400">ถ่ายภาพฟรีงานอีเวนต์/งานแต่ง</span>
                 </button>
-                <button type="button" id="btn-normal" onclick="setMode('normal')" class="w-full p-4 border border-gray-600 rounded-xl flex flex-col items-center justify-center gap-2 bg-gray-900 hover:bg-gray-700 transition-all text-center">
+                <button type="button" id="btn-normal" onclick="setMode('redeem')" class="w-full p-4 border border-gray-600 rounded-xl flex flex-col items-center justify-center gap-2 bg-gray-900 hover:bg-gray-700 transition-all text-center">
                     <span class="material-symbols-outlined text-3xl text-accent-blue">payments</span>
-                    <span class="font-bold text-sm text-white">🏪 Normal Mode</span>
-                    <span class="text-[11px] text-gray-400">โหมดทั่วไป (หยอดเหรียญ/คูปอง)</span>
+                    <span class="font-bold text-sm text-white">🎟️ Redeem Mode</span>
+                    <span class="text-[11px] text-gray-400">กรอก Redeem Code แบบใช้ครั้งเดียว</span>
                 </button>
             </div>
 
@@ -52,6 +55,13 @@
                     <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Event Sponsor / Name</label>
                     <input type="text" id="event-name" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-3 text-sm focus:ring-2 focus:ring-accent-mint outline-none" placeholder="e.g. Wedding of John & Jane">
                 </div>
+                <label class="flex items-start gap-3 bg-gray-800 border border-gray-700 rounded-lg p-3 cursor-pointer">
+                    <input type="checkbox" id="event-keep-assets" class="mt-1 rounded border-gray-600 text-accent-mint focus:ring-accent-mint" checked>
+                    <span>
+                        <span class="block text-sm font-semibold text-white">เก็บภาพสุดท้ายเพื่อส่งให้เจ้าของงาน</span>
+                        <span class="block text-xs text-gray-400 mt-1">เก็บเฉพาะภาพสีพร้อมกรอบและภาพแบบเดียวกับที่พิมพ์ ไม่เก็บรูปดิบ</span>
+                    </span>
+                </label>
                 <button type="button" onclick="saveEventConfig()" class="w-full bg-accent-blue text-white py-2.5 rounded-lg font-bold text-sm hover:opacity-90 transition">Save Event Info</button>
             </div>
         </div>
@@ -102,6 +112,15 @@
                         <span class="font-bold text-white text-base">📸 2x6" Single Strip</span>
                     </div>
                     <p class="text-xs text-gray-400">รูปภาพริบบิ้นเดี่ยว 2x6 นิ้วสไตล์คลาสสิก</p>
+                </button>
+
+                <!-- Option 3: 4x6" Postcard -->
+                <button type="button" onclick="setPaperMode('photo4x6_postcard')" id="pm-card-photo4x6_postcard" class="paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all">
+                    <div class="flex items-center justify-between mb-2 w-full">
+                        <span class="font-bold text-white text-base">🖼️ 4x6" Postcard</span>
+                        <span class="text-xs bg-accent-blue/20 text-accent-blue px-2 py-0.5 rounded-full font-bold">ใหม่</span>
+                    </div>
+                    <p class="text-xs text-gray-400">ภาพเต็มแผ่น 4x6 นิ้ว แนวตั้ง รองรับ 1–4 ช่องภาพตาม Template Schema</p>
                 </button>
 
                 <!-- Option 3: Thermal Receipt 58mm -->
@@ -230,24 +249,24 @@
                     <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
                         <label class="block text-sm text-gray-300 font-medium mb-3">จำนวนสูงสุดต่อ Session</label>
                         <div class="flex items-center gap-3">
-                            <button onclick="adjustMaxCopies(-1)" class="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold flex items-center justify-center transition">−</button>
-                            <span id="max-copies-display" class="text-4xl font-black text-accent-mint w-12 text-center">1</span>
-                            <button onclick="adjustMaxCopies(1)" class="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold flex items-center justify-center transition">+</button>
-                            <span class="text-gray-500 text-sm">/ ครั้ง (สูงสุด 3)</span>
+                            <button disabled aria-label="จำนวนถูกล็อก" class="w-10 h-10 bg-gray-800 rounded-lg text-xl font-bold flex items-center justify-center opacity-40 cursor-not-allowed">−</button>
+                            <span id="max-copies-display" class="text-4xl font-black text-accent-mint w-12 text-center">2</span>
+                            <button disabled aria-label="จำนวนถูกล็อก" class="w-10 h-10 bg-gray-800 rounded-lg text-xl font-bold flex items-center justify-center opacity-40 cursor-not-allowed">+</button>
+                            <span class="text-gray-500 text-sm">ใบ / set (ล็อกตายตัว)</span>
                         </div>
-                        <p class="text-xs text-gray-600 mt-2">กำหนดจำนวนสูงสุดที่อนุญาตพิมพ์ต่อ session</p>
+                        <p class="text-xs text-gray-500 mt-2">Receipt Booth: 1 set พิมพ์ 2 ใบเสมอ ลูกค้าเปลี่ยนจำนวนไม่ได้</p>
                     </div>
 
                     <!-- Let user choose copies -->
                     <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
                         <label class="block text-sm text-gray-300 font-medium mb-3">ให้ผู้ใช้เลือกจำนวนก่อนพิมพ์</label>
                         <div class="flex items-center gap-3">
-                            <button id="toggle-copy-choice" onclick="toggleCopyChoice()" class="relative w-12 h-7 rounded-full border-2 transition-all duration-300 border-gray-600 bg-gray-700">
+                            <button id="toggle-copy-choice" disabled class="relative w-12 h-7 rounded-full border-2 transition-all duration-300 border-gray-600 bg-gray-700 opacity-60 cursor-not-allowed">
                                 <div id="toggle-copy-knob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-gray-400 rounded-full transition-all duration-300"></div>
                             </button>
                             <span id="copy-choice-label" class="text-sm text-gray-400">ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง</span>
                         </div>
-                        <p class="text-xs text-gray-600 mt-2">เมื่อเปิด ผู้ใช้จะเห็น popup เลือกจำนวนสำเนาก่อนพิมพ์</p>
+                        <p class="text-xs text-gray-500 mt-2">ปิดถาวรสำหรับแพ็กเกจ Receipt Booth Phase 1</p>
                     </div>
                 </div>
 
@@ -280,7 +299,7 @@
                     <span id="stat-event" class="text-3xl font-bold text-accent-mint">-</span>
                 </div>
                 <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Normal Mode</span>
+                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Redeem Mode</span>
                     <span id="stat-normal" class="text-3xl font-bold text-accent-blue">-</span>
                 </div>
                 <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
@@ -318,15 +337,25 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex gap-4 mb-6">
+            <!-- Generate many, print only the amount needed now -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <label class="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-gray-400">
+                    จำนวนที่สร้าง
+                    <input id="generate-code-count" type="number" min="1" max="500" value="50" class="mt-2 w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white">
+                </label>
+                <label class="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-gray-400">
+                    จำนวนที่จะพิมพ์รอบนี้
+                    <input id="print-code-count" type="number" min="1" max="100" value="10" class="mt-2 w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white">
+                </label>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
                 <button id="gen-btn" onclick="handleGenerateCodes()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-green-400 transition-colors">
                     <span class="material-symbols-outlined">add_circle</span>
-                    Generate 50 Codes
+                    Generate Codes
                 </button>
                 <button onclick="handlePrintCodes()" class="flex-1 bg-gray-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-600 transition-colors">
                     <span class="material-symbols-outlined">print</span>
-                    Print Codes
+                    Preview / Print Selected
                 </button>
             </div>
 
@@ -335,6 +364,31 @@
                 <div id="code-grid" class="grid grid-cols-5 md:grid-cols-10 gap-2 text-center">
                     <span class="text-gray-500 text-sm col-span-full">Loading...</span>
                 </div>
+            </div>
+        </div>
+
+        <!-- Replacement entitlement -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <h2 class="text-xl font-bold flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-accent-coral">settings_backup_restore</span>
+                ออกสิทธิ์ทดแทน
+            </h2>
+            <p class="text-gray-400 text-sm mb-5">ใช้เมื่อ Redeem Code ถูกใช้แล้วแต่ลูกค้าเสียสิทธิ์จากความขัดข้อง ทุกครั้งต้องระบุเหตุผลและมี Audit</p>
+            <div class="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-3 items-end">
+                <label class="text-xs text-gray-400 uppercase tracking-widest">
+                    รหัสเดิม
+                    <input id="replacement-original-code" maxlength="6" autocomplete="off" placeholder="AB1234" class="mt-2 w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white font-mono uppercase tracking-widest">
+                </label>
+                <label class="text-xs text-gray-400 uppercase tracking-widest">
+                    เหตุผล
+                    <input id="replacement-reason" maxlength="500" placeholder="เช่น เครื่องพิมพ์ขัดข้องหลังใช้สิทธิ์" class="mt-2 w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white">
+                </label>
+                <button id="replacement-submit" onclick="handleIssueReplacement()" class="bg-accent-coral text-white px-6 py-3 rounded-xl font-bold">ออกสิทธิ์ใหม่</button>
+            </div>
+            <div id="replacement-result" class="hidden mt-4 bg-gray-900 border border-accent-mint/40 rounded-xl p-4">
+                <span class="text-xs text-gray-400 uppercase tracking-widest">Replacement Code</span>
+                <strong id="replacement-code" class="block text-3xl font-mono tracking-[0.25em] text-accent-mint mt-1"></strong>
+                <span id="replacement-expiry" class="text-xs text-gray-500"></span>
             </div>
         </div>
 
@@ -527,9 +581,14 @@
                     <span class="material-symbols-outlined text-purple-400">aspect_ratio</span>
                     Layout Sizes Configuration
                 </h2>
-                <button onclick="saveLayoutSizes()" class="text-sm bg-accent-blue hover:opacity-90 px-6 py-2 rounded-lg flex items-center gap-1 transition-colors font-bold text-white">
-                    <span class="material-symbols-outlined text-sm">save</span> Save Sizes
-                </button>
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <a id="template-editor-link" href="template-editor.html" class="text-sm bg-accent-mint hover:opacity-90 px-5 py-2 rounded-lg flex items-center gap-1 transition-colors font-bold text-gray-900">
+                        <span class="material-symbols-outlined text-sm">dashboard_customize</span> Template & Frame Editor
+                    </a>
+                    <button onclick="saveLayoutSizes()" class="text-sm bg-accent-blue hover:opacity-90 px-5 py-2 rounded-lg flex items-center gap-1 transition-colors font-bold text-white">
+                        <span class="material-symbols-outlined text-sm">save</span> Save Sizes
+                    </button>
+                </div>
             </div>
             <p class="text-gray-400 text-sm mb-4">Set the print dimensions (in Centimeters) for each layout type.</p>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="layout-sizes-grid">
@@ -607,6 +666,38 @@
             </div>
         </div>
 
+        <!-- Final asset retention (metadata only; never displays photos here) -->
+        <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700 md:col-span-2">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-mint">inventory_2</span>
+                        การเก็บและส่งไฟล์สุดท้าย
+                    </h2>
+                    <p class="text-gray-400 text-xs mt-1">เก็บเฉพาะภาพสีพร้อมกรอบและภาพแบบเดียวกับที่พิมพ์ ไม่เก็บรูปดิบ</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="purgeRetentionNow()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold">ลบรายการหมดอายุ</button>
+                    <button onclick="loadRetentionStatus()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold">Refresh</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                    <span class="text-xs text-gray-500 uppercase">Event รอส่ง</span>
+                    <strong id="retention-event-count" class="block text-3xl text-accent-mint mt-1">-</strong>
+                </div>
+                <div class="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                    <span class="text-xs text-gray-500 uppercase">Redeem รอลบใน 24 ชม.</span>
+                    <strong id="retention-redeem-count" class="block text-3xl text-accent-blue mt-1">-</strong>
+                </div>
+                <div class="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                    <span class="text-xs text-gray-500 uppercase">สถานะพื้นที่เก็บ</span>
+                    <strong id="retention-storage-status" class="block text-sm text-gray-300 mt-2">กำลังตรวจสอบ...</strong>
+                </div>
+            </div>
+            <p id="retention-note" class="text-xs text-gray-500 mt-4">ระบบจะเชื่อม Google Drive หรือบริการอื่นเมื่อกำหนดปลายทางและสิทธิ์เข้าถึงแล้ว</p>
+        </div>
+
     </main>
 
     <!-- Toast -->
@@ -619,19 +710,58 @@
         <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-6">
             <span class="material-symbols-outlined text-accent-mint text-3xl">lock</span>
         </div>
-        <h2 class="text-2xl font-bold mb-2 text-white">Admin Access</h2>
-        <p class="text-gray-400 text-sm mb-8">กรุณากรอกรหัส PIN เพื่อเข้าสู่ระบบควบคุมตู้</p>
-        <input type="password" id="gate-pin" maxlength="6" placeholder="••••••"
+        <h2 id="gate-title" class="text-2xl font-bold mb-2 text-white">Admin Access</h2>
+        <p id="gate-desc" class="text-gray-400 text-sm mb-8 text-center max-w-md">กรุณากรอก PIN 4 หลักเพื่อเข้าสู่ระบบควบคุมตู้</p>
+        <input type="password" id="gate-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="••••"
             class="bg-gray-900 border border-gray-600 rounded-lg text-white text-3xl text-center w-52 py-4 tracking-[0.4em] focus:outline-none focus:border-accent-mint">
-        <div id="gate-error" class="text-accent-coral text-sm font-medium mt-4 h-5 opacity-0 transition-opacity">รหัสไม่ถูกต้อง</div>
-        <button onclick="submitGatePin()" class="mt-6 bg-accent-mint text-gray-900 px-10 py-4 rounded-xl font-bold hover:opacity-90 transition-all">
+        <input type="password" id="gate-pin-confirm" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="ยืนยัน PIN"
+            class="hidden mt-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-xl text-center w-52 py-3 tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+        <div id="gate-error" class="text-accent-coral text-sm font-medium mt-4 min-h-5 opacity-0 transition-opacity text-center"></div>
+        <button id="gate-submit" onclick="submitGatePin()" class="mt-6 bg-accent-mint text-gray-900 px-10 py-4 rounded-xl font-bold hover:opacity-90 transition-all">
             เข้าสู่ระบบ
         </button>
     </div>
 
-    <script src="shared.js?v=2.3"></script>
+    <!-- Change shared PIN -->
+    <div id="change-pin-modal" class="hidden fixed inset-0 bg-black/80 z-[350] items-center justify-center p-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-2">เปลี่ยน PIN กลาง</h3>
+            <p class="text-gray-400 text-sm mb-5">PIN ต้องเป็นตัวเลข 4 หลัก เมื่อเปลี่ยนแล้ว session แอดมินเดิมจะสิ้นสุดทันที</p>
+            <div class="space-y-3">
+                <input id="change-pin-current" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="PIN ปัจจุบัน"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+                <input id="change-pin-next" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="PIN ใหม่"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+                <input id="change-pin-confirm" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="ยืนยัน PIN ใหม่"
+                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+            </div>
+            <div id="change-pin-error" class="text-accent-coral text-sm mt-3 min-h-5"></div>
+            <div class="flex gap-3 mt-5">
+                <button onclick="closeChangePinModal()" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">ยกเลิก</button>
+                <button id="change-pin-submit" onclick="submitChangePin()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Redeem-code print preview / ambiguity confirmation -->
+    <div id="redeem-print-modal" class="hidden fixed inset-0 bg-black/85 z-[360] items-center justify-center p-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-2xl shadow-2xl">
+            <h3 id="redeem-print-title" class="text-xl font-bold text-white mb-2">ตัวอย่าง Redeem Code ก่อนพิมพ์</h3>
+            <p class="text-gray-400 text-sm mb-4">ตรวจจำนวนและรหัสก่อนยืนยัน ระบบจะไม่พิมพ์ซ้ำอัตโนมัติ</p>
+            <div id="redeem-print-preview" class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-gray-900 rounded-xl p-4 max-h-72 overflow-y-auto"></div>
+            <div class="flex gap-3 mt-5">
+                <button onclick="resolvePendingRedeemPrint(false)" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">ยังไม่สำเร็จ</button>
+                <button onclick="resolvePendingRedeemPrint(true)" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold">Admin ยืนยันว่าพิมพ์แล้ว</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="template-engine.js?v=1.0"></script>
+    <script src="shared.js?v=2.9"></script>
     <script>
         function initAdmin() {
+            const editorLink = document.getElementById('template-editor-link');
+            if (editorLink) editorLink.href = `template-editor.html${location.search}`;
             updateUI();
             updatePaperUI();
             updatePaperModeUI();
@@ -641,34 +771,177 @@
             loadCustomThemesAdmin();
             loadGlobalBranding();
             initPrinterConfig();
+            loadRetentionStatus();
         }
 
-        function showAdminGate() {
+        async function loadRetentionStatus() {
+            const eventCount = document.getElementById('retention-event-count');
+            const redeemCount = document.getElementById('retention-redeem-count');
+            const storageStatus = document.getElementById('retention-storage-status');
+            const note = document.getElementById('retention-note');
+            try {
+                const status = await getFinalAssetRetentionStatus();
+                const records = Array.isArray(status.records) ? status.records : [];
+                eventCount.textContent = String(status.pendingEventExports ?? records.filter(row => row.mode === 'event' && row.state === 'pending_event_export').length);
+                redeemCount.textContent = String(status.pendingRedeemPurges ?? records.filter(row => row.mode === 'redeem').length);
+                if (status.success) {
+                    storageStatus.textContent = status.demo ? 'Demo บนเครื่องนี้' : 'Native encrypted storage';
+                    storageStatus.className = 'block text-sm text-accent-mint mt-2';
+                    note.textContent = status.demo
+                        ? 'Demo เก็บใน browser เฉพาะ localhost; เครื่องจริงต้องใช้ native encrypted storage'
+                        : 'Event รอส่งเมื่อกำหนดปลายทาง ส่วน Redeem ลบอัตโนมัติภายใน 24 ชั่วโมง';
+                } else {
+                    storageStatus.textContent = 'ยังไม่เชื่อม Native storage';
+                    storageStatus.className = 'block text-sm text-accent-coral mt-2';
+                    note.textContent = 'ยังไม่เก็บภาพถาวรใน browser เพื่อความปลอดภัย กรุณา provision native kiosk ก่อนใช้งานจริง';
+                }
+            } catch (error) {
+                eventCount.textContent = '-';
+                redeemCount.textContent = '-';
+                storageStatus.textContent = 'อ่านสถานะไม่ได้';
+                storageStatus.className = 'block text-sm text-accent-coral mt-2';
+            }
+        }
+
+        async function purgeRetentionNow() {
+            const result = await purgeExpiredFinalAssets();
+            if (result && result.success) {
+                showToast(`ลบรายการหมดอายุแล้ว ${result.deleted || 0} รายการ`);
+            } else {
+                showToast('ยังไม่เชื่อมระบบเก็บไฟล์ของเครื่อง');
+            }
+            await loadRetentionStatus();
+        }
+
+        let adminGateStatus = { configured: true, authenticated: false };
+
+        function adminErrorText(code, lockedUntil) {
+            const messages = {
+                pin_format: 'PIN ต้องเป็นตัวเลข 4 หลัก',
+                pin_mismatch: 'PIN ที่ยืนยันไม่ตรงกัน',
+                pin_unchanged: 'PIN ใหม่ต้องไม่ซ้ำกับ PIN ปัจจุบัน',
+                pin_incorrect: 'PIN ไม่ถูกต้อง',
+                pin_locked: 'กรอก PIN ผิดหลายครั้ง ระบบล็อกชั่วคราว',
+                pin_setup_required: 'ต้องตั้ง PIN ก่อนเข้าใช้งาน',
+                pin_already_configured: 'ตู้นี้ตั้ง PIN แล้ว',
+                device_not_provisioned: 'ยังไม่ได้ provision อุปกรณ์ จึงตรวจ PIN จริงไม่ได้',
+                device_unavailable: 'ติดต่อระบบยืนยันตัวตนของตู้ไม่ได้',
+                pin_enroll_failed: 'ตั้ง PIN ไม่สำเร็จ',
+                pin_change_failed: 'เปลี่ยน PIN ไม่สำเร็จ'
+            };
+            let text = messages[code] || 'ไม่สามารถยืนยัน PIN ได้';
+            const lockTime = lockedUntil ? new Date(lockedUntil).getTime() : 0;
+            if (code === 'pin_locked' && lockTime > Date.now()) {
+                text += ` กรุณารอ ${Math.max(1, Math.ceil((lockTime - Date.now()) / 1000))} วินาที`;
+            }
+            return text;
+        }
+
+        function setGateError(message) {
+            const err = document.getElementById('gate-error');
+            err.textContent = message || '';
+            err.classList.toggle('opacity-0', !message);
+            err.classList.toggle('opacity-100', !!message);
+        }
+
+        function updateAdminGate(status) {
+            adminGateStatus = status || { configured: true, authenticated: false };
+            const setup = !adminGateStatus.configured;
+            document.getElementById('gate-title').textContent = setup ? 'ตั้ง PIN ครั้งแรก' : 'Admin Access';
+            document.getElementById('gate-desc').textContent = setup
+                ? 'กำหนด PIN กลาง 4 หลักสำหรับตู้เครื่องนี้ ไม่มี PIN เริ่มต้นถาวร'
+                : 'กรุณากรอก PIN 4 หลักเพื่อเข้าสู่ระบบควบคุมตู้';
+            document.getElementById('gate-pin-confirm').classList.toggle('hidden', !setup);
+            document.getElementById('gate-submit').textContent = setup ? 'ตั้ง PIN และเข้าสู่ระบบ' : 'เข้าสู่ระบบ';
+            setGateError('');
+        }
+
+        function showAdminGate(status = adminGateStatus) {
             const gate = document.getElementById('admin-gate');
             if (gate) gate.classList.remove('hidden');
+            updateAdminGate(status);
             setTimeout(() => document.getElementById('gate-pin').focus(), 100);
         }
 
         async function submitGatePin() {
-            const pin = document.getElementById('gate-pin').value;
-            const ok = await adminVerifyPin(pin);
+            const pinInput = document.getElementById('gate-pin');
+            const confirmInput = document.getElementById('gate-pin-confirm');
+            const submit = document.getElementById('gate-submit');
+            const pin = pinInput.value;
+            submit.disabled = true;
+            submit.textContent = 'กำลังตรวจสอบ...';
+            const ok = adminGateStatus.configured
+                ? await adminVerifyPin(pin)
+                : await adminEnrollPin(pin, confirmInput.value);
+            submit.disabled = false;
             if (ok) {
                 document.getElementById('admin-gate').classList.add('hidden');
+                pinInput.value = '';
+                confirmInput.value = '';
                 initAdmin();
             } else {
-                const err = document.getElementById('gate-error');
-                err.classList.remove('opacity-0');
-                err.classList.add('opacity-100');
-                setTimeout(() => err.classList.remove('opacity-100'), 1500);
+                const code = typeof getAdminAuthError === 'function' ? getAdminAuthError() : 'pin_incorrect';
+                setGateError(adminErrorText(code, adminGateStatus.lockedUntil));
+                submit.textContent = adminGateStatus.configured ? 'เข้าสู่ระบบ' : 'ตั้ง PIN และเข้าสู่ระบบ';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof isAdminAuthed !== 'function' || !isAdminAuthed()) {
-                showAdminGate();
+        function showChangePinModal() {
+            const modal = document.getElementById('change-pin-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('change-pin-error').textContent = '';
+            setTimeout(() => document.getElementById('change-pin-current').focus(), 100);
+        }
+
+        function closeChangePinModal() {
+            const modal = document.getElementById('change-pin-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            ['change-pin-current', 'change-pin-next', 'change-pin-confirm'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+        }
+
+        async function submitChangePin() {
+            const submit = document.getElementById('change-pin-submit');
+            const error = document.getElementById('change-pin-error');
+            submit.disabled = true;
+            submit.textContent = 'กำลังบันทึก...';
+            const ok = await adminChangePin(
+                document.getElementById('change-pin-current').value,
+                document.getElementById('change-pin-next').value,
+                document.getElementById('change-pin-confirm').value
+            );
+            submit.disabled = false;
+            submit.textContent = 'บันทึก';
+            if (!ok) {
+                error.textContent = adminErrorText(getAdminAuthError());
                 return;
             }
+            closeChangePinModal();
+            showToast('เปลี่ยน PIN สำเร็จ กรุณาเข้าสู่ระบบอีกครั้ง');
+            const status = await adminGetPinStatus();
+            showAdminGate({ ...status, configured: true, authenticated: false });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const status = typeof adminGetPinStatus === 'function'
+                ? await adminGetPinStatus()
+                : { configured: true, authenticated: false };
+            if (!status.authenticated) {
+                showAdminGate(status);
+                return;
+            }
+            document.getElementById('admin-gate').classList.add('hidden');
             initAdmin();
+        });
+
+        document.getElementById('gate-pin').addEventListener('keydown', event => {
+            if (event.key === 'Enter') submitGatePin();
+        });
+        document.getElementById('gate-pin-confirm').addEventListener('keydown', event => {
+            if (event.key === 'Enter') submitGatePin();
         });
 
         function setHeaderMode(mode) {
@@ -1019,7 +1292,7 @@
                     : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
             }
             if (btnNormal) {
-                btnNormal.className = mode === 'normal' 
+                btnNormal.className = mode === 'redeem'
                     ? 'w-full p-4 border-2 border-accent-blue bg-accent-blue/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-all text-center' 
                     : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
             }
@@ -1029,6 +1302,7 @@
                 if (mode === 'event') {
                     eventBox.classList.remove('hidden');
                     document.getElementById('event-name').value = Kiosk.eventName || '';
+                    document.getElementById('event-keep-assets').checked = Kiosk.eventKeepFinalAssets;
                 } else {
                     eventBox.classList.add('hidden');
                 }
@@ -1039,7 +1313,8 @@
             if (typeof Kiosk !== 'undefined') {
                 Kiosk.mode = mode;
                 updateUI();
-                showToast('เปลี่ยนโหมดการทำงานเรียบร้อย: ' + (mode === 'event' ? 'Event Mode' : 'Normal Mode'));
+                adminAuditLocal('kiosk.mode_changed', { mode });
+                showToast('เปลี่ยนโหมดการทำงานเรียบร้อย: ' + (mode === 'event' ? 'Event Mode' : 'Redeem Mode'));
             }
         }
 
@@ -1053,7 +1328,7 @@
 
         function updatePaperModeUI() {
             var active = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
-            ['photo4x6_dual', 'photo2x6_single', 'thermal58', 'thermal80', 'thermal100', 'photo5x7'].forEach(function(m) {
+            ['photo4x6_dual', 'photo2x6_single', 'photo4x6_postcard', 'thermal58', 'thermal80', 'thermal100', 'photo5x7'].forEach(function(m) {
                 var card = document.getElementById('pm-card-' + m);
                 if (card) {
                     if (m === active) {
@@ -1067,7 +1342,12 @@
 
         function saveEventConfig() {
             Kiosk.eventName = document.getElementById('event-name').value;
-            showToast('บันทึกชื่อ Event เรียบร้อย');
+            Kiosk.eventKeepFinalAssets = document.getElementById('event-keep-assets').checked;
+            adminAuditLocal('event.retention_config_changed', {
+                keepFinalAssets: Kiosk.eventKeepFinalAssets,
+                eventNameConfigured: !!Kiosk.eventName
+            });
+            showToast('บันทึกข้อมูล Event และเงื่อนไขเก็บภาพแล้ว');
         }
 
         function getPaper() {
@@ -1163,6 +1443,9 @@
                 } else if (c.isExpired) {
                     cls = 'bg-gray-700 text-gray-500 line-through opacity-50';
                     title = 'Expired';
+                } else if (c.printed_at || c.printedAt) {
+                    cls = 'bg-accent-blue/20 text-accent-blue';
+                    title = 'Printed — ready to redeem';
                 } else {
                     const expStr = c.expires_at ? new Date(c.expires_at).toLocaleDateString('th-TH') : '?';
                     cls = 'bg-accent-mint/20 text-accent-mint';
@@ -1170,7 +1453,7 @@
                 }
                 chip.className = `px-2 py-1.5 rounded text-xs font-mono font-bold tracking-wide cursor-default ${cls}`;
                 chip.title = title;
-                chip.innerText = c.code;
+                chip.innerText = c.code || c.code_hint || c.codeHint || '••••••';
                 grid.appendChild(chip);
             });
         }
@@ -1180,7 +1463,8 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Generating...';
 
-            const result = await generateRedeemCodes(50);
+            const requestedCount = Math.max(1, Math.min(500, Number(document.getElementById('generate-code-count').value) || 50));
+            const result = await generateRedeemCodes(requestedCount, 30);
             
             if (result.success) {
                 lastBatchId = result.batchId;
@@ -1191,84 +1475,92 @@
             }
 
             btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Generate 50 Codes';
+            btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Generate Codes';
         }
 
-        function handlePrintCodes() {
-            let codesToPrint = allRedeemCodes;
-            if (lastBatchId) {
-                const batchCodes = allRedeemCodes.filter(c => c.batch_id === lastBatchId);
-                if (batchCodes.length > 0) codesToPrint = batchCodes;
+        let pendingRedeemPrintJob = null;
+
+        async function handlePrintCodes() {
+            const count = Math.max(1, Math.min(100, Number(document.getElementById('print-code-count').value) || 10));
+            const result = await printRedeemCodeBatch(count);
+            if (!result || result.status === 'empty') {
+                showToast('ไม่มีรหัสใหม่ที่พร้อมพิมพ์');
+                return;
             }
-
-            codesToPrint = codesToPrint.filter(c => !c.is_used && !c.isExpired);
-
-            if (codesToPrint.length === 0) {
-                showToast('No available codes to print');
+            if (result.status === 'unavailable') {
+                showToast('ยังไม่มี Native printer adapter สำหรับพิมพ์ Redeem Code');
+                return;
+            }
+            if (result.status === 'completed') {
+                showToast(`พิมพ์ Redeem Code แล้ว ${result.count || count} ใบ`);
+                await loadRedeemData();
                 return;
             }
 
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Redeem Codes — Print</title>
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body { font-family: 'Inter', 'Arial', sans-serif; padding: 10mm; }
-                        h1 { font-size: 14px; text-align: center; margin-bottom: 5mm; color: #333; }
-                        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
-                        .code-card {
-                            border: 1px dashed #ccc;
-                            padding: 8mm 4mm;
-                            text-align: center;
-                            page-break-inside: avoid;
-                        }
-                        .code-card .label {
-                            font-size: 8px;
-                            color: #999;
-                            text-transform: uppercase;
-                            letter-spacing: 2px;
-                            margin-bottom: 2mm;
-                        }
-                        .code-card .code {
-                            font-size: 20px;
-                            font-weight: 800;
-                            letter-spacing: 3px;
-                            color: #000;
-                            font-family: 'Courier New', monospace;
-                        }
-                        .code-card .brand {
-                            font-size: 7px;
-                            color: #bbb;
-                            margin-top: 2mm;
-                            letter-spacing: 2px;
-                        }
-                        @media print {
-                            body { padding: 5mm; }
-                            h1 { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>MEMORIES Photo Booth — Redeem Codes (${codesToPrint.length} codes)</h1>
-                    <div class="grid">
-                        ${codesToPrint.map(c => `
-                            <div class="code-card">
-                                <div class="label">Redeem Code</div>
-                                <div class="code">${c.code}</div>
-                                <div class="brand">MEMORIES</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <script>
-                        setTimeout(() => { window.print(); }, 500);
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
+            pendingRedeemPrintJob = result;
+            const preview = document.getElementById('redeem-print-preview');
+            const codes = Array.isArray(result.codes) ? result.codes : [];
+            preview.innerHTML = codes.map(code => `
+                <div class="bg-white text-gray-900 border border-dashed border-gray-400 rounded-lg px-3 py-4 text-center">
+                    <span class="block text-[9px] text-gray-500 uppercase tracking-widest mb-1">Redeem Code</span>
+                    <strong class="font-mono tracking-widest text-lg">${String(code).replace(/[^A-Z0-9•]/g, '')}</strong>
+                </div>
+            `).join('');
+            document.getElementById('redeem-print-title').textContent = result.status === 'ambiguous'
+                ? 'ตรวจเครื่องพิมพ์ก่อนยืนยัน'
+                : `ตัวอย่าง ${codes.length} รหัสก่อนพิมพ์`;
+            const modal = document.getElementById('redeem-print-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        async function resolvePendingRedeemPrint(printed) {
+            if (!pendingRedeemPrintJob) return;
+            const success = await resolveRedeemCodePrint(pendingRedeemPrintJob.jobId, printed);
+            adminAuditLocal('redeem.print_confirmed', {
+                jobId: pendingRedeemPrintJob.jobId,
+                printed: !!printed,
+                count: Array.isArray(pendingRedeemPrintJob.codes) ? pendingRedeemPrintJob.codes.length : null
+            });
+            pendingRedeemPrintJob = null;
+            const modal = document.getElementById('redeem-print-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            showToast(success
+                ? (printed ? 'ยืนยันการพิมพ์แล้ว' : 'ยกเลิกโดยไม่ตัดรหัสออกจากคิว')
+                : 'บันทึกผลการพิมพ์ไม่สำเร็จ');
+            await loadRedeemData();
+        }
+
+        async function handleIssueReplacement() {
+            const button = document.getElementById('replacement-submit');
+            const originalCode = document.getElementById('replacement-original-code').value;
+            const reason = document.getElementById('replacement-reason').value;
+            button.disabled = true;
+            button.textContent = 'กำลังออกสิทธิ์...';
+            const result = await issueReplacementEntitlement(originalCode, reason);
+            button.disabled = false;
+            button.textContent = 'ออกสิทธิ์ใหม่';
+            if (!result || !result.success) {
+                const errors = {
+                    invalid_original_code: 'รูปแบบรหัสเดิมไม่ถูกต้อง',
+                    replacement_reason_required: 'กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร',
+                    original_code_not_found: 'ไม่พบรหัสเดิม',
+                    replacement_not_allowed: 'รหัสเดิมยังไม่ถูกใช้ จึงไม่ต้องออกสิทธิ์ทดแทน',
+                    replacement_already_issued: 'รหัสนี้เคยได้รับสิทธิ์ทดแทนแล้ว',
+                    device_not_provisioned: 'ยังไม่ได้ provision ระบบหลังบ้านของตู้'
+                };
+                showToast(errors[result && result.error] || 'ออกสิทธิ์ทดแทนไม่สำเร็จ');
+                return;
+            }
+            document.getElementById('replacement-result').classList.remove('hidden');
+            document.getElementById('replacement-code').textContent = result.code;
+            document.getElementById('replacement-expiry').textContent = `หมดอายุ ${new Date(result.expiresAt).toLocaleString('th-TH')}`;
+            document.getElementById('replacement-original-code').value = '';
+            document.getElementById('replacement-reason').value = '';
+            document.getElementById('print-code-count').value = '1';
+            showToast('ออกสิทธิ์ทดแทนแล้ว และเพิ่มเข้าคิวพิมพ์ 1 ใบ');
+            await loadRedeemData();
         }
 
         let currentThemeType = 'text';
@@ -1419,14 +1711,14 @@
         }
 
         var currentPrinterConn = 'none';
-        var maxCopies = 1;
+        var maxCopies = 2;
         var allowCopyChoice = false;
 
         function initPrinterConfig() {
             var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             currentPrinterConn = saved.conn || 'none';
-            maxCopies = Math.min(parseInt(saved.maxCopies || '1'), 3);
-            allowCopyChoice = saved.allowCopyChoice || false;
+            maxCopies = 2;
+            allowCopyChoice = false;
             document.getElementById('max-copies-display').innerText = maxCopies;
             updateCopyChoiceToggle();
             if (currentPrinterConn !== 'none') {
@@ -1546,23 +1838,38 @@
             detail.innerText = name ? 'อุปกรณ์: ' + name : 'พร้อมพิมพ์';
         }
 
-        function sendTestPrint() {
+        async function sendTestPrint() {
             var cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             if (!cfg.conn || cfg.conn === 'none') {
-                showToast('กรุณาเชื่อมต่อเครื่องพิมพ์ก่อน');
+                showToast('Printer Simulator: ยังไม่มีเครื่องพิมพ์จริง จึงยังไม่ส่งงานพิมพ์');
                 return;
             }
-            showToast('ส่งคำสั่งทดสอบการพิมพ์แล้ว ✓');
-            window.print();
+            if (window.PhotoboothPrinter && typeof window.PhotoboothPrinter.testPrint === 'function') {
+                try {
+                    const result = await window.PhotoboothPrinter.testPrint({
+                        paperMode: Kiosk.paperMode,
+                        connection: cfg.conn
+                    });
+                    showToast(result && result.success ? 'ทดสอบเครื่องพิมพ์สำเร็จ ✓' : 'เครื่องพิมพ์ยังไม่ยืนยันผล');
+                    adminAuditLocal('printer.test_requested', {
+                        connection: cfg.conn,
+                        success: !!(result && result.success)
+                    });
+                } catch (error) {
+                    showToast('ทดสอบเครื่องพิมพ์ไม่สำเร็จ');
+                }
+                return;
+            }
+            showToast('ตั้งค่าการเชื่อมต่อแล้ว แต่ยังไม่มี Native printer adapter');
         }
 
         function adjustMaxCopies(delta) {
-            maxCopies = Math.max(1, Math.min(3, maxCopies + delta));
+            maxCopies = 2;
             document.getElementById('max-copies-display').innerText = maxCopies;
         }
 
         function toggleCopyChoice() {
-            allowCopyChoice = !allowCopyChoice;
+            allowCopyChoice = false;
             updateCopyChoiceToggle();
         }
 
@@ -1575,14 +1882,14 @@
                 btn.style.borderColor = '#BAFF66';
                 knob.style.transform = 'translateX(20px)';
                 knob.style.background = '#BAFF66';
-                lbl.innerText = 'เปิด — ผู้ใช้เลือกจำนวนสำเนาก่อนพิมพ์';
+                lbl.innerText = 'ปิด — แพ็กเกจล็อก 1 set = 2 ใบ';
                 lbl.style.color = '#BAFF66';
             } else {
                 btn.style.background = '#374151';
                 btn.style.borderColor = '#4b5563';
                 knob.style.transform = 'translateX(0)';
                 knob.style.background = '#9ca3af';
-                lbl.innerText = 'ปิด — พิมพ์อัตโนมัติตามค่าที่ตั้ง';
+                lbl.innerText = 'ปิด — แพ็กเกจล็อก 1 set = 2 ใบ';
                 lbl.style.color = '#9ca3af';
             }
         }
@@ -1590,8 +1897,8 @@
         function savePrinterConfig() {
             var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             saved.conn = currentPrinterConn;
-            saved.maxCopies = maxCopies;
-            saved.allowCopyChoice = allowCopyChoice;
+            saved.maxCopies = 2;
+            saved.allowCopyChoice = false;
             if (currentPrinterConn === 'wifi') {
                 saved.wifiIp = (document.getElementById('printer-ip-input').value || '').trim();
                 saved.wifiPort = (document.getElementById('printer-port-input').value || '9100').trim();

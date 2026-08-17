@@ -31,7 +31,8 @@
     <!-- Hidden canvas for processing -->
     <canvas id="work-canvas" class="hidden"></canvas>
 
-    <script src="shared.js?v=2.3"></script>
+    <script src="template-engine.js?v=1.0"></script>
+    <script src="shared.js?v=2.9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const statusText = document.getElementById('status-text');
@@ -42,7 +43,7 @@
                 if (!photos || photos.length === 0) {
                     console.error("No photos found in session!");
                     statusText.innerText = "No photos found. Returning to start...";
-                    await wait(2000);
+                    await wait(800);
                     window.location.href = 'home.html';
                     return;
                 }
@@ -61,43 +62,58 @@
                 // 0. Apply filter to photos (if not original)
                 if (selectedFilter && selectedFilter !== 'original') {
                     statusText.innerText = "Applying filter...";
-                    await wait(300);
+                    await wait(40);
                     photos = await applyPhotosFilter(photos, selectedFilter);
                 }
                 
                 // 1. Compose full res (1200px width for printing)
                 statusText.innerText = "Composing layout...";
-                await wait(500); // UI breathing room
-                
+                await wait(40); // let the status update paint before CPU work
+                const renderStartedAt = performance.now();
                 const colorCanvas = await composePhotoByMode(photos, template, 1200, customThemeObj, currentLayoutStr, layoutSize);
                 await SessionAsync.set('result', colorCanvas.toDataURL('image/jpeg', 0.9));
+                const renderDurationMs = Math.round(performance.now() - renderStartedAt);
+                Session.renderMetrics = {
+                    durationMs: renderDurationMs,
+                    width: colorCanvas.width,
+                    height: colorCanvas.height,
+                    templateSchemaId: Session.templateSchemaId || null,
+                    renderedAt: new Date().toISOString()
+                };
 
                 // 2. Apply Dithering for the alternate version
-                statusText.innerText = "Generating Retro Dithered version...";
-                await wait(500);
+                if (Kiosk.paperMode.startsWith('thermal')) {
+                    statusText.innerText = "Generating Retro Dithered version...";
+                    const workCanvas = document.getElementById('work-canvas');
+                    workCanvas.width = colorCanvas.width;
+                    workCanvas.height = colorCanvas.height;
+                    const ctx = workCanvas.getContext('2d');
+                    ctx.drawImage(colorCanvas, 0, 0);
 
-                const workCanvas = document.getElementById('work-canvas');
-                workCanvas.width = colorCanvas.width;
-                workCanvas.height = colorCanvas.height;
-                const ctx = workCanvas.getContext('2d');
-                ctx.drawImage(colorCanvas, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, workCanvas.width, workCanvas.height);
+                    const ditheredData = await ditherImageData(imageData);
+                    ctx.putImageData(ditheredData, 0, 0);
+                    await SessionAsync.set('dithered', workCanvas.toDataURL('image/png'));
+                } else {
+                    await SessionAsync.remove('dithered');
+                }
 
-                const imageData = ctx.getImageData(0, 0, workCanvas.width, workCanvas.height);
-                const ditheredData = await ditherImageData(imageData);
-                ctx.putImageData(ditheredData, 0, 0);
-
-                await SessionAsync.set('dithered', workCanvas.toDataURL('image/png'));
+                // Raw captures are transient composition inputs only. Keep the
+                // final color and dithered assets, then remove every raw frame.
+                await SessionAsync.remove('raw_photos');
+                await SessionAsync.remove('photos');
+                photos = [];
 
                 // 3. Finalize
                 statusText.innerText = "Finalizing...";
-                await wait(500);
+                await wait(80);
 
                 window.location.href = 'print.html';
 
             } catch (err) {
                 console.error("Processing error:", err);
                 statusText.innerText = "Error processing. Returning to start...";
-                await wait(2000);
+                await wait(1000);
                 window.location.href = 'home.html';
             }
         });

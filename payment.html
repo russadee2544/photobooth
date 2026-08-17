@@ -124,7 +124,7 @@
     <!-- Flash Overlay -->
     <div id="flash-overlay" class="flash-overlay"></div>
 
-    <script src="shared.js"></script>
+    <script src="shared.js?v=2.8"></script>
     <script>
         const errorMessages = {
             en: {
@@ -132,6 +132,8 @@
                 not_found: 'Invalid code. Please check and try again.',
                 already_used: 'This code has already been used.',
                 expired: 'This code has expired. Please get a new code.',
+                wrong_kiosk: 'This code belongs to another booth or package.',
+                device_not_provisioned: 'This booth is not provisioned for redeem yet. Please call staff.',
                 network_error: 'Connection error. Please try again.',
             },
             th: {
@@ -149,7 +151,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             // Event mode skip
-            if (Kiosk.mode === 'event') {
+            const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
+            if (Kiosk.mode === 'event' && !demoMode) {
                 window.location.replace('layout.html');
                 return;
             }
@@ -230,24 +233,14 @@
             loading.classList.remove('hidden');
             clearError();
 
-            // Validate
-            const result = await validateRedeemCode(code);
+            // Claim atomically: validate + bind + consume + create session.
+            const result = await claimRedeemCode(code);
 
-            if (!result.valid) {
+            if (!result.success) {
                 // Show error
                 btn.classList.remove('hidden');
                 loading.classList.add('hidden');
                 showError(result.error);
-                isProcessing = false;
-                return;
-            }
-
-            // Mark as used
-            const marked = await markCodeUsed(code);
-            if (!marked) {
-                btn.classList.remove('hidden');
-                loading.classList.add('hidden');
-                showError('network_error');
                 isProcessing = false;
                 return;
             }

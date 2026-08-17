@@ -4,40 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Home</title>
-    <!-- Use Inter font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { 
-            darkMode: 'class', 
-            theme: { 
-                extend: { 
-                    colors: { 
-                        gray: {
-                            900: '#0A0A0A',
-                            500: '#676767',
-                            400: '#8E8E8E',
-                            100: '#E3E3E3',
-                            50: '#F0F0F0',
-                            0: '#FFFFFF'
-                        },
-                        accent: {
-                            mint: '#BAFF66',
-                            blue: '#4C65FF',
-                            coral: '#FF6B57'
-                        }
-                    }, 
-                    fontFamily: { 
-                        sans: ['Inter', 'Prompt', 'sans-serif']
-                    } 
-                } 
-            } 
-        }
-    </script>
     <link rel="stylesheet" href="shared.css">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -78,7 +44,6 @@
 
             <button onclick="startSession()" class="btn-modern btn-primary text-xl sm:text-2xl px-10 py-5 sm:px-16 sm:py-7 group animate-bounce rounded-full shadow-2xl" data-i18n="home_start">
                 Tap to Start
-                <span class="material-symbols-outlined ml-2 group-hover:translate-x-2 transition-transform text-2xl sm:text-3xl">east</span>
             </button>
         </div>
     </main>
@@ -104,11 +69,13 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=2.4"></script>
+    <script src="shared.js?v=2.8"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            new IdleTimer(60000, 'home.html').start(); // timeout to itself just to clear session
-            Session.clear();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SessionAsync.clear();
+            Session.sessionId = crypto.randomUUID();
+            await purgeExpiredFinalAssets();
+            new IdleTimer(120000, 'home.html').start();
         });
 
         function startSession() {
@@ -147,9 +114,10 @@
             modal.classList.add('opacity-0', 'pointer-events-none');
         }
 
-        function submitAdminPin() {
+        async function submitAdminPin() {
             const pin = document.getElementById('admin-pin').value;
-            if (pin === '1234') {
+            const ok = await adminVerifyPin(pin);
+            if (ok) {
                 window.location.href = 'admin.html';
             } else {
                 document.getElementById('admin-pin').classList.add('border-accent-coral', 'animate-pulse');
