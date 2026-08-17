@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHOTO BOOTH — Template & Frame Editor</title>
+    <link rel="stylesheet" href="shared.css">
+    <style>
+        .editor-shell { display:grid; grid-template-columns:minmax(240px,300px) minmax(340px,1fr) minmax(270px,340px); gap:20px; align-items:start; }
+        .editor-panel { background:#1f2937; border:1px solid #374151; border-radius:18px; padding:18px; }
+        .editor-field { display:grid; gap:6px; }
+        .editor-field label { color:#9ca3af; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+        .editor-field input, .editor-field select, .editor-field textarea { width:100%; border:1px solid #4b5563; border-radius:8px; background:#111827; color:white; padding:9px 10px; }
+        .editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+        .editor-button { min-height:40px; padding:8px 12px; border:1px solid #4b5563; border-radius:9px; background:#374151; color:white; font-weight:700; cursor:pointer; }
+        .editor-button.primary { border-color:#6ee7b7; background:#6ee7b7; color:#111827; }
+        .editor-button.danger { color:#fb7185; }
+        .template-list { display:grid; gap:8px; max-height:50vh; overflow:auto; }
+        .template-list button { padding:12px; border:1px solid #374151; border-radius:10px; background:#111827; color:white; text-align:left; cursor:pointer; }
+        .template-list button.active { border-color:#6ee7b7; box-shadow:inset 4px 0 #6ee7b7; }
+        .editor-stage-wrap { min-height:70vh; display:grid; place-items:center; overflow:auto; border-radius:14px; background:repeating-conic-gradient(#111827 0 25%,#172033 0 50%) 50%/20px 20px; padding:22px; }
+        .editor-stage { position:relative; max-width:100%; max-height:68vh; background:white; box-shadow:0 20px 60px rgba(0,0,0,.35); overflow:hidden; user-select:none; touch-action:none; }
+        .editor-safe { position:absolute; border:2px dashed #ef4444; pointer-events:none; z-index:500; }
+        .editor-overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:400; }
+        .editor-slot { position:absolute; display:grid; place-items:center; border:2px solid #111827; background:#d1d5db; color:#111827; font-size:clamp(11px,2vw,22px); font-weight:900; cursor:move; overflow:hidden; }
+        .editor-slot::after { content:'PHOTO ' attr(data-index); }
+        .editor-slot.active { outline:4px solid #6ee7b7; outline-offset:-4px; }
+        .editor-message { border-radius:9px; padding:10px 12px; font-size:12px; }
+        .editor-message.warn { background:#78350f; color:#fde68a; }
+        .editor-message.ok { background:#064e3b; color:#a7f3d0; }
+        @media (max-width:1050px) { .editor-shell { grid-template-columns:280px 1fr; } .editor-properties { grid-column:1/-1; } }
+        @media (max-width:720px) { .editor-shell { grid-template-columns:1fr; } .editor-properties { grid-column:auto; } .editor-stage-wrap { min-height:50vh; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen p-4 sm:p-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 max-w-[1500px] mx-auto mb-6 border-b border-gray-800 pb-5">
+        <div>
+            <a href="admin.html" class="text-accent-mint text-sm font-bold">← Admin Control</a>
+            <h1 class="text-2xl sm:text-3xl font-bold mt-2">Template & Frame Editor</h1>
+            <p class="text-gray-400 text-sm mt-1">JSON schema · 300 DPI · Safe zone · Layer hierarchy</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button class="editor-button" onclick="exportCatalog()">Export JSON</button>
+            <label class="editor-button cursor-pointer">Import JSON<input id="import-file" type="file" accept="application/json" class="hidden"></label>
+            <button class="editor-button primary" onclick="saveTemplate()">Save Template</button>
+        </div>
+    </header>
+
+    <main class="editor-shell max-w-[1500px] mx-auto">
+        <aside class="editor-panel">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <h2 class="font-bold">Event layouts</h2>
+                <button class="editor-button primary" onclick="createNewTemplate()">+ New</button>
+            </div>
+            <div id="template-list" class="template-list"></div>
+            <div class="border-t border-gray-700 mt-4 pt-4 grid gap-3">
+                <div class="editor-field"><label>Name</label><input id="template-name" maxlength="80"></div>
+                <div class="editor-grid">
+                    <div class="editor-field"><label>Canvas</label><select id="canvas-preset"><option value="2x6">2×6 Strip</option><option value="4x6-portrait">4×6 Portrait</option><option value="4x6-landscape">4×6 Landscape</option></select></div>
+                    <div class="editor-field"><label>Layout key</label><input id="layout-id" placeholder="3_1x1"></div>
+                </div>
+                <label class="flex items-center gap-2 text-sm text-gray-300"><input id="template-enabled" type="checkbox"> เปิดให้ลูกค้าเลือกใน Event นี้</label>
+                <button class="editor-button danger" onclick="deleteTemplate()">Delete custom template</button>
+            </div>
+        </aside>
+
+        <section class="editor-panel">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div><h2 class="font-bold">Canvas preview</h2><p id="canvas-meta" class="text-xs text-gray-400 mt-1"></p></div>
+                <label class="flex items-center gap-2 text-sm"><input id="show-safe-zone" type="checkbox" checked> Safe zone</label>
+            </div>
+            <div class="editor-stage-wrap"><div id="editor-stage" class="editor-stage"></div></div>
+            <div id="validation-message" class="editor-message ok mt-4">Template ready</div>
+        </section>
+
+        <aside class="editor-panel editor-properties grid gap-4">
+            <div class="flex items-center justify-between gap-2"><h2 class="font-bold">Photo slots</h2><button class="editor-button" onclick="duplicateSelectedSlot()">Duplicate</button></div>
+            <div id="slot-list" class="flex flex-wrap gap-2"></div>
+            <div class="editor-grid">
+                <div class="editor-field"><label>X</label><input id="slot-x" type="number"></div>
+                <div class="editor-field"><label>Y</label><input id="slot-y" type="number"></div>
+                <div class="editor-field"><label>Width</label><input id="slot-width" type="number" min="1"></div>
+                <div class="editor-field"><label>Height</label><input id="slot-height" type="number" min="1"></div>
+                <div class="editor-field"><label>Rotation</label><input id="slot-rotation" type="number" min="-180" max="180" step="0.5"></div>
+                <div class="editor-field"><label>Z-index</label><input id="slot-z" type="number"></div>
+                <div class="editor-field"><label>Focus X (0–1)</label><input id="slot-focus-x" type="number" min="0" max="1" step="0.05"></div>
+                <div class="editor-field"><label>Focus Y (0–1)</label><input id="slot-focus-y" type="number" min="0" max="1" step="0.05"></div>
+            </div>
+            <div class="editor-grid">
+                <button class="editor-button" onclick="moveLayer('back')">Send to Back</button>
+                <button class="editor-button" onclick="moveLayer('backward')">Send Backward</button>
+                <button class="editor-button" onclick="moveLayer('forward')">Bring Forward</button>
+                <button class="editor-button" onclick="moveLayer('front')">Bring to Front</button>
+            </div>
+            <button class="editor-button danger" onclick="removeSelectedSlot()">Remove selected slot</button>
+
+            <div class="border-t border-gray-700 pt-4 grid gap-3">
+                <h2 class="font-bold">Canvas & frame</h2>
+                <div class="editor-field"><label>Background</label><input id="background-color" type="color" value="#ffffff" class="h-11"></div>
+                <div class="editor-grid">
+                    <div class="editor-field"><label>Safe top</label><input id="safe-top" type="number" min="0"></div>
+                    <div class="editor-field"><label>Safe right</label><input id="safe-right" type="number" min="0"></div>
+                    <div class="editor-field"><label>Safe bottom</label><input id="safe-bottom" type="number" min="0"></div>
+                    <div class="editor-field"><label>Safe left</label><input id="safe-left" type="number" min="0"></div>
+                </div>
+                <div class="editor-field"><label>Transparent PNG overlay</label><input id="overlay-file" type="file" accept="image/png"></div>
+                <button class="editor-button" onclick="clearOverlay()">Clear overlay</button>
+            </div>
+        </aside>
+    </main>
+
+    <script src="template-engine.js?v=1.0"></script>
+    <script src="shared.js?v=2.9"></script>
+    <script>
+        const engine = window.PhotoTemplateEngine;
+        let catalog = [];
+        let draft = null;
+        let selectedSlotIndex = 1;
+        let dragState = null;
+
+        const byId = id => document.getElementById(id);
+        const templateInputIds = ['template-name', 'layout-id', 'template-enabled', 'background-color', 'safe-top', 'safe-right', 'safe-bottom', 'safe-left'];
+        const slotInputIds = ['slot-x', 'slot-y', 'slot-width', 'slot-height', 'slot-rotation', 'slot-z', 'slot-focus-x', 'slot-focus-y'];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const status = await adminGetPinStatus();
+            if (!status.authenticated) { window.location.href = `admin.html${location.search}`; return; }
+            catalog = TemplateCatalog.load();
+            selectTemplate(catalog[0].templateId);
+            templateInputIds.forEach(id => byId(id).addEventListener('input', readTemplateForm));
+            slotInputIds.forEach(id => byId(id).addEventListener('input', readSlotForm));
+            byId('canvas-preset').addEventListener('change', changeCanvasPreset);
+            byId('show-safe-zone').addEventListener('change', renderStage);
+            byId('overlay-file').addEventListener('change', uploadOverlay);
+            byId('import-file').addEventListener('change', importCatalog);
+        });
+
+        function renderTemplateList() {
+            byId('template-list').innerHTML = '';
+            catalog.forEach(template => {
+                const button = document.createElement('button');
+                button.className = template.templateId === draft.templateId ? 'active' : '';
+                button.innerHTML = `<strong class="block">${escapeHtml(template.name)}</strong><small class="text-gray-400">${template.type} · ${template.layoutId} · ${template.slots.length} slots${template.enabled ? '' : ' · disabled'}</small>`;
+                button.onclick = () => selectTemplate(template.templateId);
+                byId('template-list').appendChild(button);
+            });
+        }
+
+        function selectTemplate(templateId) {
+            draft = engine.clone(catalog.find(item => item.templateId === templateId) || catalog[0]);
+            selectedSlotIndex = draft.slots[0]?.index || 1;
+            writeForms();
+            renderAll();
+        }
+
+        function writeForms() {
+            byId('template-name').value = draft.name;
+            byId('layout-id').value = draft.layoutId;
+            byId('template-enabled').checked = draft.enabled;
+            byId('canvas-preset').value = draft.type === '4x6' ? (draft.orientation === 'landscape' ? '4x6-landscape' : '4x6-portrait') : '2x6';
+            byId('background-color').value = draft.canvas.backgroundColor;
+            ['top','right','bottom','left'].forEach(side => byId(`safe-${side}`).value = draft.canvas.safeMargin[side]);
+            writeSlotForm();
+        }
+
+        function writeSlotForm() {
+            const slot = currentSlot();
+            if (!slot) return;
+            byId('slot-x').value = slot.x; byId('slot-y').value = slot.y;
+            byId('slot-width').value = slot.width; byId('slot-height').value = slot.height;
+            byId('slot-rotation').value = slot.rotation; byId('slot-z').value = slot.zIndex;
+            byId('slot-focus-x').value = slot.focusX; byId('slot-focus-y').value = slot.focusY;
+        }
+
+        function readTemplateForm() {
+            draft.name = byId('template-name').value;
+            draft.layoutId = byId('layout-id').value;
+            draft.enabled = byId('template-enabled').checked;
+            draft.canvas.backgroundColor = byId('background-color').value;
+            ['top','right','bottom','left'].forEach(side => draft.canvas.safeMargin[side] = Number(byId(`safe-${side}`).value));
+            draft = engine.normalizeTemplate(draft);
+            renderAll();
+        }
+
+        function readSlotForm() {
+            const slot = currentSlot();
+            if (!slot) return;
+            slot.x = Number(byId('slot-x').value); slot.y = Number(byId('slot-y').value);
+            slot.width = Number(byId('slot-width').value); slot.height = Number(byId('slot-height').value);
+            slot.rotation = Number(byId('slot-rotation').value); slot.zIndex = Number(byId('slot-z').value);
+            slot.focusX = Number(byId('slot-focus-x').value); slot.focusY = Number(byId('slot-focus-y').value);
+            draft = engine.normalizeTemplate(draft);
+            renderAll();
+        }
+
+        function currentSlot() { return draft.slots.find(slot => slot.index === selectedSlotIndex); }
+
+        function renderAll() { renderTemplateList(); renderSlotList(); renderStage(); renderValidation(); }
+
+        function renderSlotList() {
+            byId('slot-list').innerHTML = '';
+            draft.slots.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(slot => {
+                const button = document.createElement('button');
+                button.className = `editor-button ${slot.index === selectedSlotIndex ? 'primary' : ''}`;
+                button.textContent = `Photo ${slot.index} · z${slot.zIndex}`;
+                button.onclick = () => { selectedSlotIndex = slot.index; writeSlotForm(); renderAll(); };
+                byId('slot-list').appendChild(button);
+            });
+        }
+
+        function renderStage() {
+            const stage = byId('editor-stage');
+            const maxWidth = 620, maxHeight = Math.max(400, window.innerHeight * .66);
+            const scale = Math.min(maxWidth / draft.canvas.width, maxHeight / draft.canvas.height);
+            stage.style.width = `${Math.round(draft.canvas.width * scale)}px`;
+            stage.style.height = `${Math.round(draft.canvas.height * scale)}px`;
+            stage.style.background = draft.canvas.backgroundColor;
+            stage.innerHTML = '';
+            draft.slots.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(slot => {
+                const element = document.createElement('div');
+                element.className = `editor-slot ${slot.index === selectedSlotIndex ? 'active' : ''}`;
+                element.dataset.index = slot.index;
+                element.style.left = `${slot.x / draft.canvas.width * 100}%`;
+                element.style.top = `${slot.y / draft.canvas.height * 100}%`;
+                element.style.width = `${slot.width / draft.canvas.width * 100}%`;
+                element.style.height = `${slot.height / draft.canvas.height * 100}%`;
+                element.style.transform = `rotate(${slot.rotation}deg)`;
+                element.style.zIndex = slot.zIndex + 10;
+                element.onpointerdown = event => startDrag(event, slot.index, scale);
+                stage.appendChild(element);
+            });
+            if (draft.overlay.url) {
+                const overlay = document.createElement('img'); overlay.className = 'editor-overlay'; overlay.src = draft.overlay.url; stage.appendChild(overlay);
+            }
+            if (byId('show-safe-zone').checked) {
+                const safe = document.createElement('div'); safe.className = 'editor-safe';
+                safe.style.inset = `${draft.canvas.safeMargin.top / draft.canvas.height * 100}% ${draft.canvas.safeMargin.right / draft.canvas.width * 100}% ${draft.canvas.safeMargin.bottom / draft.canvas.height * 100}% ${draft.canvas.safeMargin.left / draft.canvas.width * 100}%`;
+                stage.appendChild(safe);
+            }
+            byId('canvas-meta').textContent = `${draft.canvas.width} × ${draft.canvas.height}px · ${draft.canvas.dpi} DPI · ${draft.type} · ${draft.slots.length} slots`;
+        }
+
+        function startDrag(event, index, scale) {
+            selectedSlotIndex = index; writeSlotForm(); renderSlotList();
+            document.querySelectorAll('.editor-slot').forEach(element => element.classList.toggle('active', Number(element.dataset.index) === index));
+            const slot = currentSlot();
+            dragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:slot.x, y:slot.y, scale, element:event.currentTarget };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.currentTarget.onpointermove = dragSlot;
+            event.currentTarget.onpointerup = endDrag;
+        }
+        function dragSlot(event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+            const slot = currentSlot();
+            slot.x = Math.round(dragState.x + (event.clientX - dragState.startX) / dragState.scale);
+            slot.y = Math.round(dragState.y + (event.clientY - dragState.startY) / dragState.scale);
+            dragState.element.style.left = `${slot.x / draft.canvas.width * 100}%`;
+            dragState.element.style.top = `${slot.y / draft.canvas.height * 100}%`;
+            writeSlotForm(); renderValidation();
+        }
+        function endDrag(event) { if (dragState && event.pointerId === dragState.pointerId) { dragState = null; renderAll(); } }
+
+        function changeCanvasPreset() {
+            const fresh = engine.createTemplate(draft.layoutId, byId('canvas-preset').value, { templateId:draft.templateId, name:draft.name, enabled:draft.enabled });
+            draft = fresh; selectedSlotIndex = 1; writeForms(); renderAll();
+        }
+
+        function createNewTemplate() {
+            const id = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+            draft = engine.createTemplate('3_1x1', '2x6', { templateId:id, name:'New event template' });
+            catalog.push(engine.clone(draft)); selectedSlotIndex = 1; writeForms(); renderAll();
+        }
+        function duplicateSelectedSlot() { draft = engine.duplicateSlot(draft, selectedSlotIndex); selectedSlotIndex = draft.slots.length; writeForms(); renderAll(); }
+        function removeSelectedSlot() { draft = engine.removeSlot(draft, selectedSlotIndex); selectedSlotIndex = Math.min(selectedSlotIndex, draft.slots.length); writeForms(); renderAll(); }
+        function moveLayer(action) { draft = engine.moveSlotLayer(draft, selectedSlotIndex, action); writeSlotForm(); renderAll(); }
+
+        function renderValidation() {
+            const result = engine.validateTemplate(draft); const box = byId('validation-message');
+            const messages = result.errors.concat(result.warnings);
+            box.className = `editor-message mt-4 ${messages.length ? 'warn' : 'ok'}`;
+            box.textContent = messages.length ? messages.join(' ') : 'Template ready · ทุกช่องอยู่ภายใน safe zone';
+        }
+
+        function saveTemplate() {
+            const result = engine.validateTemplate(draft);
+            if (!result.valid) { renderValidation(); return; }
+            draft = TemplateCatalog.upsert(result.template);
+            catalog = TemplateCatalog.load();
+            adminAuditLocal('template.saved', { templateId:draft.templateId, layoutId:draft.layoutId, slots:draft.slots.length });
+            selectTemplate(draft.templateId); toast('บันทึก Template แล้ว');
+        }
+
+        function deleteTemplate() {
+            if (!draft.templateId.startsWith('custom_')) { toast('Template มาตรฐานลบไม่ได้ แต่แก้ไขและบันทึกทับได้'); return; }
+            if (!confirm(`Delete ${draft.name}?`)) return;
+            TemplateCatalog.remove(draft.templateId); catalog = TemplateCatalog.load(); selectTemplate(catalog[0].templateId);
+        }
+
+        function uploadOverlay(event) {
+            const file = event.target.files[0]; if (!file) return;
+            if (file.type !== 'image/png' || file.size > 2 * 1024 * 1024) { toast('กรุณาใช้ PNG ขนาดไม่เกิน 2 MB'); event.target.value=''; return; }
+            const reader = new FileReader(); reader.onload = () => { draft.overlay.url = reader.result; renderAll(); }; reader.readAsDataURL(file);
+        }
+        function clearOverlay() { draft.overlay.url = ''; byId('overlay-file').value=''; renderAll(); }
+
+        function exportCatalog() {
+            const blob = new Blob([JSON.stringify(TemplateCatalog.load(), null, 2)], { type:'application/json' });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `photobooth-templates-${new Date().toISOString().slice(0,10)}.json`; link.click(); URL.revokeObjectURL(link.href);
+        }
+        async function importCatalog(event) {
+            const file = event.target.files[0]; if (!file) return;
+            try {
+                const data = JSON.parse(await file.text());
+                if (!Array.isArray(data)) throw new Error('Catalog must be an array.');
+                const normalized = data.map(item => engine.validateTemplate(item)).filter(item => item.valid).map(item => item.template);
+                if (!normalized.length) throw new Error('No valid templates found.');
+                catalog = TemplateCatalog.save(normalized); selectTemplate(catalog[0].templateId); toast(`Import แล้ว ${normalized.length} templates`);
+            } catch (error) { toast(`Import ไม่สำเร็จ: ${error.message}`); }
+            event.target.value='';
+        }
+        function escapeHtml(value) { const div=document.createElement('div'); div.textContent=value; return div.innerHTML; }
+        function toast(message) { const box=byId('validation-message'); box.className='editor-message ok mt-4'; box.textContent=message; }
+    </script>
+</body>
+</html>

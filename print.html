@@ -66,7 +66,7 @@
     <!-- Left Side: Digital Downloads -->
     <div class="w-full lg:w-1/2 flex flex-col justify-center px-6 py-8 md:px-12 lg:px-16 fade-up-enter z-10 pt-20 lg:pt-16">
         <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-2" data-i18n="print_title">Your photos are ready.</h1>
-        <p class="text-gray-500 text-xs md:text-sm mb-6 md:mb-10" data-i18n="print_desc">Scan the QR code to save to your digital wallet.</p>
+        <p class="text-gray-500 text-xs md:text-sm mb-6 md:mb-10" data-i18n="print_desc">Your final photo is ready for printing.</p>
 
         <div id="upload-status" class="flex items-center gap-3 text-sm font-medium text-gray-500 mb-6">
             <div class="spinner border-gray-300 w-5 h-5 border-2"></div>
@@ -137,11 +137,32 @@
         </div>
     </div>
 
+    <!-- Admin confirmation used when no physical printer is connected or the
+         printer outcome is ambiguous. Customers never choose copy count. -->
+    <div id="print-simulator-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 hidden no-print">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-900">
+                <span class="material-symbols-outlined text-2xl">print</span>
+            </div>
+            <h3 id="print-simulator-title" class="text-xl font-bold text-gray-900 mb-2">Printer Simulator</h3>
+            <p id="print-simulator-message" class="text-sm text-gray-500 mb-6">ตรวจสอบตัวอย่าง แล้วให้ Admin ยืนยันผลการพิมพ์ 2 ใบ</p>
+            <div class="bg-gray-100 rounded-xl p-4 mb-6 text-left text-sm text-gray-700">
+                <strong>1 SET = 2 PRINTS</strong><br>
+                ระบบจะตัดกระดาษแยกแต่ละใบ และจะไม่พิมพ์ซ้ำอัตโนมัติ
+            </div>
+            <div class="flex gap-3">
+                <button onclick="cancelPendingPrint()" class="flex-1 btn-modern btn-secondary text-sm py-3">ยังไม่สำเร็จ</button>
+                <button onclick="confirmPendingPrint()" class="flex-1 btn-modern btn-primary text-sm py-3">Admin ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity z-[60]">
     </div>
 
-    <script src="shared.js?v=2.3"></script>
+    <script src="template-engine.js?v=1.1"></script>
+    <script src="shared.js?v=3.0"></script>
     <script>
         let currentSelectedCopies = 1;
 
@@ -155,8 +176,14 @@
             applyDynamicPrintStyles(paperMode);
 
             // Load composed results from IndexedDB (primary) / localStorage (legacy)
-            const result = (await SessionAsync.get('result')) || Session.result;
-            const dithered = (await SessionAsync.get('dithered')) || Session.dithered;
+            let result = (await SessionAsync.get('result')) || Session.result;
+            let dithered = (await SessionAsync.get('dithered')) || Session.dithered;
+            const localDemo = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+                && new URLSearchParams(window.location.search).get('demo') === '1';
+            if (!result && localDemo) {
+                result = createDemoReceipt();
+                dithered = result;
+            }
             if (result) {
                 Session.result = result;
                 Session.dithered = dithered;
@@ -181,69 +208,38 @@
                 printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">error</span> Out of Paper';
             }
 
-            try {
-                // Upload both versions
-                const uploadPromises = [];
-                
-                // Color upload
-                const colorFileName = `color_${Date.now()}.jpg`;
-                uploadPromises.push(
-                    uploadToCloud(Session.result, colorFileName).then(url => {
-                        Session.colorCloudUrl = url;
-                        return url;
-                    })
-                );
+            // Phase 1 safe default: keep final color+dithered assets on-device.
+            // External upload remains disabled until its destination and access
+            // policy are explicitly provisioned. Raw captures are already gone.
+            uploadStatus.innerHTML = '<span class="material-symbols-outlined">cloud_off</span><span>พร้อมพิมพ์ · เก็บไฟล์ไว้ในเครื่อง</span>';
+            qrContainer.classList.add('hidden');
 
-                // Dithered upload
-                const ditheredFileName = `dither_${Date.now()}.png`;
-                uploadPromises.push(
-                    uploadToCloud(Session.dithered, ditheredFileName).then(url => {
-                        Session.ditheredCloudUrl = url;
-                        return url;
-                    })
-                );
-
-                const results = await Promise.all(uploadPromises);
-
-                if (!results[0] || !results[1]) {
-                    throw new Error("One or more uploads failed returning null");
-                }
-
-                uploadStatus.classList.add('hidden');
-                qrContainer.classList.remove('hidden');
-
-                // Generate QRs
-                new QRCode(document.getElementById("qr-color"), {
-                    text: Session.colorCloudUrl,
-                    width: 128,
-                    height: 128,
-                    colorDark: "#0A0A0A",
-                    colorLight: "#FFFFFF",
-                    correctLevel: QRCode.CorrectLevel.L
-                });
-
-                new QRCode(document.getElementById("qr-dithered"), {
-                    text: Session.ditheredCloudUrl,
-                    width: 128,
-                    height: 128,
-                    colorDark: "#0A0A0A",
-                    colorLight: "#FFFFFF",
-                    correctLevel: QRCode.CorrectLevel.L
-                });
-
-                // Log Session Analytics to Cloud
-                logSessionToCloud(Session.colorCloudUrl, Session.ditheredCloudUrl);
-
-            } catch (error) {
-                console.error("Upload failed:", error);
-                uploadStatus.innerHTML = `<span class="material-symbols-outlined text-red-500">error</span> <span class="text-red-500">Cloud upload failed. Network error.</span>`;
-            }
-
-            // Return home after 90 seconds
-            setTimeout(() => {
-                window.location.href = 'home.html';
-            }, 90000);
+            new IdleTimer(120000, 'home.html').start();
         });
+
+        function createDemoReceipt() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 576;
+            canvas.height = 920;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#FFFFFF';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = '#0A0A0A';
+            context.textAlign = 'center';
+            context.font = 'bold 44px sans-serif';
+            context.fillText('MEMORIES', 288, 80);
+            context.setLineDash([10, 8]);
+            context.beginPath(); context.moveTo(30, 115); context.lineTo(546, 115); context.stroke();
+            context.setLineDash([]);
+            context.fillStyle = '#E3E3E3';
+            context.fillRect(36, 150, 504, 600);
+            context.fillStyle = '#0A0A0A';
+            context.font = 'bold 30px sans-serif';
+            context.fillText('PRINT PREVIEW', 288, 440);
+            context.font = '22px sans-serif';
+            context.fillText('1 SET · 2 RECEIPTS · 80MM', 288, 825);
+            return canvas.toDataURL('image/png');
+        }
 
         function applyDynamicPrintStyles(paperMode) {
             let styleEl = document.getElementById('dynamic-print-style');
@@ -255,7 +251,9 @@
             let pageSize = '4in 6in';
             let isPhoto = true;
 
-            if (paperMode === 'photo4x6_dual') pageSize = '4in 6in';
+            const activeSchema = typeof TemplateCatalog !== 'undefined' ? TemplateCatalog.current() : null;
+            if (paperMode === 'photo4x6_postcard' && activeSchema?.orientation === 'landscape') pageSize = '6in 4in';
+            else if (paperMode === 'photo4x6_dual' || paperMode === 'photo4x6_postcard') pageSize = '4in 6in';
             else if (paperMode === 'photo2x6_single') pageSize = '2in 6in';
             else if (paperMode === 'photo5x7') pageSize = '5in 7in';
             else if (paperMode === 'thermal58') { pageSize = '58mm auto'; isPhoto = false; }
@@ -281,6 +279,7 @@
             const btnText = document.getElementById('btn-print-text');
             if (btnText) {
                 if (paperMode === 'photo4x6_dual') btnText.innerText = 'พิมพ์รูปภาพ 4x6 นิ้ว (Dual Strip)';
+                else if (paperMode === 'photo4x6_postcard') btnText.innerText = 'พิมพ์รูปภาพ 4x6 นิ้ว (Postcard)';
                 else if (paperMode === 'photo2x6_single') btnText.innerText = 'พิมพ์รูปภาพ 2x6 นิ้ว';
                 else if (paperMode === 'photo5x7') btnText.innerText = 'พิมพ์รูปภาพ 5x7 นิ้ว';
                 else if (paperMode === 'thermal58') btnText.innerText = 'พิมพ์ใบเสร็จ (58mm)';
@@ -291,20 +290,8 @@
 
         function handlePrint() {
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            if (paperCount <= 0) return;
-
-            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-            const maxCopies = Math.min(parseInt(printerConfig.maxCopies || '3'), 3);
-            const allowChoice = printerConfig.allowCopyChoice !== undefined ? printerConfig.allowCopyChoice : true;
-
-            if (allowChoice && maxCopies > 1) {
-                currentSelectedCopies = 1;
-                document.getElementById('selected-copy-count').innerText = '1';
-                document.getElementById('modal-max-copies-text').innerText = maxCopies.toString();
-                document.getElementById('copy-modal').classList.remove('hidden');
-            } else {
-                executePrint(Math.min(maxCopies, paperCount));
-            }
+            if (paperCount < 2) return;
+            executeLockedReceiptPrint();
         }
 
         function changeSelectedCopyCount(delta) {
@@ -358,7 +345,7 @@
                 section.querySelectorAll('.print-copy').forEach(el => el.remove());
                 markPrinted(copies);
             }, { once: true });
-            window.print();
+            console.warn('Browser print dialog is disabled; use the native printer adapter.');
         }
 
         // Real ESC/POS print via WebUSB (thermal printers) when configured as USB.
@@ -385,6 +372,118 @@
             }
 
             printViaDialog(copies);
+        }
+
+        let pendingPrint = null;
+
+        function appendPrintAudit(action, jobId, metadata) {
+            try {
+                const key = 'kiosk_audit_log';
+                const rows = JSON.parse(localStorage.getItem(key) || '[]');
+                rows.push({
+                    id: crypto.randomUUID(),
+                    action,
+                    target_type: 'print_job',
+                    target_id: jobId,
+                    actor_type: action.includes('confirmed') ? 'shared_admin' : 'kiosk',
+                    metadata: metadata || {},
+                    created_at: new Date().toISOString()
+                });
+                localStorage.setItem(key, JSON.stringify(rows.slice(-500)));
+            } catch (e) {
+                console.warn('Print audit buffer unavailable:', e);
+            }
+        }
+
+        async function executeLockedReceiptPrint() {
+            const button = document.getElementById('btn-print');
+            if (!button || button.disabled) return;
+            const paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount < 2) return;
+
+            const jobId = crypto.randomUUID();
+            Session.printJobId = jobId;
+            button.disabled = true;
+            button.innerHTML = '<span class="material-symbols-outlined text-sm">progress_activity</span> Printing 0/2';
+            appendPrintAudit('print.queued', jobId, { copies: 2, paper_mode: Kiosk.paperMode });
+
+            let outcome;
+            try {
+                outcome = await printReceiptSet({
+                    dataUrl: Session.dithered || Session.result,
+                    paperMode: Kiosk.paperMode,
+                    jobId
+                });
+            } catch (error) {
+                outcome = {
+                    status: 'ambiguous',
+                    error: error && error.message ? error.message : 'printer_bridge_failed',
+                    transport: 'unknown'
+                };
+            }
+
+            if (outcome.status === 'completed') {
+                await completePrintJob(jobId, 'device', outcome);
+                return;
+            }
+
+            pendingPrint = { jobId, outcome };
+            const modal = document.getElementById('print-simulator-modal');
+            const title = document.getElementById('print-simulator-title');
+            const message = document.getElementById('print-simulator-message');
+            if (outcome.status === 'ambiguous') {
+                title.innerText = 'ตรวจสอบเครื่องพิมพ์';
+                message.innerText = 'ระบบยืนยันผลไม่ได้ กรุณาตรวจว่ากระดาษออกครบ 2 ใบก่อนกดยืนยัน';
+                appendPrintAudit('print.ambiguous', jobId, { transport: outcome.transport || 'unknown' });
+            } else {
+                title.innerText = 'Printer Simulator';
+                message.innerText = 'ยังไม่มีเครื่องพิมพ์จริง ให้ Admin ตรวจตัวอย่างและยืนยันการจำลอง 2 ใบ';
+                appendPrintAudit('print.simulator_waiting', jobId, {});
+            }
+            modal.classList.remove('hidden');
+        }
+
+        async function completePrintJob(jobId, confirmedBy, outcome) {
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            paperCount = Math.max(0, paperCount - 2);
+            localStorage.setItem('kiosk_paper', paperCount.toString());
+            appendPrintAudit('print.confirmed', jobId, {
+                copies: 2,
+                confirmed_by: confirmedBy,
+                transport: outcome && outcome.transport ? outcome.transport : 'simulator'
+            });
+            const retention = await retainCurrentFinalAssets({ printJobId: jobId });
+            appendPrintAudit('asset.retention_result', jobId, {
+                status: retention.status,
+                asset_id: retention.assetId || null,
+                mode: Kiosk.mode
+            });
+            if (retention.status === 'unavailable') {
+                const toast = document.getElementById('toast');
+                if (toast) {
+                    toast.innerText = 'พิมพ์สำเร็จ แต่ยังไม่มีพื้นที่เก็บไฟล์แบบปลอดภัย';
+                    toast.classList.remove('opacity-0');
+                    setTimeout(() => toast.classList.add('opacity-0'), 4000);
+                }
+            }
+            markPrinted(2);
+            pendingPrint = null;
+            document.getElementById('print-simulator-modal').classList.add('hidden');
+        }
+
+        async function confirmPendingPrint() {
+            if (!pendingPrint) return;
+            await completePrintJob(pendingPrint.jobId, 'shared_admin', pendingPrint.outcome);
+        }
+
+        function cancelPendingPrint() {
+            if (!pendingPrint) return;
+            appendPrintAudit('print.cancelled', pendingPrint.jobId, { reason: 'admin_not_confirmed' });
+            pendingPrint = null;
+            document.getElementById('print-simulator-modal').classList.add('hidden');
+            const button = document.getElementById('btn-print');
+            button.disabled = false;
+            button.innerHTML = '<span class="material-symbols-outlined text-sm">print</span><span id="btn-print-text">Print Receipt Set (2)</span>';
         }
     </script>
 </body>

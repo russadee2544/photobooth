@@ -48,20 +48,107 @@ const Session = {
 };
 
 const Kiosk = {
-    get mode() { return localStorage.getItem('kiosk_mode') || 'normal'; },
-    set mode(v) { localStorage.setItem('kiosk_mode', v); },
+    get mode() {
+        const stored = localStorage.getItem('kiosk_mode') || 'event';
+        return stored === 'normal' ? 'redeem' : stored;
+    },
+    set mode(v) { localStorage.setItem('kiosk_mode', v === 'normal' ? 'redeem' : v); },
     get eventName() { return localStorage.getItem('kiosk_event_name') || ''; },
     set eventName(v) { localStorage.setItem('kiosk_event_name', v); },
+    get eventKeepFinalAssets() { return localStorage.getItem('kiosk_event_keep_assets') !== 'false'; },
+    set eventKeepFinalAssets(v) { localStorage.setItem('kiosk_event_keep_assets', v ? 'true' : 'false'); },
     get paperMode() { return localStorage.getItem('kiosk_paper_mode') || 'photo4x6_dual'; },
-    set paperMode(v) { localStorage.setItem('kiosk_paper_mode', v); }
+    set paperMode(v) { localStorage.setItem('kiosk_paper_mode', v); },
+    get boothKind() { return localStorage.getItem('kiosk_booth_kind') || 'receipt'; },
+    set boothKind(v) { localStorage.setItem('kiosk_booth_kind', v); },
+    get kioskId() { return localStorage.getItem('kiosk_id') || ''; },
+    set kioskId(v) { localStorage.setItem('kiosk_id', String(v || '').trim()); },
+    get packageId() { return localStorage.getItem('kiosk_package_id') || ''; },
+    set packageId(v) { localStorage.setItem('kiosk_package_id', String(v || '').trim()); },
+    get priceThb() { return Number(localStorage.getItem('kiosk_price_thb') || '10'); },
+    set priceThb(v) { localStorage.setItem('kiosk_price_thb', String(Math.max(0, Number(v) || 0))); },
+    get copiesPerSet() { return 2; }
 };
 
-['layout', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter'].forEach(key => {
+['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics'].forEach(key => {
     Object.defineProperty(Session, key, {
         get: function() { return this.get(key); },
         set: function(v) { this.set(key, v); }
     });
 });
+
+// ============================================================
+// JSON TEMPLATE CATALOG
+// One schema drives layout selection, capture count, previews and printing.
+// The catalog is local-first so configured events keep working offline.
+// ============================================================
+const TEMPLATE_CATALOG_KEY = 'kiosk_template_catalog_v1';
+
+const TemplateCatalog = {
+    load() {
+        const engine = window.PhotoTemplateEngine;
+        if (!engine) return [];
+        let stored = [];
+        try {
+            stored = JSON.parse(localStorage.getItem(TEMPLATE_CATALOG_KEY) || '[]');
+        } catch (error) {
+            console.warn('Template catalog could not be parsed; defaults will be used.', error);
+        }
+        const byId = new Map();
+        engine.createDefaultTemplates().forEach(template => byId.set(template.templateId, template));
+        if (Array.isArray(stored)) {
+            stored.forEach(template => {
+                const normalized = engine.normalizeTemplate(template);
+                byId.set(normalized.templateId, normalized);
+            });
+        }
+        return Array.from(byId.values());
+    },
+    save(templates) {
+        const engine = window.PhotoTemplateEngine;
+        if (!engine) throw new Error('Template engine is unavailable.');
+        const normalized = (Array.isArray(templates) ? templates : [])
+            .map(template => engine.normalizeTemplate(template));
+        localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(normalized));
+        return normalized;
+    },
+    upsert(template) {
+        const engine = window.PhotoTemplateEngine;
+        if (!engine) throw new Error('Template engine is unavailable.');
+        const value = engine.normalizeTemplate(template);
+        const catalog = this.load();
+        const index = catalog.findIndex(item => item.templateId === value.templateId);
+        if (index >= 0) catalog[index] = value;
+        else catalog.push(value);
+        this.save(catalog);
+        return value;
+    },
+    remove(templateId) {
+        const remaining = this.load().filter(template => template.templateId !== templateId);
+        this.save(remaining);
+        return remaining;
+    },
+    find(templateId) {
+        return this.load().find(template => template.templateId === templateId) || null;
+    },
+    forLayout(layoutId, paperMode = Kiosk.paperMode) {
+        const templates = this.load().filter(template => template.enabled && template.layoutId === layoutId);
+        if (!templates.length) return null;
+        const wantsPostcard = paperMode === 'photo4x6_postcard';
+        return templates.find(template => wantsPostcard ? template.type === '4x6' : template.type === '2x6') || templates[0];
+    },
+    current(layoutId = Session.layout, paperMode = Kiosk.paperMode) {
+        const selected = Session.templateSchemaId ? this.find(Session.templateSchemaId) : null;
+        if (selected && selected.enabled) return selected;
+        return this.forLayout(layoutId || '3_1x1', paperMode);
+    },
+    requiredShots(layoutId = Session.layout) {
+        const template = this.current(layoutId);
+        if (template && template.slots.length) return template.slots.length;
+        const engine = window.PhotoTemplateEngine;
+        return engine ? engine.parseLayout(layoutId).count : (parseInt(layoutId, 10) || 3);
+    }
+};
 
 // ============================================================
 // INDEXEDDB STORAGE for large payloads (photos, composed result)
@@ -159,11 +246,190 @@ const SessionAsync = {
         }
         return Session.get(key);
     },
+    async remove(key) {
+        if (typeof window !== 'undefined') delete window['_pb_mem_' + key];
+        await PB_DB.del(key).catch(() => {});
+        try { localStorage.removeItem('pb_' + key); } catch (e) {}
+    },
     async clear() {
-        for (const k of this.largeKeys) { await PB_DB.del(k).catch(() => {}); }
+        await PB_DB.clear().catch(() => {});
         Session.clear();
     }
 };
+
+// ============================================================
+// FINAL-ASSET RETENTION
+// Production assets are handed only to the native bridge method whose contract
+// is device-local encrypted storage (externalUpload is always false here).
+// Browser IndexedDB retention exists only behind localhost ?demo=1.
+// ============================================================
+function isLocalPrototypeDemo() {
+    const host = String(location.hostname || '').toLowerCase();
+    return (host === 'localhost' || host === '127.0.0.1') &&
+        new URLSearchParams(location.search).get('demo') === '1';
+}
+
+const PB_DEMO_ARCHIVE = (() => {
+    const DB_NAME = 'photobooth_demo_archive';
+    const STORE = 'final_assets';
+    let dbPromise = null;
+
+    function open() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = () => {
+                if (!request.result.objectStoreNames.contains(STORE)) {
+                    request.result.createObjectStore(STORE, { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        return dbPromise;
+    }
+
+    async function put(record) {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readwrite');
+            tx.objectStore(STORE).put(record);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function purgeExpired(now = Date.now()) {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            let deleted = 0;
+            const tx = db.transaction(STORE, 'readwrite');
+            const request = tx.objectStore(STORE).openCursor();
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                const purgeAt = new Date(cursor.value.purgeAfter || 0).getTime();
+                if (purgeAt > 0 && purgeAt <= now) {
+                    cursor.delete();
+                    deleted += 1;
+                }
+                cursor.continue();
+            };
+            tx.oncomplete = () => resolve(deleted);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function listMetadata() {
+        const db = await open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, 'readonly');
+            const request = tx.objectStore(STORE).getAll();
+            request.onsuccess = () => resolve((request.result || []).map(record => ({
+                id: record.id,
+                mode: record.mode,
+                eventName: record.eventName,
+                state: record.state,
+                createdAt: record.createdAt,
+                purgeAfter: record.purgeAfter
+            })));
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    return { put, purgeExpired, listMetadata };
+})();
+
+async function retainCurrentFinalAssets({ printJobId = null } = {}) {
+    const mode = Kiosk.mode;
+    if (mode === 'event' && !Kiosk.eventKeepFinalAssets) {
+        adminAuditLocal('asset.retention_skipped', { mode, reason: 'event_setting_disabled' });
+        return { status: 'skipped' };
+    }
+
+    const colorDataUrl = (await SessionAsync.get('result')) || Session.result;
+    const printDataUrl = (await SessionAsync.get('dithered')) || Session.dithered || colorDataUrl;
+    if (!colorDataUrl || !printDataUrl) return { status: 'missing_assets' };
+
+    const now = Date.now();
+    const record = {
+        id: Session.sessionId || crypto.randomUUID(),
+        kioskId: Kiosk.kioskId,
+        printJobId,
+        mode,
+        eventName: mode === 'event' ? Kiosk.eventName : null,
+        state: mode === 'event' ? 'pending_event_export' : 'retained_until_purge',
+        createdAt: new Date(now).toISOString(),
+        purgeAfter: new Date(now + (mode === 'redeem' ? 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000)).toISOString(),
+        colorDataUrl,
+        printDataUrl
+    };
+
+    const bridge = window.PhotoboothDevice;
+    if (bridge && typeof bridge.storeFinalAssetsLocally === 'function') {
+        try {
+            const result = await bridge.storeFinalAssetsLocally({
+                ...record,
+                externalUpload: false,
+                rawPhotosIncluded: false
+            });
+            if (result && result.success) {
+                adminAuditLocal('asset.retained_locally', {
+                    assetId: result.assetId || record.id,
+                    mode,
+                    purgeAfter: record.purgeAfter
+                });
+                return { status: 'retained', assetId: result.assetId || record.id };
+            }
+            return { status: 'unavailable', error: (result && result.error) || 'local_archive_failed' };
+        } catch (e) {
+            console.error('Native final-asset retention failed:', e);
+            return { status: 'unavailable', error: 'local_archive_failed' };
+        }
+    }
+
+    if (isLocalPrototypeDemo()) {
+        await PB_DEMO_ARCHIVE.put(record);
+        adminAuditLocal('demo_asset.retained', {
+            assetId: record.id,
+            mode,
+            purgeAfter: record.purgeAfter
+        });
+        return { status: 'retained_demo', assetId: record.id };
+    }
+
+    adminAuditLocal('asset.retention_unavailable', { mode, reason: 'native_bridge_missing' });
+    return { status: 'unavailable', error: 'native_bridge_missing' };
+}
+
+async function purgeExpiredFinalAssets() {
+    const bridge = window.PhotoboothDevice;
+    if (bridge && typeof bridge.purgeExpiredFinalAssets === 'function') {
+        try {
+            return await bridge.purgeExpiredFinalAssets({ kioskId: Kiosk.kioskId });
+        } catch (e) {
+            console.error('Native asset purge failed:', e);
+            return { success: false, error: 'native_purge_failed' };
+        }
+    }
+    if (isLocalPrototypeDemo()) {
+        const deleted = await PB_DEMO_ARCHIVE.purgeExpired();
+        return { success: true, deleted, demo: true };
+    }
+    return { success: false, error: 'native_bridge_missing' };
+}
+
+async function getFinalAssetRetentionStatus() {
+    const bridge = window.PhotoboothDevice;
+    if (bridge && typeof bridge.finalAssetRetentionStatus === 'function') {
+        return bridge.finalAssetRetentionStatus({ kioskId: Kiosk.kioskId });
+    }
+    if (isLocalPrototypeDemo()) {
+        const records = await PB_DEMO_ARCHIVE.listMetadata();
+        return { success: true, records, demo: true };
+    }
+    return { success: false, records: [], error: 'native_bridge_missing' };
+}
 
 const i18n = {
     "en": {
@@ -174,7 +440,7 @@ const i18n = {
         "proc_title": "Processing Photos",
         "proc_desc": "Applying high-quality filters...",
         "print_title": "Your photos are ready.",
-        "print_desc": "Scan the QR code to save to your digital wallet.",
+        "print_desc": "Your final photo is ready for printing.",
         "print_color": "Premium Color",
         "print_retro": "Retro Edition",
         "btn_finish": "Finish",
@@ -213,7 +479,7 @@ const i18n = {
         "proc_title": "กำลังประมวลผลรูปภาพ",
         "proc_desc": "กำลังใส่ฟิลเตอร์คุณภาพสูง...",
         "print_title": "รูปภาพของคุณพร้อมแล้ว",
-        "print_desc": "สแกน QR Code เพื่อบันทึกรูปภาพ",
+        "print_desc": "ภาพสุดท้ายพร้อมสำหรับการพิมพ์แล้ว",
         "print_color": "ภาพสีพรีเมียม",
         "print_retro": "ภาพเรโทร",
         "btn_finish": "เสร็จสิ้น",
@@ -221,7 +487,7 @@ const i18n = {
         "uploading": "กำลังอัปโหลด...",
         "brand": "MEMORIES",
         "home_subtitle": "ตู้ถ่ายภาพดิจิทัลระดับพรีเมียม",
-        "home_start": "แตะเพื่อเริ่ม",
+        "home_start": "แตะเพื่อเริ่มต้น",
         "btn_back": "กลับ",
         "layout_title": "เลือกรูปแบบ",
         "layout_desc": "เลือกสไตล์กรอบที่เข้ากับอารมณ์ของคุณ",
@@ -300,28 +566,62 @@ if (typeof document !== 'undefined') {
 
 
 class IdleTimer {
-    constructor(timeoutMs, redirectUrl) {
-        this.timeoutMs = timeoutMs;
+    constructor(timeoutMs, redirectUrl, warningMs = 30000) {
+        // Phase 1 contract: two minutes idle with a warning during the last 30 seconds.
+        this.timeoutMs = Math.max(Number(timeoutMs) || 120000, 120000);
+        this.warningMs = Math.min(Number(warningMs) || 30000, this.timeoutMs);
         this.redirectUrl = redirectUrl;
         this.timer = null;
+        this.warningTimer = null;
         this._onActivity = this.reset.bind(this);
     }
     start() {
-        ['touchstart', 'click', 'mousemove', 'keydown'].forEach(evt => {
+        ['pointerdown', 'mousemove', 'keydown'].forEach(evt => {
             document.addEventListener(evt, this._onActivity, { passive: true });
         });
         this.reset();
     }
     reset() {
         clearTimeout(this.timer);
-        this.timer = setTimeout(() => {
-            Session.clear();
-            window.location.href = this.redirectUrl;
+        clearTimeout(this.warningTimer);
+        this.hideWarning();
+        this.warningTimer = setTimeout(() => this.showWarning(), this.timeoutMs - this.warningMs);
+        this.timer = setTimeout(async () => {
+            await SessionAsync.clear();
+            window.location.replace(this.redirectUrl);
         }, this.timeoutMs);
+    }
+    showWarning() {
+        let overlay = document.getElementById('pb-idle-warning');
+        if (!overlay) {
+            overlay = document.createElement('button');
+            overlay.type = 'button';
+            overlay.id = 'pb-idle-warning';
+            overlay.className = 'pb-idle-warning';
+            overlay.innerHTML = `
+                <span class="pb-idle-warning__card">
+                    <strong data-idle-title>ยังใช้งานอยู่ไหม?</strong>
+                    <small data-idle-message>แตะหน้าจอเพื่อใช้งานต่อ ระบบจะล้างรูปเมื่อหมดเวลา</small>
+                </span>`;
+            overlay.addEventListener('click', this._onActivity);
+            document.body.appendChild(overlay);
+        }
+        const isEnglish = getLanguage() === 'en';
+        overlay.querySelector('[data-idle-title]').textContent = isEnglish ? 'Are you still there?' : 'ยังใช้งานอยู่ไหม?';
+        overlay.querySelector('[data-idle-message]').textContent = isEnglish
+            ? 'Tap the screen to continue. Session photos will be cleared when time runs out.'
+            : 'แตะหน้าจอเพื่อใช้งานต่อ ระบบจะล้างรูปเมื่อหมดเวลา';
+        overlay.classList.add('is-visible');
+    }
+    hideWarning() {
+        const overlay = document.getElementById('pb-idle-warning');
+        if (overlay) overlay.classList.remove('is-visible');
     }
     stop() {
         clearTimeout(this.timer);
-        ['touchstart', 'click', 'mousemove', 'keydown'].forEach(evt => {
+        clearTimeout(this.warningTimer);
+        this.hideWarning();
+        ['pointerdown', 'mousemove', 'keydown'].forEach(evt => {
             document.removeEventListener(evt, this._onActivity);
         });
     }
@@ -384,17 +684,20 @@ const ESC_POS = {
         chunk.set(header, 0);
         chunk.set(raster.data, header.length);
 
-        // Compose final payload: init + raster (xN) + feed + cut
+        // Compose final payload: init + [raster + feed + cut] for each copy.
+        // Each receipt is physically separated by the auto cutter.
+        const init = [0x1B, 0x40];
         const feed = [0x1D, 0x64, 0x03];  // feed 3 dots... use GS L 3 lines
         const cut = [0x1D, 0x56, 0x41, 0x30]; // partial cut
-        let totalLen = chunk.length * copies + 3 + cut.length;
+        let totalLen = init.length + copies * (chunk.length + feed.length + cut.length);
         const out = new Uint8Array(totalLen);
         let off = 0;
+        out.set(init, off); off += init.length;
         for (let i = 0; i < copies; i++) {
             out.set(chunk, off); off += chunk.length;
+            out.set(feed, off); off += feed.length;
+            out.set(cut, off); off += cut.length;
         }
-        out.set(feed, off); off += feed.length;
-        out.set(cut, off);
         return out;
     }
 };
@@ -443,6 +746,40 @@ async function printViaUSB(paperMode, copies = 1) {
     const payload = ESC_POS.buildPayload(ditheredCanvas, paperMode, copies);
     await USBPrinter.connect();
     await USBPrinter.send(payload);
+}
+
+// Unified adapter used by the unchanged Prototype print page. The production
+// Android bridge handles LAN/USB ESC/POS; WebUSB remains a desktop fallback.
+// Ambiguous outcomes are returned to Admin and are never retried automatically.
+async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId }) {
+    const copies = 2;
+    if (!dataUrl) throw new Error('Missing printable asset');
+
+    if (window.PhotoboothPrinter && typeof window.PhotoboothPrinter.printReceiptSet === 'function') {
+        const nativeResult = await window.PhotoboothPrinter.printReceiptSet({
+            jobId,
+            dataUrl,
+            paperMode,
+            copies,
+            cutEachCopy: true
+        });
+        if (!nativeResult || !['completed', 'ambiguous', 'failed'].includes(nativeResult.status)) {
+            return { status: 'ambiguous', error: 'invalid_native_response' };
+        }
+        return nativeResult;
+    }
+
+    const config = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    if (config.conn === 'usb' && paperMode.startsWith('thermal')) {
+        try {
+            await printViaUSB(paperMode, copies);
+            return { status: 'completed', copiesCompleted: 2, transport: 'webusb' };
+        } catch (error) {
+            return { status: 'ambiguous', error: error && error.message ? error.message : 'webusb_failed' };
+        }
+    }
+
+    return { status: 'simulator', copiesCompleted: 0, transport: 'simulator' };
 }
 
 function dataUrlToCanvas(dataUrl) {
@@ -512,6 +849,22 @@ function ditherImageData(imageData) {
     });
 }
 
+function getCoverCrop(image, targetWidth, targetHeight, focusX = 0.5, focusY = 0.42) {
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const imageRatio = imageWidth / imageHeight;
+    const targetRatio = targetWidth / targetHeight;
+    let width = imageWidth;
+    let height = imageHeight;
+
+    if (imageRatio > targetRatio) width = imageHeight * targetRatio;
+    else height = imageWidth / targetRatio;
+
+    const x = Math.max(0, Math.min(imageWidth - width, (imageWidth * focusX) - (width / 2)));
+    const y = Math.max(0, Math.min(imageHeight - height, (imageHeight * focusY) - (height / 2)));
+    return { x, y, width, height };
+}
+
 function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '3_1x1', layoutSize = null) {
     const photoCount = photos.length;
     const scale = outputWidth / 600;
@@ -520,8 +873,8 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
     // 1cm = 150px (at scale 2). So at scale 1, 1cm = 75px.
     // 5cm = 375px at scale 1 (750px at scale 2)
     // 2.5cm = 187.5px at scale 1 (375px at scale 2)
-    let pt = 375 * scale; // padding top (5cm)
-    let pb = 187.5 * scale; // padding bottom (2.5cm)
+    let pt = 48 * scale; // compact header area
+    let pb = 92 * scale; // footer / branding area
     let px = 24 * scale; // padding x (left/right)
     let ps = 16 * scale; // photo spacing
 
@@ -529,11 +882,15 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
     let forcedHeight = null;
     if (layoutSize && layoutSize.width_cm && layoutSize.height_cm) {
         const pxPerCm = outputWidth / layoutSize.width_cm;
-        pt = 5 * pxPerCm;
-        pb = 2.5 * pxPerCm;
+        pt = 0.45 * pxPerCm;
+        pb = 0.75 * pxPerCm;
         px = 0.32 * pxPerCm;
         ps = 0.21 * pxPerCm;
-        forcedHeight = Math.round(layoutSize.height_cm * pxPerCm);
+        // Thermal paper should end after its content. Only fixed photo media
+        // needs to preserve the configured physical height.
+        if (Kiosk.paperMode === 'photo2x6_single' || Kiosk.paperMode === 'photo5x7') {
+            forcedHeight = Math.round(layoutSize.height_cm * pxPerCm);
+        }
     }
     
     let bg = '#FFFFFF';
@@ -585,8 +942,9 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
             totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
         }
         
+        const centeredX = Math.round((outputWidth - photoWidth) / 2);
         for (let i = 0; i < count; i++) {
-            coords.push({ x: px, y: pt + i * (photoHeight + ps) });
+            coords.push({ x: centeredX, y: pt + i * (photoHeight + ps) });
         }
     } else if (count === 4) {
         photoWidth = Math.round((availableWidth - ps) / 2);
@@ -606,10 +964,11 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
             totalHeight = pt + pb + (photoHeight * 2) + ps;
         }
 
-        coords.push({ x: px, y: pt }); // Top-Left
-        coords.push({ x: px + photoWidth + ps, y: pt }); // Top-Right
-        coords.push({ x: px, y: pt + photoHeight + ps }); // Bottom-Left
-        coords.push({ x: px + photoWidth + ps, y: pt + photoHeight + ps }); // Bottom-Right
+        const gridX = Math.round((outputWidth - ((photoWidth * 2) + ps)) / 2);
+        coords.push({ x: gridX, y: pt }); // Top-Left
+        coords.push({ x: gridX + photoWidth + ps, y: pt }); // Top-Right
+        coords.push({ x: gridX, y: pt + photoHeight + ps }); // Bottom-Left
+        coords.push({ x: gridX + photoWidth + ps, y: pt + photoHeight + ps }); // Bottom-Right
     } else {
         photoWidth = availableWidth;
         photoHeight = photoWidth;
@@ -670,20 +1029,10 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                         if (!im) return;
                         
                         // Crop Image to fill photoWidth and photoHeight exactly (cover)
-                        const imgRatio = im.width / im.height;
-                        const boxRatio = photoWidth / photoHeight;
-                        let srcX = 0, srcY = 0, srcW = im.width, srcH = im.height;
-
-                        if (imgRatio > boxRatio) {
-                            srcW = im.height * boxRatio;
-                            srcX = (im.width - srcW) / 2;
-                        } else {
-                            srcH = im.width / boxRatio;
-                            srcY = (im.height - srcH) / 2;
-                        }
+                        const crop = getCoverCrop(im, photoWidth, photoHeight);
 
                         // Photo
-                        ctx.drawImage(im, srcX, srcY, srcW, srcH, x, y, photoWidth, photoHeight);
+                        ctx.drawImage(im, crop.x, crop.y, crop.width, crop.height, x, y, photoWidth, photoHeight);
                         
                         // Thin inner black border around photo for graphic pop
                         ctx.strokeStyle = '#000000';
@@ -1136,22 +1485,12 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
                         images.forEach((im, idx) => {
                             if (!im || idx >= count) return;
 
-                            const imgRatio = im.width / im.height;
-                            const boxRatio = photoWidth / photoHeight;
-                            let srcX = 0, srcY = 0, srcW = im.width, srcH = im.height;
-
-                            if (imgRatio > boxRatio) {
-                                srcW = im.height * boxRatio;
-                                srcX = (im.width - srcW) / 2;
-                            } else {
-                                srcH = im.width / boxRatio;
-                                srcY = (im.height - srcH) / 2;
-                            }
+                            const crop = getCoverCrop(im, photoWidth, photoHeight);
 
                             // Left Strip
                             const lx = leftCoords[idx].x;
                             const ly = leftCoords[idx].y;
-                            ctx.drawImage(im, srcX, srcY, srcW, srcH, lx, ly, photoWidth, photoHeight);
+                            ctx.drawImage(im, crop.x, crop.y, crop.width, crop.height, lx, ly, photoWidth, photoHeight);
                             ctx.strokeStyle = '#000000';
                             ctx.lineWidth = 1.5 * scale;
                             ctx.strokeRect(lx, ly, photoWidth, photoHeight);
@@ -1159,7 +1498,7 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
                             // Right Strip (Identical Dual Strip)
                             const rx = rightCoords[idx].x;
                             const ry = rightCoords[idx].y;
-                            ctx.drawImage(im, srcX, srcY, srcW, srcH, rx, ry, photoWidth, photoHeight);
+                            ctx.drawImage(im, crop.x, crop.y, crop.width, crop.height, rx, ry, photoWidth, photoHeight);
                             ctx.strokeRect(rx, ry, photoWidth, photoHeight);
                         });
 
@@ -1228,8 +1567,168 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
     });
 }
 
+function loadTemplateImage(source) {
+    return new Promise((resolve) => {
+        if (!source) { resolve(null); return; }
+        const image = new Image();
+        if (!String(source).startsWith('data:') && !String(source).startsWith('blob:')) {
+            image.crossOrigin = 'anonymous';
+        }
+        image.onload = () => resolve(image);
+        image.onerror = () => resolve(null);
+        image.src = source;
+    });
+}
+
+function drawTemplateTheme(ctx, templateName, theme, width, height) {
+    const scale = width / 600;
+    const name = String(templateName || 'light');
+    const ink = theme && theme.text_color ? theme.text_color : '#0A0A0A';
+    ctx.save();
+    ctx.fillStyle = ink;
+    ctx.textAlign = 'center';
+    if (theme && theme.theme_type === 'text') {
+        if (theme.header_text) {
+            ctx.font = `700 ${Math.max(12, 18 * scale)}px "Inter", "Prompt", sans-serif`;
+            ctx.fillText(theme.header_text, width / 2, 52 * scale);
+        }
+        if (theme.footer_text) {
+            ctx.font = `600 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
+            ctx.fillText(theme.footer_text, width / 2, height - 42 * scale);
+        }
+    } else if (name === 'dark') {
+        ctx.fillStyle = '#0A0A0A';
+        ctx.fillRect(34 * scale, 20 * scale, width - 68 * scale, 42 * scale);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `800 ${Math.max(12, 17 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('MEMORIES · PHOTO BOOTH', width / 2, 48 * scale);
+    } else if (name === 'mint') {
+        ctx.font = `700 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('memories.com', width / 2, 48 * scale);
+        ctx.font = `500 ${Math.max(10, 13 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('captured moments.', width / 2, height - 38 * scale);
+    } else if (name === 'blue') {
+        ctx.font = `700 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('NOW PLAYING', width / 2, 48 * scale);
+        ctx.fillText('MEMORIES', width / 2, height - 38 * scale);
+    } else {
+        ctx.font = `800 ${Math.max(12, 17 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('MEMORIES', width / 2, height - 52 * scale);
+        ctx.font = `500 ${Math.max(9, 11 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillStyle = '#666666';
+        ctx.fillText(new Date().toLocaleDateString('en-CA').replace(/-/g, '.'), width / 2, height - 32 * scale);
+    }
+    ctx.restore();
+}
+
+async function drawTemplateUnit(ctx, schema, images, templateName, customThemeObj, target) {
+    const engine = window.PhotoTemplateEngine;
+    const scaleX = target.width / schema.canvas.width;
+    const scaleY = target.height / schema.canvas.height;
+    const bg = customThemeObj && customThemeObj.theme_type === 'text'
+        ? (customThemeObj.bg_color || schema.canvas.backgroundColor)
+        : schema.canvas.backgroundColor;
+
+    ctx.save();
+    ctx.translate(target.x, target.y);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, target.width, target.height);
+
+    schema.slots.slice().sort((a, b) => a.zIndex - b.zIndex).forEach((slot) => {
+        const image = images[slot.index - 1];
+        const x = slot.x * scaleX;
+        const y = slot.y * scaleY;
+        const width = slot.width * scaleX;
+        const height = slot.height * scaleY;
+        ctx.save();
+        ctx.translate(x + width / 2, y + height / 2);
+        ctx.rotate((slot.rotation * Math.PI) / 180);
+        ctx.beginPath();
+        ctx.rect(-width / 2, -height / 2, width, height);
+        ctx.clip();
+        if (image) {
+            const crop = engine.getCoverCrop(
+                image.naturalWidth || image.width,
+                image.naturalHeight || image.height,
+                width,
+                height,
+                slot.focusX,
+                slot.focusY
+            );
+            ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, -width / 2, -height / 2, width, height);
+        } else {
+            ctx.fillStyle = '#E5E7EB';
+            ctx.fillRect(-width / 2, -height / 2, width, height);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = `700 ${Math.max(12, 18 * scaleX)}px "Inter", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(slot.index), 0, 0);
+        }
+        ctx.restore();
+    });
+
+    drawTemplateTheme(ctx, templateName, customThemeObj, target.width, target.height);
+
+    const customOverlay = customThemeObj && customThemeObj.theme_type === 'png'
+        ? await loadTemplateImage(customThemeObj.png_image)
+        : null;
+    if (customOverlay) ctx.drawImage(customOverlay, 0, 0, target.width, target.height);
+    const schemaOverlay = await loadTemplateImage(schema.overlay && schema.overlay.url);
+    if (schemaOverlay) ctx.drawImage(schemaOverlay, 0, 0, target.width, target.height);
+    ctx.restore();
+}
+
+async function composeTemplateBySchema(photos, templateName, outputWidth, customThemeObj, schema, paperMode) {
+    const engine = window.PhotoTemplateEngine;
+    const normalized = engine.normalizeTemplate(schema);
+    const images = await Promise.all((photos || []).map(loadTemplateImage));
+    const preview = Number(outputWidth) < 1000;
+    let canvasWidth;
+    let canvasHeight;
+    let targets;
+
+    if (normalized.type === '2x6' && paperMode === 'photo4x6_dual' && normalized.printSettings.printTwoPerPage) {
+        canvasWidth = preview ? Math.max(240, Math.round(outputWidth)) : 1200;
+        canvasHeight = Math.round(canvasWidth * 1.5);
+        targets = [
+            { x: 0, y: 0, width: canvasWidth / 2, height: canvasHeight },
+            { x: canvasWidth / 2, y: 0, width: canvasWidth / 2, height: canvasHeight }
+        ];
+    } else {
+        canvasWidth = preview ? Math.max(220, Math.round(outputWidth)) : normalized.canvas.width;
+        canvasHeight = Math.round(canvasWidth * (normalized.canvas.height / normalized.canvas.width));
+        targets = [{ x: 0, y: 0, width: canvasWidth, height: canvasHeight }];
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('Canvas 2D context is unavailable.');
+    for (const target of targets) {
+        await drawTemplateUnit(ctx, normalized, images, templateName, customThemeObj, target);
+    }
+    if (targets.length === 2) {
+        ctx.save();
+        ctx.strokeStyle = '#B8B8B8';
+        ctx.lineWidth = Math.max(1, canvasWidth / 800);
+        ctx.setLineDash([canvasWidth / 120, canvasWidth / 120]);
+        ctx.beginPath();
+        ctx.moveTo(canvasWidth / 2, 0);
+        ctx.lineTo(canvasWidth / 2, canvasHeight);
+        ctx.stroke();
+        ctx.restore();
+    }
+    return canvas;
+}
+
 async function composePhotoByMode(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '4', layoutSize = null) {
     const mode = Kiosk.paperMode || 'photo4x6_dual';
+    const schema = TemplateCatalog.current(layoutStr, mode);
+    if (window.PhotoTemplateEngine && schema && ['photo4x6_dual', 'photo2x6_single', 'photo4x6_postcard'].includes(mode)) {
+        return composeTemplateBySchema(photos, templateName, outputWidth, customThemeObj, schema, mode);
+    }
     if (mode === 'photo4x6_dual') {
         return await composeDualStrip4x6(photos, templateName, outputWidth, customThemeObj, layoutStr, layoutSize);
     } else {
@@ -1252,6 +1751,9 @@ async function fetchLayoutSizeFor(layoutStr) {
 
 // ======================== SUPABASE UPLOAD ========================
 async function uploadToCloud(dataUrl, filename) {
+    console.warn('Legacy browser upload is disabled. Use the provisioned native export queue.');
+    return null;
+    /* legacy implementation retained temporarily for migration reference
     // Convert data URL to blob
     const res = await fetch(dataUrl);
     const blob = await res.blob();
@@ -1280,9 +1782,13 @@ async function uploadToCloud(dataUrl, filename) {
         console.error('Cloud upload error:', err);
         return null;
     }
+    */
 }
 
 async function logSessionToCloud(colorUrl, ditheredUrl) {
+    console.warn('Legacy browser session logging is disabled. Use the native kiosk sync queue.');
+    return false;
+    /* legacy implementation retained temporarily for migration reference
     try {
         const isCafeMode = Kiosk.mode !== 'event';
         const payload = {
@@ -1315,6 +1821,7 @@ async function logSessionToCloud(colorUrl, ditheredUrl) {
     } catch (e) {
         console.error("Failed to log session:", e);
     }
+    */
 }
 
 // ======================== NAVIGATION GUARD ========================
@@ -1345,14 +1852,14 @@ function triggerFlash() {
 // ======================== EVENT BANNER & FOOTER STATUS ========================
 function checkAndInjectEventBanner() {
     const statusEl = document.getElementById('footer-copyright-status');
-    const modeStatus = Kiosk.mode === 'event' ? `EVENT (${Kiosk.eventName || 'EVENT MODE'})` : 'NORMAL';
+    const modeStatus = Kiosk.mode === 'event' ? `EVENT (${Kiosk.eventName || 'EVENT MODE'})` : 'REDEEM';
     
     if (statusEl) {
         statusEl.textContent = `© PHOTO BOOTH • ${modeStatus}`;
     }
 }
 
-// ======================== REDEEM CODE SYSTEM (Secure, via RPC) ========================
+// ======================== REDEEM CODE SYSTEM ========================
 
 // Call a Postgres RPC function through the REST API.
 async function rpc(name, args = {}) {
@@ -1373,59 +1880,154 @@ async function rpc(name, args = {}) {
     return res.json();
 }
 
-// Validate a redeem code: checked + single-use enforced atomically on the SERVER.
-async function validateRedeemCode(code) {
+// Customer redemption is a single atomic operation exposed by the native
+// device bridge. The bridge keeps its credential in Android Keystore and calls
+// the redeem-claim Edge Function; the browser never receives that credential.
+async function claimRedeemCode(code) {
     code = String(code || '').toUpperCase().trim();
     if (!/^[A-Z]{2}\d{4}$/.test(code)) {
-        return { valid: false, error: 'invalid_format' };
+        return { success: false, error: 'invalid_format' };
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const isLocalDemo = ['localhost', '127.0.0.1'].includes(window.location.hostname) && params.get('demo') === '1';
+    if (isLocalDemo) {
+        const demoCodes = demoLoadRedeemCodes();
+        let matched = demoCodes.find(row => row.code === code);
+        if (!matched && code === 'DE1010') {
+            matched = {
+                id: crypto.randomUUID(), code: 'DE1010', code_hint: 'DE••10',
+                batch_id: 'demo-starter',
+                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                is_used: false
+            };
+            demoCodes.push(matched);
+        }
+        if (!matched) return { success: false, error: 'not_found' };
+        if (matched.is_used) return { success: false, error: 'already_used' };
+        if (matched.expires_at && new Date(matched.expires_at).getTime() <= Date.now()) {
+            return { success: false, error: 'expired' };
+        }
+        matched.is_used = true;
+        matched.used_at = new Date().toISOString();
+        demoSaveRedeemCodes(demoCodes);
+        const demoClaim = {
+            claimId: crypto.randomUUID(),
+            codeHint: matched.code_hint,
+            kioskId: 'demo-kiosk',
+            packageId: 'demo-receipt',
+            claimedAt: new Date().toISOString(),
+            demo: true
+        };
+        Session.authorization = demoClaim;
+        return { success: true, claim: demoClaim };
+    }
+
+    if (!window.PhotoboothDevice || typeof window.PhotoboothDevice.claimRedeem !== 'function') {
+        return { success: false, error: 'device_not_provisioned' };
+    }
+
     try {
-        const result = await rpc('redeem_validate', { p_code: code });
-        return { valid: !!result.valid, error: result.error || null };
+        const result = await window.PhotoboothDevice.claimRedeem({
+            code,
+            kioskId: Kiosk.kioskId,
+            packageId: Kiosk.packageId,
+            configVersion: Number(localStorage.getItem('kiosk_config_version') || '1')
+        });
+        if (!result || !result.success) {
+            return { success: false, error: (result && result.error) || 'network_error' };
+        }
+        const claim = {
+            claimId: result.claimId,
+            codeHint: result.codeHint,
+            kioskId: result.kioskId,
+            packageId: result.packageId,
+            claimedAt: result.claimedAt
+        };
+        Session.authorization = claim;
+        return { success: true, claim };
     } catch (e) {
-        console.error('Redeem validation error:', e);
-        return { valid: false, error: 'network_error' };
+        console.error('Atomic redeem claim failed:', e);
+        return { success: false, error: 'network_error' };
     }
 }
 
-// Redeem a code: single-use marked atomically on the server.
-async function markCodeUsed(code) {
-    code = String(code || '').toUpperCase().trim();
-    try {
-        const result = await rpc('redeem_use', { p_code: code });
-        return !!(result && result.success);
-    } catch (e) {
-        console.error('Mark code used error:', e);
-        return false;
-    }
+function demoLoadRedeemCodes() {
+    if (!isLocalPrototypeDemo()) return [];
+    try { return JSON.parse(sessionStorage.getItem('pb_demo_redeem_codes') || '[]'); }
+    catch (e) { return []; }
 }
 
-// Generate N redeem codes (admin only - guarded by RPC security definer + RLS)
-async function generateRedeemCodes(count = 50, expiresDays = 7, adminKey = getAdminPin()) {
+function demoSaveRedeemCodes(codes) {
+    if (isLocalPrototypeDemo()) sessionStorage.setItem('pb_demo_redeem_codes', JSON.stringify(codes));
+}
+
+function demoCreateRedeemCode(existing) {
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let code;
+    do {
+        const bytes = crypto.getRandomValues(new Uint8Array(4));
+        code = letters[bytes[0] % letters.length] + letters[bytes[1] % letters.length] +
+            String(((bytes[2] << 8) | bytes[3]) % 10000).padStart(4, '0');
+    } while (existing.has(code));
+    return code;
+}
+
+async function generateRedeemCodes(count = 50, expiresDays = 30) {
+    count = Math.max(1, Math.min(500, Number(count) || 50));
+    expiresDays = Math.max(1, Math.min(365, Number(expiresDays) || 30));
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const existing = new Set(rows.map(row => row.code));
+        const batchId = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + expiresDays * 86400000).toISOString();
+        const created = [];
+        for (let i = 0; i < count; i++) {
+            const code = demoCreateRedeemCode(existing);
+            existing.add(code);
+            const row = {
+                id: crypto.randomUUID(), code, code_hint: `${code.slice(0, 2)}••${code.slice(4)}`,
+                batch_id: batchId, expires_at: expiresAt, is_used: false,
+                printed_at: null, created_at: new Date().toISOString()
+            };
+            rows.push(row);
+            created.push(row);
+        }
+        demoSaveRedeemCodes(rows);
+        adminAuditLocal('demo_redeem.batch_generated', { batchId, count, expiresAt });
+        return { success: true, codes: created.map(row => row.code), batchId, expiresAt, demo: true };
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.generateRedeemCodes !== 'function') {
+        return { success: false, codes: [], batchId: null, error: 'device_not_provisioned' };
+    }
     try {
-        const result = await rpc('redeem_generate', { p_count: count, p_expires_days: expiresDays, p_admin_key: adminKey || '' });
-        if (result && Array.isArray(result)) {
-            return { success: true, codes: result.map(r => r.code), batchId: result[0] ? result[0].batch_id : null, expiresAt: result[0] ? result[0].expires_at : null };
-        }
-        if (result && result.success) {
-            return { success: true, codes: (result.codes || []).map(r => r.code), batchId: result.batch_id, expiresAt: result.expires_at };
-        }
-        return { success: false, codes: [], batchId: null };
+        return await bridge.generateRedeemCodes({
+            kioskId: Kiosk.kioskId, packageId: Kiosk.packageId, count, expiresDays
+        });
     } catch (e) {
         console.error('Generate codes error:', e);
-        return { success: false, codes: [], batchId: null };
+        return { success: false, codes: [], batchId: null, error: 'device_unavailable' };
     }
 }
 
-// Fetch all codes with single-use status (admin only - guarded by RLS)
-async function fetchRedeemCodes(adminKey = getAdminPin()) {
+async function fetchRedeemCodes() {
+    if (isLocalPrototypeDemo()) {
+        const now = Date.now();
+        return demoLoadRedeemCodes().map(row => ({
+            ...row,
+            isExpired: row.expires_at ? new Date(row.expires_at).getTime() <= now : false
+        }));
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.listRedeemCodes !== 'function') return [];
     try {
-        const codes = await rpc('redeem_list', { p_admin_key: adminKey || '' });
-        const now = new Date();
-        return codes.map(c => ({
-            ...c,
-            isExpired: c.expires_at ? new Date(c.expires_at) < now : false,
-            usedToday: c.is_used
+        const result = await bridge.listRedeemCodes({ kioskId: Kiosk.kioskId });
+        const rows = result && Array.isArray(result.codes) ? result.codes : [];
+        const now = Date.now();
+        return rows.map(row => ({
+            ...row,
+            isExpired: row.expiresAt ? new Date(row.expiresAt).getTime() <= now : !!row.isExpired
         }));
     } catch (e) {
         console.error('Fetch redeem codes error:', e);
@@ -1433,27 +2035,362 @@ async function fetchRedeemCodes(adminKey = getAdminPin()) {
     }
 }
 
-// ======================== ADMIN AUTH (server-verified PIN) ========================
-let cachedAdminPin = null;
+let pendingDemoRedeemPrint = null;
 
-function getAdminPin() { return cachedAdminPin; }
-function isAdminAuthed() { return sessionStorage.getItem('pb_admin') === '1'; }
+async function printRedeemCodeBatch(count = 10) {
+    count = Math.max(1, Math.min(100, Number(count) || 10));
+    if (isLocalPrototypeDemo()) {
+        const available = demoLoadRedeemCodes().filter(row =>
+            !row.is_used && !row.printed_at && (!row.expires_at || new Date(row.expires_at).getTime() > Date.now())
+        ).sort((a, b) => (a.priority === 'replacement' ? -1 : 0) - (b.priority === 'replacement' ? -1 : 0)).slice(0, count);
+        if (!available.length) return { status: 'empty', codes: [] };
+        pendingDemoRedeemPrint = { jobId: crypto.randomUUID(), ids: available.map(row => row.id) };
+        return { status: 'simulator', jobId: pendingDemoRedeemPrint.jobId, codes: available.map(row => row.code) };
+    }
+    const bridge = window.PhotoboothPrinter;
+    if (!bridge || typeof bridge.printRedeemCodes !== 'function') {
+        return { status: 'unavailable', error: 'printer_bridge_missing', codes: [] };
+    }
+    return bridge.printRedeemCodes({ kioskId: Kiosk.kioskId, count });
+}
 
-// Verify the admin PIN against the server (bcrypt hash, not readable by clients)
-async function adminVerifyPin(pin) {
-    pin = String(pin || '').trim();
-    if (!pin) return false;
+async function resolveRedeemCodePrint(jobId, printed) {
+    if (isLocalPrototypeDemo()) {
+        if (!pendingDemoRedeemPrint || pendingDemoRedeemPrint.jobId !== jobId) return false;
+        if (printed) {
+            const rows = demoLoadRedeemCodes();
+            const ids = new Set(pendingDemoRedeemPrint.ids);
+            rows.forEach(row => { if (ids.has(row.id)) row.printed_at = new Date().toISOString(); });
+            demoSaveRedeemCodes(rows);
+        }
+        adminAuditLocal('demo_redeem.print_resolved', {
+            jobId, printed: !!printed, count: pendingDemoRedeemPrint.ids.length
+        });
+        pendingDemoRedeemPrint = null;
+        return true;
+    }
+    const bridge = window.PhotoboothPrinter;
+    if (!bridge || typeof bridge.resolveRedeemCodePrint !== 'function') return false;
+    const result = await bridge.resolveRedeemCodePrint({
+        jobId,
+        resolution: printed ? 'confirmed_printed' : 'confirmed_not_printed'
+    });
+    return !!(result && result.success);
+}
+
+async function issueReplacementEntitlement(originalCode, reason) {
+    originalCode = String(originalCode || '').trim().toUpperCase();
+    reason = String(reason || '').trim();
+    if (!/^[A-Z]{2}\d{4}$/.test(originalCode)) {
+        return { success: false, error: 'invalid_original_code' };
+    }
+    if (reason.length < 5 || reason.length > 500) {
+        return { success: false, error: 'replacement_reason_required' };
+    }
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const original = rows.find(row => row.code === originalCode);
+        if (!original) return { success: false, error: 'original_code_not_found' };
+        if (!original.is_used) return { success: false, error: 'replacement_not_allowed' };
+        if (original.replaced_by) return { success: false, error: 'replacement_already_issued' };
+        const existing = new Set(rows.map(row => row.code));
+        const code = demoCreateRedeemCode(existing);
+        const replacement = {
+            id: crypto.randomUUID(),
+            code,
+            code_hint: `${code.slice(0, 2)}••${code.slice(4)}`,
+            batch_id: crypto.randomUUID(),
+            expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+            is_used: false,
+            printed_at: null,
+            replacement_for: original.id,
+            priority: 'replacement',
+            created_at: new Date().toISOString()
+        };
+        original.replaced_by = replacement.id;
+        original.state = 'replaced';
+        rows.push(replacement);
+        demoSaveRedeemCodes(rows);
+        adminAuditLocal('demo_replacement_entitlement_issued', {
+            originalId: original.id,
+            replacementId: replacement.id,
+            reason
+        });
+        return {
+            success: true,
+            code,
+            codeHint: replacement.code_hint,
+            expiresAt: replacement.expires_at,
+            replacementEntitlementId: replacement.id,
+            demo: true
+        };
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.issueReplacement !== 'function') {
+        return { success: false, error: 'device_not_provisioned' };
+    }
     try {
-        const r = await rpc('admin_verify', { p_pin: pin });
-        if (r && r.valid) {
-            cachedAdminPin = pin;
-            try { sessionStorage.setItem('pb_admin', '1'); } catch (e) {}
+        return await bridge.issueReplacement({
+            kioskId: Kiosk.kioskId,
+            originalCode,
+            reason
+        });
+    } catch (e) {
+        console.error('Replacement entitlement error:', e);
+        return { success: false, error: 'device_unavailable' };
+    }
+}
+
+// ======================== ADMIN AUTH (native/server verified PIN) ========================
+// Production never persists a PIN, PIN hash, device credentials, or an admin
+// capability. The localhost fallback below uses sessionStorage for testing only.
+let cachedAdminAuthUntil = 0;
+let adminAuthError = '';
+let demoAdminPin = null;
+let demoAdminFailedCount = 0;
+let demoAdminLockedUntil = 0;
+
+function isLocalAdminDemo() {
+    const host = String(location.hostname || '').toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1';
+}
+
+if (isLocalAdminDemo()) {
+    cachedAdminAuthUntil = Number(sessionStorage.getItem('pb_demo_admin_auth_until') || 0);
+    demoAdminPin = sessionStorage.getItem('pb_demo_admin_pin') || '1234';
+}
+
+function setLocalAdminAuthUntil(value) {
+    cachedAdminAuthUntil = Number(value) || 0;
+    if (isLocalAdminDemo()) {
+        if (cachedAdminAuthUntil > Date.now()) {
+            sessionStorage.setItem('pb_demo_admin_auth_until', String(cachedAdminAuthUntil));
+        } else {
+            sessionStorage.removeItem('pb_demo_admin_auth_until');
+        }
+    }
+}
+
+function getAdminPin() {
+    // Retained for older admin call sites; raw PINs are never cached or exposed.
+    return null;
+}
+
+function getAdminAuthError() {
+    return adminAuthError;
+}
+
+function isAdminAuthed() {
+    return cachedAdminAuthUntil > Date.now();
+}
+
+function adminPinIsValid(pin) {
+    return /^\d{4}$/.test(String(pin || '').trim());
+}
+
+function adminAuditLocal(action, details = {}) {
+    try {
+        const entries = JSON.parse(localStorage.getItem('kiosk_audit_log') || '[]');
+        entries.push({
+            id: crypto.randomUUID ? crypto.randomUUID() : `audit-${Date.now()}`,
+            action,
+            actor: 'shared_admin',
+            kioskId: Kiosk.kioskId,
+            at: new Date().toISOString(),
+            details
+        });
+        localStorage.setItem('kiosk_audit_log', JSON.stringify(entries.slice(-500)));
+    } catch (e) {
+        console.warn('Unable to append local admin audit', e);
+    }
+}
+
+async function adminGetPinStatus() {
+    adminAuthError = '';
+    if (isLocalAdminDemo()) {
+        return {
+            configured: !!demoAdminPin,
+            authenticated: isAdminAuthed(),
+            lockedUntil: demoAdminLockedUntil || null,
+            demo: true
+        };
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.adminPinStatus !== 'function') {
+        adminAuthError = 'device_not_provisioned';
+        return { configured: true, authenticated: false, lockedUntil: null };
+    }
+    try {
+        const result = await bridge.adminPinStatus({ kioskId: Kiosk.kioskId });
+        if (result && result.authenticated && Number(result.expiresAt || 0) > Date.now()) {
+            cachedAdminAuthUntil = Number(result.expiresAt);
+        }
+        return {
+            configured: !!(result && result.configured),
+            authenticated: isAdminAuthed(),
+            lockedUntil: result && result.lockedUntil ? result.lockedUntil : null,
+            mustChange: !!(result && result.mustChange)
+        };
+    } catch (e) {
+        console.error('Admin PIN status error:', e);
+        adminAuthError = 'device_unavailable';
+        return { configured: true, authenticated: false, lockedUntil: null };
+    }
+}
+
+async function adminEnrollPin(pin, confirmation) {
+    adminAuthError = '';
+    pin = String(pin || '').trim();
+    confirmation = String(confirmation || '').trim();
+    if (!adminPinIsValid(pin)) {
+        adminAuthError = 'pin_format';
+        return false;
+    }
+    if (pin !== confirmation) {
+        adminAuthError = 'pin_mismatch';
+        return false;
+    }
+    if (isLocalAdminDemo()) {
+        if (demoAdminPin) {
+            adminAuthError = 'pin_already_configured';
+            return false;
+        }
+        demoAdminPin = pin;
+        sessionStorage.setItem('pb_demo_admin_pin', demoAdminPin);
+        setLocalAdminAuthUntil(Date.now() + (15 * 60 * 1000));
+        adminAuditLocal('demo_admin_pin_enrolled');
+        return true;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.adminEnrollPin !== 'function') {
+        adminAuthError = 'device_not_provisioned';
+        return false;
+    }
+    try {
+        const result = await bridge.adminEnrollPin({ kioskId: Kiosk.kioskId, pin });
+        if (result && result.success) {
+            cachedAdminAuthUntil = Number(result.expiresAt || (Date.now() + (15 * 60 * 1000)));
             return true;
         }
+        adminAuthError = (result && result.error) || 'pin_enroll_failed';
     } catch (e) {
-        console.error('Admin verify error:', e);
+        console.error('Admin PIN enrollment error:', e);
+        adminAuthError = 'device_unavailable';
     }
     return false;
+}
+
+async function adminVerifyPin(pin) {
+    adminAuthError = '';
+    pin = String(pin || '').trim();
+    if (!adminPinIsValid(pin)) {
+        adminAuthError = 'pin_format';
+        return false;
+    }
+    if (isLocalAdminDemo()) {
+        if (!demoAdminPin) {
+            adminAuthError = 'pin_setup_required';
+            return false;
+        }
+        if (demoAdminLockedUntil > Date.now()) {
+            adminAuthError = 'pin_locked';
+            return false;
+        }
+        if (pin === demoAdminPin) {
+            demoAdminFailedCount = 0;
+            demoAdminLockedUntil = 0;
+            setLocalAdminAuthUntil(Date.now() + (15 * 60 * 1000));
+            adminAuditLocal('demo_admin_login_succeeded');
+            return true;
+        }
+        demoAdminFailedCount += 1;
+        if (demoAdminFailedCount >= 5) {
+            const exponent = Math.min(8, demoAdminFailedCount - 5);
+            demoAdminLockedUntil = Date.now() + Math.min(15 * 60 * 1000, 5000 * (2 ** exponent));
+        }
+        adminAuditLocal('demo_admin_login_failed', {
+            failedCount: demoAdminFailedCount,
+            lockedUntil: demoAdminLockedUntil || null
+        });
+        adminAuthError = demoAdminLockedUntil > Date.now() ? 'pin_locked' : 'pin_incorrect';
+        return false;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.adminVerifyPin !== 'function') {
+        adminAuthError = 'device_not_provisioned';
+        return false;
+    }
+    try {
+        const result = await bridge.adminVerifyPin({ kioskId: Kiosk.kioskId, pin });
+        if (result && result.valid) {
+            cachedAdminAuthUntil = Number(result.expiresAt || (Date.now() + (15 * 60 * 1000)));
+            return true;
+        }
+        adminAuthError = (result && result.error) || 'pin_incorrect';
+    } catch (e) {
+        console.error('Admin PIN verify error:', e);
+        adminAuthError = 'device_unavailable';
+    }
+    return false;
+}
+
+async function adminChangePin(currentPin, nextPin, confirmation) {
+    adminAuthError = '';
+    currentPin = String(currentPin || '').trim();
+    nextPin = String(nextPin || '').trim();
+    confirmation = String(confirmation || '').trim();
+    if (!adminPinIsValid(currentPin) || !adminPinIsValid(nextPin)) {
+        adminAuthError = 'pin_format';
+        return false;
+    }
+    if (nextPin !== confirmation) {
+        adminAuthError = 'pin_mismatch';
+        return false;
+    }
+    if (currentPin === nextPin) {
+        adminAuthError = 'pin_unchanged';
+        return false;
+    }
+    if (isLocalAdminDemo()) {
+        if (!(await adminVerifyPin(currentPin))) return false;
+        demoAdminPin = nextPin;
+        sessionStorage.setItem('pb_demo_admin_pin', demoAdminPin);
+        demoAdminFailedCount = 0;
+        demoAdminLockedUntil = 0;
+        setLocalAdminAuthUntil(0);
+        adminAuditLocal('demo_admin_pin_changed');
+        return true;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.adminChangePin !== 'function') {
+        adminAuthError = 'device_not_provisioned';
+        return false;
+    }
+    try {
+        const result = await bridge.adminChangePin({
+            kioskId: Kiosk.kioskId,
+            currentPin,
+            nextPin
+        });
+        if (result && result.success) {
+            cachedAdminAuthUntil = 0;
+            return true;
+        }
+        adminAuthError = (result && result.error) || 'pin_change_failed';
+    } catch (e) {
+        console.error('Admin PIN change error:', e);
+        adminAuthError = 'device_unavailable';
+    }
+    return false;
+}
+
+function adminLogout() {
+    setLocalAdminAuthUntil(0);
+    try {
+        if (window.PhotoboothDevice && typeof window.PhotoboothDevice.adminLogout === 'function') {
+            window.PhotoboothDevice.adminLogout({ kioskId: Kiosk.kioskId });
+        }
+    } catch (e) {}
 }
 
 // ======================== FILTER SYSTEM ========================
@@ -1630,4 +2567,3 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndInjectEventBanner();
     syncPresetBrandingFromDB();
 });
-

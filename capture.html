@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Capture</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { gray: { 900: '#0A0A0A', 500: '#676767', 400: '#8E8E8E', 100: '#E3E3E3', 50: '#F0F0F0', 0: '#FFFFFF' }, accent: { mint: '#BAFF66', blue: '#4C65FF', coral: '#FF6B57' } }, fontFamily: { sans: ['Inter', 'Prompt', 'sans-serif'] } } } }
-    </script>
     <link rel="stylesheet" href="shared.css">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -44,10 +36,7 @@
 
     <!-- Camera Viewfinder -->
     <main class="absolute inset-0 z-0 flex items-center justify-center bg-black overflow-hidden">
-        <video id="video-feed" autoplay playsinline class="absolute w-full h-full object-contain"></video>
-        
-        <!-- Crop Guide Box -->
-        <div id="crop-guide" class="relative z-10 border-2 border-white/50 border-dashed transition-all duration-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
+        <video id="video-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
 
         <!-- Canvas for flash capture -->
         <canvas id="photo-canvas" class="hidden"></canvas>
@@ -77,7 +66,8 @@
     <!-- Flash Overlay -->
     <div id="flash-overlay" class="flash-overlay"></div>
 
-    <script src="shared.js?v=2.5"></script>
+    <script src="template-engine.js?v=1.0"></script>
+    <script src="shared.js?v=2.9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const video = document.getElementById('video-feed');
@@ -87,7 +77,6 @@
             const demoBanner = document.getElementById('demo-banner');
             const reqCamBtn = document.getElementById('req-cam-btn');
             const forceDemoBtn = document.getElementById('force-demo-btn');
-            const cropGuide = document.getElementById('crop-guide');
             
             const camSwitchBtn = document.getElementById('cam-switch-btn');
             const camMenu = document.getElementById('cam-menu');
@@ -98,62 +87,20 @@
             const isRetake = retakeIdx !== null;
 
             const layoutStr = Session.layout || '4_1x1';
-            let requiredShots = 4;
+            let requiredShots = TemplateCatalog.requiredShots(layoutStr);
             let ratio = '1x1';
             if (layoutStr.includes('_')) {
                 const parts = layoutStr.split('_');
-                requiredShots = parseInt(parts[0], 10);
+                requiredShots = TemplateCatalog.requiredShots(layoutStr);
                 ratio = parts[1];
             } else {
-                requiredShots = parseInt(layoutStr, 10);
+                requiredShots = TemplateCatalog.requiredShots(layoutStr);
             }
             const totalShots = isRetake ? 1 : requiredShots;
             let currentShot = 1;
             let photos = [];
             let useDemo = false;
             let currentStream = null;
-
-            // Resize guide box to match ratio and fit inside visible video stream
-            function updateGuideBox() {
-                const w = window.innerWidth;
-                const h = window.innerHeight;
-                
-                const vw = video.videoWidth || 1920;
-                const vh = video.videoHeight || 1080;
-                const videoRatio = vw / vh;
-
-                let drawW = w;
-                let drawH = w / videoRatio;
-                if (drawH > h) {
-                    drawH = h;
-                    drawW = h * videoRatio;
-                }
-
-                const maxW = drawW * 0.95;
-                const maxH = drawH * 0.95;
-
-                // Default to 3:4 Vertical Portrait frame
-                let targetRatio = 3 / 4;
-                if (ratio === '16x9') {
-                    targetRatio = 16 / 9;
-                } else if (ratio === '1x1') {
-                    targetRatio = 1;
-                }
-
-                let guideW = maxW;
-                let guideH = guideW / targetRatio;
-
-                if (guideH > maxH) {
-                    guideH = maxH;
-                    guideW = guideH * targetRatio;
-                }
-
-                cropGuide.style.width = guideW + 'px';
-                cropGuide.style.height = guideH + 'px';
-            }
-            window.addEventListener('resize', updateGuideBox);
-            video.addEventListener('loadedmetadata', updateGuideBox);
-            updateGuideBox();
 
             // Setup Camera (Request full wide 1920x1080 resolution)
             async function startCamera(deviceId = null) {
@@ -267,51 +214,32 @@
                     ctx.fillText('DEMO PHOTO ' + currentShot, canvas.width/2, canvas.height/2);
                     photos.push(canvas.toDataURL('image/jpeg', 0.9));
                 } else {
-                    // We crop the video exactly as the crop guide is showing!
+                    // Save the full camera frame. Template composition performs
+                    // the final crop later, so one capture fits every layout.
                     const vw = video.videoWidth;
                     const vh = video.videoHeight;
-                    const windowW = window.innerWidth;
-                    const windowH = window.innerHeight;
-
-                    // Compute object-contain video dimensions on screen
-                    const videoRatio = vw / vh;
-                    let drawW = windowW;
-                    let drawH = windowW / videoRatio;
-                    if (drawH > windowH) {
-                        drawH = windowH;
-                        drawW = windowH * videoRatio;
+                    let targetW = vw;
+                    let targetH = vh;
+                    const maxDim = 1600;
+                    if (targetW > maxDim || targetH > maxDim) {
+                        if (targetW > targetH) {
+                            targetH = Math.round((targetH * maxDim) / targetW);
+                            targetW = maxDim;
+                        } else {
+                            targetW = Math.round((targetW * maxDim) / targetH);
+                            targetH = maxDim;
+                        }
                     }
-                    
-                    // Box size on screen
-                    const boxW = parseFloat(cropGuide.style.width);
-                    const boxH = parseFloat(cropGuide.style.height);
 
-                    // Box coordinates on screen (centered)
-                    const boxX = (windowW - boxW) / 2;
-                    const boxY = (windowH - boxH) / 2;
-
-                    // Video coordinates on screen (centered)
-                    const vidX = (windowW - drawW) / 2;
-                    const vidY = (windowH - drawH) / 2;
-
-                    // Relative crop coordinates in source video pixels
-                    const scaleX = vw / drawW;
-                    const scaleY = vh / drawH;
-
-                    const cropX = (boxX - vidX) * scaleX;
-                    const cropY = (boxY - vidY) * scaleY;
-                    const cropW = boxW * scaleX;
-                    const cropH = boxH * scaleY;
-
-                    canvas.width = cropW;
-                    canvas.height = cropH;
+                    canvas.width = targetW;
+                    canvas.height = targetH;
                     const ctx = canvas.getContext('2d');
                     
                     // Mirror image if using front camera
                     ctx.translate(canvas.width, 0);
                     ctx.scale(-1, 1);
                     
-                    ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                    ctx.drawImage(video, 0, 0, vw, vh, 0, 0, targetW, targetH);
                     photos.push(canvas.toDataURL('image/jpeg', 0.9));
                 }
             }
@@ -331,11 +259,13 @@
                 }
 
                 if (isRetake) {
-                    let existingPhotos = Session.get('raw_photos') || [];
+                    let existingPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
                     existingPhotos[parseInt(retakeIdx, 10)] = photos[0];
-                    Session.set('raw_photos', existingPhotos);
+                    await SessionAsync.set('raw_photos', existingPhotos);
+                    Session.photos = existingPhotos;
                 } else {
-                    Session.set('raw_photos', photos);
+                    await SessionAsync.set('raw_photos', photos);
+                    Session.photos = photos;
                 }
                 
                 if (currentStream) currentStream.getTracks().forEach(track => track.stop());
