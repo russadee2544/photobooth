@@ -134,8 +134,18 @@ const TemplateCatalog = {
     forLayout(layoutId, paperMode = Kiosk.paperMode) {
         const templates = this.load().filter(template => template.enabled && template.layoutId === layoutId);
         if (!templates.length) return null;
-        const wantsPostcard = paperMode === 'photo4x6_postcard';
-        return templates.find(template => wantsPostcard ? template.type === '4x6' : template.type === '2x6') || templates[0];
+        const mode = paperMode || 'photo4x6_dual';
+        let matched = templates.find(template => template.type === mode);
+        if (!matched) {
+            if (mode === 'photo4x6_postcard') {
+                matched = templates.find(template => template.type === '4x6');
+            } else if (mode.startsWith('thermal') || mode === 'photo2x6_single' || mode === 'photo4x6_dual') {
+                matched = templates.find(template => template.type === mode || template.type === '2x6');
+            } else if (mode === 'photo5x7') {
+                matched = templates.find(template => template.type === 'photo5x7' || template.type === '2x6');
+            }
+        }
+        return matched || templates[0];
     },
     current(layoutId = Session.layout, paperMode = Kiosk.paperMode) {
         const selected = Session.templateSchemaId ? this.find(Session.templateSchemaId) : null;
@@ -929,13 +939,13 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
         if (ratio === '16x9') {
             photoHeight = Math.round(photoWidth * (9/16));
         } else {
-            photoHeight = photoWidth; // 1:1
+            photoHeight = Math.round(photoWidth * (4/3)); // 3:4
         }
         if (forcedHeight) {
             const availH = forcedHeight - pt - pb - (ps * (count - 1));
             if (photoHeight > 0 && availH / count < photoHeight) {
                 photoHeight = Math.max(1, Math.floor(availH / count));
-                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : photoHeight;
+                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : Math.round(photoHeight * (3/4));
             }
             totalHeight = forcedHeight;
         } else {
@@ -947,21 +957,26 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
             coords.push({ x: centeredX, y: pt + i * (photoHeight + ps) });
         }
     } else if (count === 4) {
-        photoWidth = Math.round((availableWidth - ps) / 2);
+        photoWidth = availableWidth; // In dynamic roll, 4 photos stack full width or 2x2 grid
         if (ratio === '16x9') {
             photoHeight = Math.round(photoWidth * (9/16));
         } else {
-            photoHeight = photoWidth; // 1:1
+            photoHeight = Math.round(photoWidth * (4/3)); // 3:4
         }
         if (forcedHeight) {
-            const availH = forcedHeight - pt - pb - ps;
-            if (availH / 2 < photoHeight) {
-                photoHeight = Math.max(1, Math.floor(availH / 2));
-                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : photoHeight;
+            const availH = forcedHeight - pt - pb - (ps * (count - 1));
+            if (photoHeight > 0 && availH / count < photoHeight) {
+                photoHeight = Math.max(1, Math.floor(availH / count));
+                photoWidth = ratio === '16x9' ? Math.round(photoHeight * (16/9)) : Math.round(photoHeight * (3/4));
             }
             totalHeight = forcedHeight;
         } else {
-            totalHeight = pt + pb + (photoHeight * 2) + ps;
+            totalHeight = pt + pb + (photoHeight * count) + (ps * (count - 1));
+        }
+
+        const centeredX = Math.round((outputWidth - photoWidth) / 2);
+        for (let i = 0; i < count; i++) {
+            coords.push({ x: centeredX, y: pt + i * (photoHeight + ps) });
         }
 
         const gridX = Math.round((outputWidth - ((photoWidth * 2) + ps)) / 2);
@@ -1587,36 +1602,101 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
     ctx.save();
     ctx.fillStyle = ink;
     ctx.textAlign = 'center';
+    
     if (theme && theme.theme_type === 'text') {
         if (theme.header_text) {
             ctx.font = `700 ${Math.max(12, 18 * scale)}px "Inter", "Prompt", sans-serif`;
-            ctx.fillText(theme.header_text, width / 2, 52 * scale);
+            ctx.fillText(theme.header_text, width / 2, Math.max(24, 52 * scale));
         }
         if (theme.footer_text) {
             ctx.font = `600 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
-            ctx.fillText(theme.footer_text, width / 2, height - 42 * scale);
+            ctx.fillText(theme.footer_text, width / 2, height - Math.max(18, 42 * scale));
         }
     } else if (name === 'dark') {
+        // Retro Ticket / Receipt Style
         ctx.fillStyle = '#0A0A0A';
-        ctx.fillRect(34 * scale, 20 * scale, width - 68 * scale, 42 * scale);
+        ctx.fillRect(28 * scale, 18 * scale, width - 56 * scale, 38 * scale);
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.max(12, 17 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('MEMORIES · PHOTO BOOTH', width / 2, 48 * scale);
+        ctx.font = `800 ${Math.max(11, 16 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('MEMORIES · TICKET', width / 2, 42 * scale);
+
+        // Dashed lines
+        ctx.strokeStyle = '#0A0A0A';
+        ctx.lineWidth = Math.max(1, 1.5 * scale);
+        ctx.setLineDash([6 * scale, 4 * scale]);
+        ctx.beginPath();
+        ctx.moveTo(28 * scale, 64 * scale);
+        ctx.lineTo(width - 28 * scale, 64 * scale);
+        ctx.moveTo(28 * scale, height - 56 * scale);
+        ctx.lineTo(width - 28 * scale, height - 56 * scale);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Footer barcode effect
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = `700 ${Math.max(9, 12 * scale)}px "Inter", monospace`;
+        ctx.fillText('||| | |||| | || |||| | |||', width / 2, height - 36 * scale);
+        ctx.font = `500 ${Math.max(8, 10 * scale)}px "Inter", sans-serif`;
+        ctx.fillText('THANK YOU FOR VISITING', width / 2, height - 18 * scale);
     } else if (name === 'mint') {
-        ctx.font = `700 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('memories.com', width / 2, 48 * scale);
-        ctx.font = `500 ${Math.max(10, 13 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('captured moments.', width / 2, height - 38 * scale);
+        // Mac OS Web Browser Window
+        // Mac traffic light dots
+        const dotR = Math.max(3, 5 * scale);
+        const dotY = 32 * scale;
+        const startX = 36 * scale;
+        
+        ctx.fillStyle = '#FF5F56'; // Red
+        ctx.beginPath(); ctx.arc(startX, dotY, dotR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFBD2E'; // Yellow
+        ctx.beginPath(); ctx.arc(startX + dotR * 2.8, dotY, dotR, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#27C93F'; // Green
+        ctx.beginPath(); ctx.arc(startX + dotR * 5.6, dotY, dotR, 0, Math.PI * 2); ctx.fill();
+
+        // Browser URL pill
+        ctx.fillStyle = '#F3F4F6';
+        const pillW = Math.min(220 * scale, width * 0.45);
+        const pillH = 22 * scale;
+        ctx.beginPath();
+        ctx.roundRect((width - pillW) / 2, dotY - pillH / 2, pillW, pillH, 11 * scale);
+        ctx.fill();
+
+        ctx.fillStyle = '#374151';
+        ctx.font = `600 ${Math.max(9, 11 * scale)}px "Inter", sans-serif`;
+        ctx.fillText('memories.com', width / 2, dotY + 4 * scale);
+
+        // Footer
+        ctx.fillStyle = '#6B7280';
+        ctx.font = `500 ${Math.max(9, 12 * scale)}px "Inter", sans-serif`;
+        ctx.fillText('captured moments.', width / 2, height - 28 * scale);
     } else if (name === 'blue') {
-        ctx.font = `700 ${Math.max(11, 15 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('NOW PLAYING', width / 2, 48 * scale);
-        ctx.fillText('MEMORIES', width / 2, height - 38 * scale);
+        // Retro MP3 / Music Player
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = `800 ${Math.max(10, 13 * scale)}px "Inter", sans-serif`;
+        ctx.fillText('▶ NOW PLAYING', width / 2, 34 * scale);
+
+        // Progress bar
+        const barW = width - 80 * scale;
+        const barY = 48 * scale;
+        ctx.fillStyle = '#E5E7EB';
+        ctx.fillRect(40 * scale, barY, barW, 4 * scale);
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(40 * scale, barY, barW * 0.65, 4 * scale);
+
+        // Footer
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = `800 ${Math.max(12, 16 * scale)}px "Inter", sans-serif`;
+        ctx.fillText('MEMORIES · TRACK 01', width / 2, height - 38 * scale);
+        ctx.font = `500 ${Math.max(9, 11 * scale)}px "Inter", sans-serif`;
+        ctx.fillStyle = '#6B7280';
+        ctx.fillText('02:45 / 03:30 · STEREO HD', width / 2, height - 20 * scale);
     } else {
-        ctx.font = `800 ${Math.max(12, 17 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('MEMORIES', width / 2, height - 52 * scale);
-        ctx.font = `500 ${Math.max(9, 11 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillStyle = '#666666';
-        ctx.fillText(new Date().toLocaleDateString('en-CA').replace(/-/g, '.'), width / 2, height - 32 * scale);
+        // Classic Y2K / Minimalist
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = `900 ${Math.max(13, 20 * scale)}px "Inter", "Prompt", sans-serif`;
+        ctx.fillText('MEMORIES', width / 2, height - 48 * scale);
+        ctx.font = `500 ${Math.max(9, 12 * scale)}px "Inter", monospace`;
+        ctx.fillStyle = '#6B7280';
+        ctx.fillText(new Date().toLocaleDateString('en-CA').replace(/-/g, '.'), width / 2, height - 26 * scale);
     }
     ctx.restore();
 }
@@ -1633,6 +1713,32 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     ctx.translate(target.x, target.y);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, target.width, target.height);
+    if (schema.canvas && schema.canvas.backgroundImage) {
+        const bgImage = await loadTemplateImage(schema.canvas.backgroundImage);
+        if (bgImage) ctx.drawImage(bgImage, 0, 0, target.width, target.height);
+    }
+
+    const drawArtboardLayers = async (placement) => {
+        if (!Array.isArray(schema.artboard)) return;
+        for (const layer of schema.artboard.slice().sort((a, b) => a.zIndex - b.zIndex)) {
+            if (!layer || layer.visible === false || !layer.url) continue;
+            if ((layer.placement || 'front') !== placement) continue;
+            const image = await loadTemplateImage(layer.url);
+            if (!image) continue;
+            const lx = layer.x * scaleX;
+            const ly = layer.y * scaleY;
+            const lw = layer.width * scaleX;
+            const lh = layer.height * scaleY;
+            ctx.save();
+            ctx.globalAlpha = typeof layer.opacity === 'number' ? layer.opacity : 1;
+            ctx.translate(lx + lw / 2, ly + lh / 2);
+            ctx.rotate(((layer.rotation || 0) * Math.PI) / 180);
+            ctx.drawImage(image, -lw / 2, -lh / 2, lw, lh);
+            ctx.restore();
+        }
+    };
+
+    await drawArtboardLayers('back');
 
     schema.slots.slice().sort((a, b) => a.zIndex - b.zIndex).forEach((slot) => {
         const image = images[slot.index - 1];
@@ -1657,16 +1763,26 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
             );
             ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, -width / 2, -height / 2, width, height);
         } else {
-            ctx.fillStyle = '#E5E7EB';
+            // Elegant 3:4 photo placeholder with camera icon & label
+            ctx.fillStyle = '#F3F4F6';
             ctx.fillRect(-width / 2, -height / 2, width, height);
+            ctx.strokeStyle = '#E5E7EB';
+            ctx.lineWidth = Math.max(1, 1.5 * scaleX);
+            ctx.strokeRect(-width / 2, -height / 2, width, height);
+
             ctx.fillStyle = '#9CA3AF';
-            ctx.font = `700 ${Math.max(12, 18 * scaleX)}px "Inter", sans-serif`;
+            ctx.font = `700 ${Math.max(11, 15 * scaleX)}px "Inter", sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(String(slot.index), 0, 0);
+            ctx.fillText(`📸 Photo ${slot.index}`, 0, -8 * scaleX);
+            ctx.font = `600 ${Math.max(9, 11 * scaleX)}px "Inter", sans-serif`;
+            ctx.fillStyle = '#B0B5BF';
+            ctx.fillText('3:4 Ratio', 0, 12 * scaleX);
         }
         ctx.restore();
     });
+
+    await drawArtboardLayers('front');
 
     drawTemplateTheme(ctx, templateName, customThemeObj, target.width, target.height);
 
@@ -1726,7 +1842,7 @@ async function composeTemplateBySchema(photos, templateName, outputWidth, custom
 async function composePhotoByMode(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '4', layoutSize = null) {
     const mode = Kiosk.paperMode || 'photo4x6_dual';
     const schema = TemplateCatalog.current(layoutStr, mode);
-    if (window.PhotoTemplateEngine && schema && ['photo4x6_dual', 'photo2x6_single', 'photo4x6_postcard'].includes(mode)) {
+    if (window.PhotoTemplateEngine && schema) {
         return composeTemplateBySchema(photos, templateName, outputWidth, customThemeObj, schema, mode);
     }
     if (mode === 'photo4x6_dual') {

@@ -35,7 +35,7 @@
             <p class="text-gray-500 text-xs md:text-sm" data-i18n="layout_desc">Select a frame style that matches your mood.</p>
         </div>
 
-        <div id="layout-format-summary" class="layout-format-summary max-w-4xl mx-auto w-full mb-4 md:mb-6" aria-live="polite"></div>
+
 
         <div id="layout-grid" class="layout-standard-grid grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5 max-w-4xl mx-auto w-full">
             
@@ -142,16 +142,40 @@
     <script src="shared.js?v=2.9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const paperMode = Kiosk.paperMode;
+            const paperMode = Kiosk.paperMode || 'photo4x6_dual';
             const postcardMode = paperMode === 'photo4x6_postcard';
-            const wantedType = postcardMode ? '4x6' : '2x6';
+            
+            let wantedType = '2x6';
+            if (postcardMode) wantedType = '4x6';
+            else if (paperMode.startsWith('thermal')) wantedType = paperMode;
+            else if (paperMode === 'photo5x7') wantedType = 'photo5x7';
+
             const allowedPostcardCounts = new Set([1, 3, 4]);
             const allowedPostcardLayouts = new Set(['1_1x1', '3_1x1', '4_1x1']);
-            const schemas = TemplateCatalog.load().filter(schema => {
-                if (!schema.enabled || schema.type !== wantedType || !isStandardPhotoCanvas(schema)) return false;
+            
+            let allTemplates = TemplateCatalog.load();
+            let schemas = allTemplates.filter(schema => {
+                if (!schema.enabled) return false;
                 if (schema.templateId.startsWith('custom_')) return true;
-                return !postcardMode || (allowedPostcardCounts.has(schema.slots.length) && allowedPostcardLayouts.has(schema.layoutId));
+                if (schema.type === wantedType && isStandardPhotoCanvas(schema)) {
+                    if (postcardMode) {
+                        return allowedPostcardCounts.has(schema.slots.length) && allowedPostcardLayouts.has(schema.layoutId);
+                    }
+                    return true;
+                }
+                return false;
             });
+
+            if (schemas.length === 0) {
+                schemas = allTemplates.filter(schema => {
+                    if (!schema.enabled) return false;
+                    if (schema.templateId.startsWith('custom_')) return true;
+                    if (postcardMode) {
+                        return schema.type === '4x6' && allowedPostcardCounts.has(schema.slots.length) && allowedPostcardLayouts.has(schema.layoutId);
+                    }
+                    return schema.type === '2x6';
+                });
+            }
 
             const uniqueSchemas = Array.from(new Map(schemas.map(schema => [schema.templateId, schema])).values());
             const grid = document.getElementById('layout-grid');
@@ -167,9 +191,16 @@
 
         function isStandardPhotoCanvas(schema) {
             if (schema.type === '2x6') return schema.canvas.width === 600 && schema.canvas.height === 1800 && schema.canvas.dpi === 300;
-            const portrait = schema.canvas.width === 1200 && schema.canvas.height === 1800;
-            const landscape = schema.canvas.width === 1800 && schema.canvas.height === 1200;
-            return (portrait || landscape) && schema.canvas.dpi === 300;
+            if (schema.type === '4x6') {
+                const portrait = schema.canvas.width === 1200 && schema.canvas.height === 1800;
+                const landscape = schema.canvas.width === 1800 && schema.canvas.height === 1200;
+                return (portrait || landscape) && schema.canvas.dpi === 300;
+            }
+            if (schema.type === 'photo5x7') return schema.canvas.width === 1500 && schema.canvas.height === 2100;
+            if (schema.type === 'thermal58') return schema.canvas.width === 384;
+            if (schema.type === 'thermal80') return schema.canvas.width === 576;
+            if (schema.type === 'thermal100') return schema.canvas.width === 832;
+            return true;
         }
 
         function appendLayoutCard(schema) {
@@ -182,7 +213,9 @@
             card.onclick = () => selectLayout(schema.templateId);
 
             const preview = document.createElement('div');
-            const shapeClass = schema.type === '2x6' ? 'is-strip' : schema.orientation === 'landscape' ? 'is-landscape' : 'is-portrait';
+            const shapeClass = (schema.type === '2x6' || schema.type.startsWith('thermal'))
+                ? 'is-strip'
+                : schema.orientation === 'landscape' ? 'is-landscape' : 'is-portrait';
             preview.className = `layout-canvas-preview ${shapeClass}`;
             preview.style.aspectRatio = `${schema.canvas.width} / ${schema.canvas.height}`;
             schema.slots.forEach(slot => {
@@ -209,11 +242,14 @@
             title.textContent = schema.templateId.startsWith('custom_') ? schema.name : `${schema.slots.length} รูป`;
             const meta = document.createElement('p');
             const ratio = PhotoTemplateEngine.parseLayout(schema.layoutId).ratio;
-            const orientation = schema.type === '2x6' ? 'VERTICAL STRIP' : schema.orientation === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT';
-            meta.textContent = `${ratio.toUpperCase()} · ${orientation}`;
-            const size = document.createElement('small');
-            size.textContent = `${schema.canvas.width} × ${schema.canvas.height} PX · ${schema.canvas.dpi} DPI`;
-            label.append(title, meta, size);
+            let orientation = 'VERTICAL STRIP';
+            if (schema.type === '4x6') orientation = schema.orientation === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT';
+            else if (schema.type === 'photo5x7') orientation = 'PHOTO CARD 5x7';
+            else if (schema.type.startsWith('thermal')) orientation = schema.slots.length === 4 ? 'THERMAL 2:2' : 'THERMAL STRIP';
+            else if (schema.slots.length === 4) orientation = '2:2 GRID';
+            const ratioStr = ratio === '3x4' ? '3:4' : ratio === '16x9' ? '16:9' : ratio.toUpperCase();
+            meta.textContent = `${ratioStr} · ${orientation}`;
+            label.append(title, meta);
             card.append(preview, label);
             document.getElementById('layout-grid').appendChild(card);
         }
@@ -233,13 +269,36 @@
 
         function renderFormatSummary(paperMode, schema) {
             const summary = document.getElementById('layout-format-summary');
-            const isPostcard = schema && schema.type === '4x6';
-            const heading = isPostcard ? 'POSTCARD 4×6 นิ้ว' : 'PHOTO STRIP 2×6 นิ้ว';
-            const canvas = schema ? `${schema.canvas.width} × ${schema.canvas.height} PX` : '—';
-            const output = paperMode === 'photo4x6_dual'
-                ? 'MULTI-UP 2 แถบ → 1200 × 1800 PX'
-                : isPostcard ? 'พิมพ์เต็มแผ่น 4×6' : 'พิมพ์แถบเดี่ยว 600 × 1800 PX';
-            summary.innerHTML = `<div><strong>${heading}</strong><span>${canvas} · 300 DPI</span></div><small>${output}</small>`;
+            if (!summary) return;
+            const mode = paperMode || 'photo4x6_dual';
+            let heading = 'PHOTO STRIP 2×6 นิ้ว';
+            let canvas = schema ? `${schema.canvas.width} × ${schema.canvas.height} PX · ${schema.canvas.dpi} DPI` : '—';
+            let output = 'พิมพ์แถบเดี่ยว 600 × 1800 PX';
+
+            if (mode === 'photo4x6_dual') {
+                heading = 'PHOTO STRIP 2×6 นิ้ว';
+                output = 'MULTI-UP 2 แถบ → 1200 × 1800 PX';
+            } else if (mode === 'photo4x6_postcard') {
+                heading = 'POSTCARD 4×6 นิ้ว';
+                output = 'พิมพ์เต็มแผ่น 4×6';
+            } else if (mode === 'photo2x6_single') {
+                heading = 'PHOTO STRIP 2×6 นิ้ว';
+                output = 'พิมพ์แถบเดี่ยว 600 × 1800 PX';
+            } else if (mode === 'photo5x7') {
+                heading = 'PHOTO CARD 5×7 นิ้ว';
+                output = 'พิมพ์การ์ดรูปภาพ 5×7 นิ้ว';
+            } else if (mode === 'thermal58') {
+                heading = 'THERMAL RECEIPT 58mm';
+                output = 'พิมพ์ใบเสร็จความร้อน 58mm (ม้วน)';
+            } else if (mode === 'thermal80') {
+                heading = 'THERMAL RECEIPT 80mm';
+                output = 'พิมพ์ใบเสร็จความร้อน 80mm (ม้วน)';
+            } else if (mode === 'thermal100') {
+                heading = 'THERMAL RECEIPT 100mm';
+                output = 'พิมพ์ใบเสร็จความร้อน 100mm (ม้วน)';
+            }
+
+            summary.innerHTML = `<div><strong>${heading}</strong><span>${canvas}</span></div><small>${output}</small>`;
         }
     </script>
 </body>

@@ -392,11 +392,13 @@ body {
     border-radius: 5px;
     background: #FFFFFF;
     box-shadow: 0 9px 24px rgba(0, 0, 0, 0.08);
+    max-height: 226px;
+    max-width: 100%;
 }
 
-.layout-canvas-preview.is-strip { height: 226px; width: auto; }
-.layout-canvas-preview.is-portrait { height: 226px; width: auto; }
-.layout-canvas-preview.is-landscape { width: min(100%, 226px); height: auto; }
+.layout-canvas-preview.is-strip { height: 226px; width: auto; max-width: 100%; }
+.layout-canvas-preview.is-portrait { height: 226px; width: auto; max-width: 100%; }
+.layout-canvas-preview.is-landscape { width: min(100%, 226px); height: auto; max-height: 226px; }
 
 .layout-slot-preview {
     position: absolute;

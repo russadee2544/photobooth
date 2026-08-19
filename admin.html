@@ -6,6 +6,76 @@
     <title>PHOTO BOOTH — Admin Control</title>
     <link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Kanit:wght@300;400;500;600;700&family=Mali:wght@400;600;700&family=Niramit:wght@400;600;700&family=Sarabun:wght@300;400;500;600;700&family=Sriracha&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="shared.css">
+    <style>
+        /* ============================================================
+           ADMIN LIGHT THEME — mirrors the main kiosk system
+           (bg-gray-50 + bg-gradient-starter, white cards, accent colors)
+           Scoped to this page so dark Tailwind utilities become light.
+           ============================================================ */
+        body { background: linear-gradient(135deg, #F0F0F0 0%, #E3E3E3 100%); color: #0A0A0A; }
+
+        /* Section cards & panels -> white */
+        .bg-gray-800 { background-color: #FFFFFF !important; }
+        /* Sub-cards, stat boxes, inputs -> light gray */
+        .bg-gray-900 { background-color: #F3F4F6 !important; }
+        /* Secondary buttons -> soft gray */
+        .bg-gray-700 { background-color: #E5E7EB !important; }
+        .bg-gray-600 { background-color: #D1D5DB !important; }
+        /* Keep the PIN gate + branding preview as a dark backdrop (intentional contrast) */
+        .bg-gray-950 { background-color: #0A0A0A !important; }
+
+        .border-gray-700 { border-color: #E3E3E3 !important; }
+        .border-gray-600 { border-color: #D7D7D7 !important; }
+        .border-gray-800 { border-color: #E3E3E3 !important; }
+
+        .text-gray-400 { color: #676767 !important; }
+        .text-gray-300 { color: #676767 !important; }
+        .text-gray-500 { color: #8E8E8E !important; }
+        .text-gray-200 { color: #0A0A0A !important; }
+        /* Body text on light backgrounds -> dark. Accent buttons keep white text. */
+        .text-white { color: #0A0A0A !important; }
+        .bg-accent-blue.text-white, .bg-accent-coral.text-white { color: #FFFFFF !important; }
+        /* Elements intentionally kept dark (bg-gray-950) keep white text */
+        .bg-gray-950.text-white, .bg-gray-950 .text-white { color: #FFFFFF !important; }
+
+        /* accent-mint is neon #BAFF66 — nearly invisible on light. Darken for light theme,
+           keep neon only where it sits on a dark (gray-950) box. */
+        .text-accent-mint { color: #3F6E00 !important; }
+        .bg-gray-950.text-accent-mint, .bg-gray-950 .text-accent-mint { color: #BAFF66 !important; }
+
+        .hover\:bg-gray-700:hover { background-color: #E5E7EB !important; }
+        .hover\:bg-gray-600:hover { background-color: #D1D5DB !important; }
+        .hover\:bg-gray-800:hover { background-color: #F0F0F0 !important; }
+
+        /* Branding live-preview backdrop stays dark for contrast */
+        #admin-gate.bg-gradient-starter { background: linear-gradient(135deg, #F0F0F0 0%, #E3E3E3 100%) !important; }
+
+        /* Section cards gain a crisp border + soft shadow to match system cards */
+        .bg-gray-800.rounded-2xl { border: 1px solid #E3E3E3 !important; box-shadow: 0 8px 32px rgba(0,0,0,0.05) !important; }
+
+        /* Section header icons -> soft chip */
+        .bg-gray-800.rounded-2xl h2 .material-symbols-outlined {
+            font-size: 22px;
+            padding: 9px;
+            border-radius: 12px;
+            background: #F0F0F0;
+            border: 1px solid #E3E3E3;
+        }
+
+        /* Paper-mode / mode selector cards -> white with subtle border (matches selection-card) */
+        .paper-mode-card, #btn-event, #btn-normal {
+            background: #FFFFFF !important;
+            border-color: #D7D7D7 !important;
+            transition: all 0.3s ease;
+        }
+        .paper-mode-card:hover, #btn-event:hover, #btn-normal:hover {
+            border-color: #8E8E8E !important;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.06);
+        }
+        .paper-mode-card .font-bold.text-white, .paper-mode-card .font-bold.text-base { color: #0A0A0A !important; }
+        .paper-mode-card p.text-xs.text-gray-300 { color: #676767 !important; }
+    </style>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MEMORIES">
@@ -14,16 +84,28 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
 </head>
-<body class="bg-gray-900 text-white font-sans min-h-screen overflow-y-auto relative flex flex-col p-4 sm:p-8">
-    
-    <header class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-8 sm:mb-12 border-b border-gray-800 pb-4">
-        <div>
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Kiosk OS Control Panel</h1>
-            <p class="text-gray-400 text-xs sm:text-sm">System configuration, print modes, and hardware status.</p>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto relative flex flex-col p-4 sm:p-8">
+
+    <header class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-8 sm:mb-12 border-b border-gray-100 pb-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-gray-950 text-white grid place-items-center shadow-lg">
+                <span class="material-symbols-outlined text-2xl">photo_booth</span>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">MEMORIES · Admin</h1>
+                <p class="text-gray-500 text-xs sm:text-sm">System configuration, print modes, and hardware status.</p>
+            </div>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button onclick="showChangePinModal()" class="btn-modern bg-gray-800 text-white px-5 py-2 hover:bg-gray-700 text-sm">Change PIN</button>
-            <button onclick="adminLogout(); window.location.href='home.html'" class="btn-modern bg-gray-800 text-white px-5 py-2 hover:bg-gray-700 text-sm">Exit Admin</button>
+            <a href="template-editor.html" class="btn-modern bg-gray-950 text-white px-5 py-2 hover:opacity-90 text-sm">
+                <span class="material-symbols-outlined text-lg">dashboard_customize</span> Template Editor
+            </a>
+            <button onclick="showChangePinModal()" class="btn-modern bg-gray-950 text-white px-5 py-2 hover:opacity-90 text-sm">
+                <span class="material-symbols-outlined text-lg">key</span> Change PIN
+            </button>
+            <button onclick="adminLogout(); window.location.href='home.html'" class="btn-modern bg-gray-100 text-gray-900 border border-gray-200 px-5 py-2 hover:bg-gray-200 text-sm">
+                <span class="material-symbols-outlined text-lg">logout</span> Exit Admin
+            </button>
         </div>
     </header>
 
@@ -50,16 +132,16 @@
                 </button>
             </div>
 
-            <div id="event-config-box" class="space-y-3 hidden bg-gray-900 p-4 rounded-xl border border-gray-700">
+            <div id="event-config-box" class="space-y-3 hidden bg-white p-4 rounded-xl border border-gray-200">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Event Sponsor / Name</label>
-                    <input type="text" id="event-name" class="w-full bg-gray-800 border border-gray-600 rounded-lg text-white p-3 text-sm focus:ring-2 focus:ring-accent-mint outline-none" placeholder="e.g. Wedding of John & Jane">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Event Sponsor / Name</label>
+                    <input type="text" id="event-name" class="w-full bg-white border border-gray-200 rounded-lg text-gray-900 p-3 text-sm focus:ring-2 focus:ring-accent-mint outline-none" placeholder="e.g. Wedding of John & Jane">
                 </div>
-                <label class="flex items-start gap-3 bg-gray-800 border border-gray-700 rounded-lg p-3 cursor-pointer">
-                    <input type="checkbox" id="event-keep-assets" class="mt-1 rounded border-gray-600 text-accent-mint focus:ring-accent-mint" checked>
+                <label class="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3 cursor-pointer">
+                    <input type="checkbox" id="event-keep-assets" class="mt-1 rounded border-gray-300 text-accent-mint focus:ring-accent-mint" checked>
                     <span>
-                        <span class="block text-sm font-semibold text-white">เก็บภาพสุดท้ายเพื่อส่งให้เจ้าของงาน</span>
-                        <span class="block text-xs text-gray-400 mt-1">เก็บเฉพาะภาพสีพร้อมกรอบและภาพแบบเดียวกับที่พิมพ์ ไม่เก็บรูปดิบ</span>
+                        <span class="block text-sm font-semibold text-gray-900">เก็บภาพสุดท้ายเพื่อส่งให้เจ้าของงาน</span>
+                        <span class="block text-xs text-gray-500 mt-1">เก็บเฉพาะภาพสีพร้อมกรอบและภาพแบบเดียวกับที่พิมพ์ ไม่เก็บรูปดิบ</span>
                     </span>
                 </label>
                 <button type="button" onclick="saveEventConfig()" class="w-full bg-accent-blue text-white py-2.5 rounded-lg font-bold text-sm hover:opacity-90 transition">Save Event Info</button>
@@ -73,17 +155,17 @@
                 Hardware Status
             </h2>
             
-            <div class="flex items-center justify-between bg-gray-900 p-4 rounded-lg mb-4">
+            <div class="flex items-center justify-between bg-white p-4 rounded-lg mb-4 border border-gray-200">
                 <div>
-                    <span class="block text-sm text-gray-400 font-medium">Printer Paper Level</span>
-                    <span id="paper-count" class="text-2xl font-bold text-accent-mint">100</span> <span class="text-gray-500">sheets left</span>
+                    <span class="block text-sm text-gray-500 font-medium">Printer Paper Level</span>
+                    <span id="paper-count" class="text-2xl font-bold text-gray-900">100</span> <span class="text-gray-500">sheets left</span>
                 </div>
                 <div class="w-16 h-16 rounded-full border-4 border-accent-mint flex items-center justify-center">
                     <span class="material-symbols-outlined text-2xl text-accent-mint">check</span>
                 </div>
             </div>
 
-            <button onclick="refillPaper()" class="w-full bg-gray-700 text-white py-3 rounded-lg font-medium hover:bg-gray-600 transition-colors">
+            <button onclick="refillPaper()" class="w-full bg-gray-950 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-colors">
                 Refill Paper Stack (100)
             </button>
         </div>
@@ -706,52 +788,61 @@
     </div>
 
     <!-- Admin PIN Gate -->
-    <div id="admin-gate" class="fixed inset-0 bg-gray-950 z-[300] flex flex-col items-center justify-center p-6">
-        <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-6">
-            <span class="material-symbols-outlined text-accent-mint text-3xl">lock</span>
+    <div id="admin-gate" class="fixed inset-0 bg-gradient-starter z-[300] flex flex-col items-center justify-center p-6">
+        <div class="glass-panel w-full max-w-sm p-8 flex flex-col items-center">
+            <div class="w-16 h-16 bg-gray-950 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <span class="material-symbols-outlined text-accent-mint text-3xl">lock</span>
+            </div>
+            <h2 id="gate-title" class="text-2xl font-bold mb-2 text-gray-900">Admin Access</h2>
+            <p id="gate-desc" class="text-gray-500 text-sm mb-8 text-center max-w-md">กรุณากรอก PIN 4 หลักเพื่อเข้าสู่ระบบควบคุมตู้</p>
+            <input type="password" id="gate-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="••••"
+                class="bg-white border border-gray-200 rounded-lg text-gray-900 text-3xl text-center w-52 py-4 tracking-[0.4em] focus:outline-none focus:border-accent-mint focus:ring-2 focus:ring-accent-mint/30">
+            <input type="password" id="gate-pin-confirm" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="ยืนยัน PIN"
+                class="hidden mt-3 bg-white border border-gray-200 rounded-lg text-gray-900 text-xl text-center w-52 py-3 tracking-[0.25em] focus:outline-none focus:border-accent-mint focus:ring-2 focus:ring-accent-mint/30">
+            <div id="gate-error" class="text-accent-coral text-sm font-medium mt-4 min-h-5 opacity-0 transition-opacity text-center"></div>
+            <button id="gate-submit" onclick="submitGatePin()" class="mt-6 bg-gray-950 text-white px-10 py-4 rounded-xl font-bold hover:opacity-90 transition-all">
+                เข้าสู่ระบบ
+            </button>
         </div>
-        <h2 id="gate-title" class="text-2xl font-bold mb-2 text-white">Admin Access</h2>
-        <p id="gate-desc" class="text-gray-400 text-sm mb-8 text-center max-w-md">กรุณากรอก PIN 4 หลักเพื่อเข้าสู่ระบบควบคุมตู้</p>
-        <input type="password" id="gate-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="••••"
-            class="bg-gray-900 border border-gray-600 rounded-lg text-white text-3xl text-center w-52 py-4 tracking-[0.4em] focus:outline-none focus:border-accent-mint">
-        <input type="password" id="gate-pin-confirm" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="ยืนยัน PIN"
-            class="hidden mt-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-xl text-center w-52 py-3 tracking-[0.25em] focus:outline-none focus:border-accent-mint">
-        <div id="gate-error" class="text-accent-coral text-sm font-medium mt-4 min-h-5 opacity-0 transition-opacity text-center"></div>
-        <button id="gate-submit" onclick="submitGatePin()" class="mt-6 bg-accent-mint text-gray-900 px-10 py-4 rounded-xl font-bold hover:opacity-90 transition-all">
-            เข้าสู่ระบบ
-        </button>
     </div>
 
     <!-- Change shared PIN -->
-    <div id="change-pin-modal" class="hidden fixed inset-0 bg-black/80 z-[350] items-center justify-center p-6">
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 class="text-xl font-bold text-white mb-2">เปลี่ยน PIN กลาง</h3>
-            <p class="text-gray-400 text-sm mb-5">PIN ต้องเป็นตัวเลข 4 หลัก เมื่อเปลี่ยนแล้ว session แอดมินเดิมจะสิ้นสุดทันที</p>
+    <div id="change-pin-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[350] items-center justify-center p-6">
+        <div class="bg-white border border-gray-100 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-11 h-11 rounded-xl bg-gray-950 text-white grid place-items-center">
+                    <span class="material-symbols-outlined">key</span>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-0.5">เปลี่ยน PIN กลาง</h3>
+                    <p class="text-gray-500 text-xs">PIN ต้องเป็นตัวเลข 4 หลัก · session แอดมินเดิมจะสิ้นสุดทันที</p>
+                </div>
+            </div>
             <div class="space-y-3">
                 <input id="change-pin-current" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="PIN ปัจจุบัน"
-                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg text-gray-900 p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint focus:ring-2 focus:ring-accent-mint/30">
                 <input id="change-pin-next" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="PIN ใหม่"
-                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg text-gray-900 p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint focus:ring-2 focus:ring-accent-mint/30">
                 <input id="change-pin-confirm" type="password" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="ยืนยัน PIN ใหม่"
-                    class="w-full bg-gray-900 border border-gray-600 rounded-lg text-white p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint">
+                    class="w-full bg-gray-50 border border-gray-200 rounded-lg text-gray-900 p-3 text-center tracking-[0.25em] focus:outline-none focus:border-accent-mint focus:ring-2 focus:ring-accent-mint/30">
             </div>
             <div id="change-pin-error" class="text-accent-coral text-sm mt-3 min-h-5"></div>
             <div class="flex gap-3 mt-5">
-                <button onclick="closeChangePinModal()" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">ยกเลิก</button>
-                <button id="change-pin-submit" onclick="submitChangePin()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold">บันทึก</button>
+                <button onclick="closeChangePinModal()" class="flex-1 bg-gray-100 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-200">ยกเลิก</button>
+                <button id="change-pin-submit" onclick="submitChangePin()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold hover:opacity-90">บันทึก</button>
             </div>
         </div>
     </div>
 
     <!-- Redeem-code print preview / ambiguity confirmation -->
-    <div id="redeem-print-modal" class="hidden fixed inset-0 bg-black/85 z-[360] items-center justify-center p-6">
-        <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-2xl shadow-2xl">
-            <h3 id="redeem-print-title" class="text-xl font-bold text-white mb-2">ตัวอย่าง Redeem Code ก่อนพิมพ์</h3>
-            <p class="text-gray-400 text-sm mb-4">ตรวจจำนวนและรหัสก่อนยืนยัน ระบบจะไม่พิมพ์ซ้ำอัตโนมัติ</p>
-            <div id="redeem-print-preview" class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-gray-900 rounded-xl p-4 max-h-72 overflow-y-auto"></div>
+    <div id="redeem-print-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[360] items-center justify-center p-6">
+        <div class="bg-white border border-gray-100 rounded-2xl p-6 w-full max-w-2xl shadow-2xl">
+            <h3 id="redeem-print-title" class="text-xl font-bold text-gray-900 mb-1">ตัวอย่าง Redeem Code ก่อนพิมพ์</h3>
+            <p class="text-gray-500 text-sm mb-4">ตรวจจำนวนและรหัสก่อนยืนยัน ระบบจะไม่พิมพ์ซ้ำอัตโนมัติ</p>
+            <div id="redeem-print-preview" class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-gray-50 border border-gray-100 rounded-xl p-4 max-h-72 overflow-y-auto"></div>
             <div class="flex gap-3 mt-5">
-                <button onclick="resolvePendingRedeemPrint(false)" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">ยังไม่สำเร็จ</button>
-                <button onclick="resolvePendingRedeemPrint(true)" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold">Admin ยืนยันว่าพิมพ์แล้ว</button>
+                <button onclick="resolvePendingRedeemPrint(false)" class="flex-1 bg-gray-100 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-200">ยังไม่สำเร็จ</button>
+                <button onclick="resolvePendingRedeemPrint(true)" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-xl font-bold hover:opacity-90">Admin ยืนยันว่าพิมพ์แล้ว</button>
             </div>
         </div>
     </div>
@@ -1289,12 +1380,12 @@
             if (btnEvent) {
                 btnEvent.className = mode === 'event' 
                     ? 'w-full p-4 border-2 border-accent-mint bg-accent-mint/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-all text-center' 
-                    : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
+                    : 'w-full p-4 border border-gray-300 bg-white rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-all text-center';
             }
             if (btnNormal) {
                 btnNormal.className = mode === 'redeem'
                     ? 'w-full p-4 border-2 border-accent-blue bg-accent-blue/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-all text-center' 
-                    : 'w-full p-4 border border-gray-600 bg-gray-900 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-all text-center';
+                    : 'w-full p-4 border border-gray-300 bg-white rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-all text-center';
             }
 
             const eventBox = document.getElementById('event-config-box');
@@ -1321,6 +1412,9 @@
         function setPaperMode(mode) {
             if (typeof Kiosk !== 'undefined') {
                 Kiosk.paperMode = mode;
+                if (typeof Session !== 'undefined') {
+                    Session.templateSchemaId = null;
+                }
                 updatePaperModeUI();
                 showToast('เปลี่ยนโหมดการพิมพ์เรียบร้อย ✓');
             }
@@ -1334,7 +1428,7 @@
                     if (m === active) {
                         card.className = 'paper-mode-card border-2 border-accent-mint bg-accent-mint/10 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all';
                     } else {
-                        card.className = 'paper-mode-card border border-gray-600 bg-gray-900 p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all hover:bg-gray-800';
+                        card.className = 'paper-mode-card border border-gray-300 bg-white p-4 rounded-xl cursor-pointer flex flex-col justify-between text-left transition-all hover:bg-gray-50';
                     }
                 }
             });

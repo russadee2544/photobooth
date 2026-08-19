@@ -7,37 +7,63 @@
     <link rel="stylesheet" href="shared.css">
     <style>
         .editor-shell { display:grid; grid-template-columns:minmax(240px,300px) minmax(340px,1fr) minmax(270px,340px); gap:20px; align-items:start; }
-        .editor-panel { background:#1f2937; border:1px solid #374151; border-radius:18px; padding:18px; }
+        .editor-panel { background:#FFFFFF; border:1px solid #E3E3E3; border-radius:18px; padding:18px; box-shadow:0 8px 32px rgba(0,0,0,0.05); }
         .editor-field { display:grid; gap:6px; }
-        .editor-field label { color:#9ca3af; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-        .editor-field input, .editor-field select, .editor-field textarea { width:100%; border:1px solid #4b5563; border-radius:8px; background:#111827; color:white; padding:9px 10px; }
+        .editor-field label { color:#676767; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+        .editor-field input, .editor-field select, .editor-field textarea { width:100%; border:1px solid #D7D7D7; border-radius:8px; background:#FFFFFF; color:#0A0A0A; padding:9px 10px; }
+        .editor-field input:focus, .editor-field select:focus, .editor-field textarea:focus { outline:2px solid #BAFF66; outline-offset:-1px; }
         .editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-        .editor-button { min-height:40px; padding:8px 12px; border:1px solid #4b5563; border-radius:9px; background:#374151; color:white; font-weight:700; cursor:pointer; }
-        .editor-button.primary { border-color:#6ee7b7; background:#6ee7b7; color:#111827; }
-        .editor-button.danger { color:#fb7185; }
+        .editor-button { min-height:40px; padding:8px 12px; border:1px solid #E3E3E3; border-radius:9px; background:#F3F4F6; color:#0A0A0A; font-weight:700; cursor:pointer; transition:all .2s ease; }
+        .editor-button:hover { background:#E5E7EB; }
+        .editor-button.primary { border-color:#0A0A0A; background:#0A0A0A; color:#FFFFFF; }
+        .editor-button.danger { color:#D63F2E; }
         .template-list { display:grid; gap:8px; max-height:50vh; overflow:auto; }
-        .template-list button { padding:12px; border:1px solid #374151; border-radius:10px; background:#111827; color:white; text-align:left; cursor:pointer; }
-        .template-list button.active { border-color:#6ee7b7; box-shadow:inset 4px 0 #6ee7b7; }
-        .editor-stage-wrap { min-height:70vh; display:grid; place-items:center; overflow:auto; border-radius:14px; background:repeating-conic-gradient(#111827 0 25%,#172033 0 50%) 50%/20px 20px; padding:22px; }
-        .editor-stage { position:relative; max-width:100%; max-height:68vh; background:white; box-shadow:0 20px 60px rgba(0,0,0,.35); overflow:hidden; user-select:none; touch-action:none; }
+        .template-list button { padding:12px; border:1px solid #E3E3E3; border-radius:10px; background:#FFFFFF; color:#0A0A0A; text-align:left; cursor:pointer; }
+        .template-list button:hover { background:#F3F4F6; }
+        .template-list button.active { border-color:#4C65FF; box-shadow:inset 4px 0 #4C65FF; background:#F3F4F6; }
+        .editor-stage-wrap { min-height:70vh; display:grid; place-items:center; overflow:auto; border-radius:14px; background:repeating-conic-gradient(#F0F0F0 0 25%,#E3E3E3 0 50%) 50%/20px 20px; padding:22px; }
+        .editor-stage { position:relative; max-width:100%; max-height:68vh; background:white; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; user-select:none; touch-action:none; }
         .editor-safe { position:absolute; border:2px dashed #ef4444; pointer-events:none; z-index:500; }
+        .editor-bleed { position:absolute; border:2px dashed #22c55e; pointer-events:none; z-index:501; }
+        .editor-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:0; }
         .editor-overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; z-index:400; }
-        .editor-slot { position:absolute; display:grid; place-items:center; border:2px solid #111827; background:#d1d5db; color:#111827; font-size:clamp(11px,2vw,22px); font-weight:900; cursor:move; overflow:hidden; }
+        .editor-slot { position:absolute; display:grid; place-items:center; border:2px solid #0A0A0A; background:#D1D5DB; color:#0A0A0A; font-size:clamp(11px,2vw,22px); font-weight:900; cursor:move; overflow:hidden; }
         .editor-slot::after { content:'PHOTO ' attr(data-index); }
-        .editor-slot.active { outline:4px solid #6ee7b7; outline-offset:-4px; }
+        .editor-slot.active { outline:4px solid #4C65FF; outline-offset:-4px; }
+        .editor-art { position:absolute; cursor:move; background-size:100% 100%; background-repeat:no-repeat; touch-action:none; }
+        .editor-art.active { outline:3px solid #4C65FF; outline-offset:-3px; }
+        .editor-art.active::after { content:'DRAG · RESIZE'; position:absolute; left:50%; bottom:100%; transform:translateX(-50%); margin-bottom:6px; white-space:nowrap; background:#4C65FF; color:#fff; font-size:10px; font-weight:800; letter-spacing:.05em; padding:3px 8px; border-radius:6px; }
+        .editor-resize-handle { position:absolute; width:12px; height:12px; background:#4C65FF; border:2px solid #fff; border-radius:50%; z-index:600; }
+        .editor-resize-handle.nw { left:-6px; top:-6px; cursor:nwse-resize; }
+        .editor-resize-handle.ne { right:-6px; top:-6px; cursor:nesw-resize; }
+        .editor-resize-handle.sw { left:-6px; bottom:-6px; cursor:nesw-resize; }
+        .editor-resize-handle.se { right:-6px; bottom:-6px; cursor:nwse-resize; }
+        .asset-tray { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+        .asset-tray button { position:relative; aspect-ratio:1; border:1px solid #E3E3E3; border-radius:10px; overflow:hidden; background:#F3F4F6; cursor:pointer; padding:0; }
+        .asset-tray button:hover { border-color:#4C65FF; }
+        .asset-tray button img { width:100%; height:100%; object-fit:contain; }
+        .asset-tray button .asset-add { position:absolute; inset:0; display:grid; place-items:center; background:rgba(76,101,255,.55); color:#fff; font-size:24px; font-weight:900; opacity:0; transition:opacity .15s; }
+        .asset-tray button:hover .asset-add { opacity:1; }
+        .editor-layer { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px; padding:9px 10px; border:1px solid #E3E3E3; border-radius:10px; background:#FFFFFF; cursor:pointer; }
+        .editor-layer:hover { background:#F3F4F6; }
+        .editor-layer.active { border-color:#4C65FF; box-shadow:inset 3px 0 #4C65FF; }
+        .editor-layer .layer-swatch { width:26px; height:26px; border-radius:6px; border:1px solid #E3E3E3; display:grid; place-items:center; overflow:hidden; }
+        .editor-layer .layer-swatch img { width:100%; height:100%; object-fit:cover; }
+        .editor-layer .layer-label { font-weight:700; font-size:13px; color:#0A0A0A; }
+        .editor-layer .layer-sub { color:#8E8E8E; font-size:11px; }
         .editor-message { border-radius:9px; padding:10px 12px; font-size:12px; }
-        .editor-message.warn { background:#78350f; color:#fde68a; }
-        .editor-message.ok { background:#064e3b; color:#a7f3d0; }
+        .editor-message.warn { background:#FDE68A; color:#78350F; }
+        .editor-message.ok { background:#D1FAE5; color:#064E3B; }
         @media (max-width:1050px) { .editor-shell { grid-template-columns:280px 1fr; } .editor-properties { grid-column:1/-1; } }
         @media (max-width:720px) { .editor-shell { grid-template-columns:1fr; } .editor-properties { grid-column:auto; } .editor-stage-wrap { min-height:50vh; } }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans min-h-screen p-4 sm:p-6">
-    <header class="flex flex-wrap items-center justify-between gap-4 max-w-[1500px] mx-auto mb-6 border-b border-gray-800 pb-5">
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen p-4 sm:p-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 max-w-[1500px] mx-auto mb-6 border-b border-gray-100 pb-5">
         <div>
-            <a href="admin.html" class="text-accent-mint text-sm font-bold">← Admin Control</a>
+            <a href="admin.html" class="text-accent-blue text-sm font-bold">← Admin Control</a>
             <h1 class="text-2xl sm:text-3xl font-bold mt-2">Template & Frame Editor</h1>
-            <p class="text-gray-400 text-sm mt-1">JSON schema · 300 DPI · Safe zone · Layer hierarchy</p>
+            <p class="text-gray-500 text-sm mt-1">JSON schema · 300 DPI · Safe zone · Layer hierarchy</p>
         </div>
         <div class="flex flex-wrap gap-2">
             <button class="editor-button" onclick="exportCatalog()">Export JSON</button>
@@ -53,27 +79,44 @@
                 <button class="editor-button primary" onclick="createNewTemplate()">+ New</button>
             </div>
             <div id="template-list" class="template-list"></div>
-            <div class="border-t border-gray-700 mt-4 pt-4 grid gap-3">
+            <div class="border-t border-gray-100 mt-4 pt-4 grid gap-3">
                 <div class="editor-field"><label>Name</label><input id="template-name" maxlength="80"></div>
                 <div class="editor-grid">
                     <div class="editor-field"><label>Canvas</label><select id="canvas-preset"><option value="2x6">2×6 Strip</option><option value="4x6-portrait">4×6 Portrait</option><option value="4x6-landscape">4×6 Landscape</option></select></div>
                     <div class="editor-field"><label>Layout key</label><input id="layout-id" placeholder="3_1x1"></div>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-gray-300"><input id="template-enabled" type="checkbox"> เปิดให้ลูกค้าเลือกใน Event นี้</label>
+                <label class="flex items-center gap-2 text-sm text-gray-600"><input id="template-enabled" type="checkbox"> เปิดให้ลูกค้าเลือกใน Event นี้</label>
                 <button class="editor-button danger" onclick="deleteTemplate()">Delete custom template</button>
             </div>
         </aside>
 
         <section class="editor-panel">
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div><h2 class="font-bold">Canvas preview</h2><p id="canvas-meta" class="text-xs text-gray-400 mt-1"></p></div>
-                <label class="flex items-center gap-2 text-sm"><input id="show-safe-zone" type="checkbox" checked> Safe zone</label>
+                <div><h2 class="font-bold">Canvas preview</h2><p id="canvas-meta" class="text-xs text-gray-500 mt-1"></p></div>
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <label class="flex items-center gap-2"><input id="show-bleed-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-green-500 align-middle"></span> Bleed 3mm</label>
+                    <label class="flex items-center gap-2"><input id="show-safe-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-red-500 align-middle"></span> Safe zone 3mm</label>
+                </div>
             </div>
             <div class="editor-stage-wrap"><div id="editor-stage" class="editor-stage"></div></div>
             <div id="validation-message" class="editor-message ok mt-4">Template ready</div>
         </section>
 
         <aside class="editor-panel editor-properties grid gap-4">
+            <div class="border border-gray-100 rounded-lg p-3 grid gap-2">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="font-bold">Layer hierarchy</h2>
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Cake model</span>
+                </div>
+                <div id="layer-list" class="grid gap-2"></div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button class="editor-button" onclick="moveLayer('back')">Send to Back</button>
+                    <button class="editor-button" onclick="moveLayer('backward')">Send Backward</button>
+                    <button class="editor-button" onclick="moveLayer('forward')">Bring Forward</button>
+                    <button class="editor-button" onclick="moveLayer('front')">Bring to Front</button>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between gap-2"><h2 class="font-bold">Photo slots</h2><button class="editor-button" onclick="duplicateSelectedSlot()">Duplicate</button></div>
             <div id="slot-list" class="flex flex-wrap gap-2"></div>
             <div class="editor-grid">
@@ -86,22 +129,54 @@
                 <div class="editor-field"><label>Focus X (0–1)</label><input id="slot-focus-x" type="number" min="0" max="1" step="0.05"></div>
                 <div class="editor-field"><label>Focus Y (0–1)</label><input id="slot-focus-y" type="number" min="0" max="1" step="0.05"></div>
             </div>
-            <div class="editor-grid">
-                <button class="editor-button" onclick="moveLayer('back')">Send to Back</button>
-                <button class="editor-button" onclick="moveLayer('backward')">Send Backward</button>
-                <button class="editor-button" onclick="moveLayer('forward')">Bring Forward</button>
-                <button class="editor-button" onclick="moveLayer('front')">Bring to Front</button>
-            </div>
             <button class="editor-button danger" onclick="removeSelectedSlot()">Remove selected slot</button>
 
-            <div class="border-t border-gray-700 pt-4 grid gap-3">
+            <div class="border-t border-gray-100 pt-4 grid gap-3">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="font-bold">อัปโหลดภาพตกแต่ง</h2>
+                </div>
+                <p class="text-xs text-gray-500">ภาพที่อัปโหลดใช้ตกแต่งเท่านั้น — เลือกวางเป็น <b>แบ็กกราวด์</b> (หลังรูปถ่าย) หรือ <b>กรอบ</b> (หน้ารูปถ่าย) ส่วนตรงกลางคือช่องรูปถ่ายจากกล้องที่ปรับตำแหน่งได้</p>
+                <label class="editor-button cursor-pointer text-center">⬆ Upload images<input id="artboard-file" type="file" accept="image/png,image/jpeg,image/webp" multiple class="hidden"></label>
+                <div id="asset-tray" class="asset-tray"></div>
+                <div class="border-t border-gray-100 pt-3 grid gap-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="text-sm font-bold">Layers</h3>
+                        <button class="editor-button" onclick="artboardLayerMove('back')">Back</button>
+                        <button class="editor-button" onclick="artboardLayerMove('backward')">▼</button>
+                        <button class="editor-button" onclick="artboardLayerMove('forward')">▲</button>
+                        <button class="editor-button" onclick="artboardLayerMove('front')">Front</button>
+                    </div>
+                    <div id="artboard-layer-list" class="grid gap-2"></div>
+                </div>
+                <div class="editor-grid">
+                    <div class="editor-field"><label>วางตำแหน่ง</label><select id="art-placement"><option value="back">แบ็กกราวด์ (หลังรูป)</option><option value="front">กรอบ (หน้ารูป)</option></select></div>
+                    <div class="editor-field"><label>X</label><input id="art-x" type="number"></div>
+                    <div class="editor-field"><label>Y</label><input id="art-y" type="number"></div>
+                    <div class="editor-field"><label>Width</label><input id="art-width" type="number" min="1"></div>
+                    <div class="editor-field"><label>Height</label><input id="art-height" type="number" min="1"></div>
+                    <div class="editor-field"><label>Rotation</label><input id="art-rotation" type="number" min="-180" max="180" step="0.5"></div>
+                    <div class="editor-field"><label>Z-index</label><input id="art-z" type="number"></div>
+                    <div class="editor-field"><label>Opacity (0–1)</label><input id="art-opacity" type="number" min="0" max="1" step="0.05"></div>
+                </div>
+                <button class="editor-button danger" onclick="removeArtboardLayer()">Remove selected layer</button>
+            </div>
+
+            <div class="border-t border-gray-100 pt-4 grid gap-3">
                 <h2 class="font-bold">Canvas & frame</h2>
-                <div class="editor-field"><label>Background</label><input id="background-color" type="color" value="#ffffff" class="h-11"></div>
+                <div class="editor-field"><label>Background color</label><input id="background-color" type="color" value="#ffffff" class="h-11"></div>
+                <div class="editor-field"><label>Background pattern (ลวดลาย)</label><input id="background-image-file" type="file" accept="image/png,image/jpeg,image/webp"></div>
+                <button class="editor-button" onclick="clearBackgroundImage()">Clear background pattern</button>
                 <div class="editor-grid">
                     <div class="editor-field"><label>Safe top</label><input id="safe-top" type="number" min="0"></div>
                     <div class="editor-field"><label>Safe right</label><input id="safe-right" type="number" min="0"></div>
                     <div class="editor-field"><label>Safe bottom</label><input id="safe-bottom" type="number" min="0"></div>
                     <div class="editor-field"><label>Safe left</label><input id="safe-left" type="number" min="0"></div>
+                </div>
+                <div class="editor-grid">
+                    <div class="editor-field"><label>Bleed top (ตัดตก)</label><input id="bleed-top" type="number" min="0"></div>
+                    <div class="editor-field"><label>Bleed right</label><input id="bleed-right" type="number" min="0"></div>
+                    <div class="editor-field"><label>Bleed bottom</label><input id="bleed-bottom" type="number" min="0"></div>
+                    <div class="editor-field"><label>Bleed left</label><input id="bleed-left" type="number" min="0"></div>
                 </div>
                 <div class="editor-field"><label>Transparent PNG overlay</label><input id="overlay-file" type="file" accept="image/png"></div>
                 <button class="editor-button" onclick="clearOverlay()">Clear overlay</button>
@@ -116,11 +191,18 @@
         let catalog = [];
         let draft = null;
         let selectedSlotIndex = 1;
+        let selectedLayer = 'slots';
+        let selectedArtId = null;
+        let artAssets = [];
+        let layerVisibility = { background: true, slots: true, overlay: true };
         let dragState = null;
+        let artDragState = null;
+        let artResizeState = null;
 
         const byId = id => document.getElementById(id);
-        const templateInputIds = ['template-name', 'layout-id', 'template-enabled', 'background-color', 'safe-top', 'safe-right', 'safe-bottom', 'safe-left'];
+        const templateInputIds = ['template-name', 'layout-id', 'template-enabled', 'background-color', 'safe-top', 'safe-right', 'safe-bottom', 'safe-left', 'bleed-top', 'bleed-right', 'bleed-bottom', 'bleed-left'];
         const slotInputIds = ['slot-x', 'slot-y', 'slot-width', 'slot-height', 'slot-rotation', 'slot-z', 'slot-focus-x', 'slot-focus-y'];
+        const artInputIds = ['art-x', 'art-y', 'art-width', 'art-height', 'art-rotation', 'art-z', 'art-opacity'];
 
         document.addEventListener('DOMContentLoaded', async () => {
             const status = await adminGetPinStatus();
@@ -129,9 +211,14 @@
             selectTemplate(catalog[0].templateId);
             templateInputIds.forEach(id => byId(id).addEventListener('input', readTemplateForm));
             slotInputIds.forEach(id => byId(id).addEventListener('input', readSlotForm));
+            artInputIds.forEach(id => byId(id).addEventListener('input', readArtForm));
+            byId('art-placement').addEventListener('change', readArtForm);
             byId('canvas-preset').addEventListener('change', changeCanvasPreset);
             byId('show-safe-zone').addEventListener('change', renderStage);
+            byId('show-bleed-zone').addEventListener('change', renderStage);
             byId('overlay-file').addEventListener('change', uploadOverlay);
+            byId('background-image-file').addEventListener('change', uploadBackgroundImage);
+            byId('artboard-file').addEventListener('change', uploadArtAssets);
             byId('import-file').addEventListener('change', importCatalog);
         });
 
@@ -140,7 +227,7 @@
             catalog.forEach(template => {
                 const button = document.createElement('button');
                 button.className = template.templateId === draft.templateId ? 'active' : '';
-                button.innerHTML = `<strong class="block">${escapeHtml(template.name)}</strong><small class="text-gray-400">${template.type} · ${template.layoutId} · ${template.slots.length} slots${template.enabled ? '' : ' · disabled'}</small>`;
+                button.innerHTML = `<strong class="block">${escapeHtml(template.name)}</strong><small class="text-gray-500">${template.type} · ${template.layoutId} · ${template.slots.length} slots${template.enabled ? '' : ' · disabled'}</small>`;
                 button.onclick = () => selectTemplate(template.templateId);
                 byId('template-list').appendChild(button);
             });
@@ -160,7 +247,10 @@
             byId('canvas-preset').value = draft.type === '4x6' ? (draft.orientation === 'landscape' ? '4x6-landscape' : '4x6-portrait') : '2x6';
             byId('background-color').value = draft.canvas.backgroundColor;
             ['top','right','bottom','left'].forEach(side => byId(`safe-${side}`).value = draft.canvas.safeMargin[side]);
+            ['top','right','bottom','left'].forEach(side => byId(`bleed-${side}`).value = draft.canvas.bleedMargin[side]);
+            selectedArtId = draft.artboard.length ? draft.artboard[draft.artboard.length - 1].id : null;
             writeSlotForm();
+            if (selectedArtId) writeArtForm();
         }
 
         function writeSlotForm() {
@@ -178,6 +268,7 @@
             draft.enabled = byId('template-enabled').checked;
             draft.canvas.backgroundColor = byId('background-color').value;
             ['top','right','bottom','left'].forEach(side => draft.canvas.safeMargin[side] = Number(byId(`safe-${side}`).value));
+            ['top','right','bottom','left'].forEach(side => draft.canvas.bleedMargin[side] = Number(byId(`bleed-${side}`).value));
             draft = engine.normalizeTemplate(draft);
             renderAll();
         }
@@ -195,7 +286,49 @@
 
         function currentSlot() { return draft.slots.find(slot => slot.index === selectedSlotIndex); }
 
-        function renderAll() { renderTemplateList(); renderSlotList(); renderStage(); renderValidation(); }
+        function renderAll() { renderTemplateList(); renderLayerList(); renderSlotList(); renderArtTray(); renderArtLayerList(); renderStage(); renderValidation(); }
+
+        function renderLayerList() {
+            const list = byId('layer-list');
+            list.innerHTML = '';
+            const rows = [
+                { key: 'overlay', label: 'Artwork Overlay', sub: 'บนสุด · PNG ภาพกรอบโปร่งใส', swatch: draft.overlay.url || '', visible: layerVisibility.overlay },
+                { key: 'slots', label: 'Photo Slots', sub: `กลาง · ${draft.slots.length} ช่องรูป · Photo ${selectedSlotIndex}`, swatch: '', visible: layerVisibility.slots },
+                { key: 'background', label: 'Background', sub: 'ล่างสุด · สีหรือลวดลาย', swatch: draft.canvas.backgroundImage || draft.canvas.backgroundColor, visible: layerVisibility.background }
+            ];
+            rows.forEach(row => {
+                const div = document.createElement('div');
+                div.className = `editor-layer ${selectedLayer === row.key ? 'active' : ''}`;
+                const swatch = document.createElement('span');
+                swatch.className = 'layer-swatch';
+                if (row.swatch.startsWith('data:image') || row.swatch.startsWith('http')) {
+                    swatch.innerHTML = `<img src="${row.swatch}" alt="">`;
+                } else {
+                    swatch.style.background = row.swatch;
+                }
+                const label = document.createElement('div');
+                label.innerHTML = `<span class="layer-label">${row.label}</span><span class="layer-sub block">${row.sub}</span>`;
+                const eye = document.createElement('button');
+                eye.className = 'editor-button';
+                eye.title = 'Toggle visibility';
+                eye.style.minHeight = '28px';
+                eye.style.padding = '4px 8px';
+                eye.textContent = row.visible ? '👁' : '🚫';
+                eye.onclick = event => { event.stopPropagation(); layerVisibility[row.key] = !layerVisibility[row.key]; renderLayerList(); renderStage(); };
+                div.onclick = () => {
+                    selectedLayer = row.key;
+                    if (row.key === 'slots' && draft.slots.length) {
+                        selectedSlotIndex = draft.slots.find(s => s.index === selectedSlotIndex)?.index || draft.slots[0].index;
+                        writeSlotForm();
+                    }
+                    renderAll();
+                };
+                div.appendChild(swatch);
+                div.appendChild(label);
+                div.appendChild(eye);
+                list.appendChild(div);
+            });
+        }
 
         function renderSlotList() {
             byId('slot-list').innerHTML = '';
@@ -203,9 +336,144 @@
                 const button = document.createElement('button');
                 button.className = `editor-button ${slot.index === selectedSlotIndex ? 'primary' : ''}`;
                 button.textContent = `Photo ${slot.index} · z${slot.zIndex}`;
-                button.onclick = () => { selectedSlotIndex = slot.index; writeSlotForm(); renderAll(); };
+                button.onclick = () => { selectedSlotIndex = slot.index; selectedLayer = 'slots'; writeSlotForm(); renderAll(); };
                 byId('slot-list').appendChild(button);
             });
+        }
+
+        function currentArtLayer() { return draft.artboard.find(layer => layer.id === selectedArtId) || null; }
+
+        function writeArtForm() {
+            const layer = currentArtLayer();
+            if (!layer) return;
+            byId('art-placement').value = layer.placement === 'back' ? 'back' : 'front';
+            byId('art-x').value = layer.x; byId('art-y').value = layer.y;
+            byId('art-width').value = layer.width; byId('art-height').value = layer.height;
+            byId('art-rotation').value = layer.rotation; byId('art-z').value = layer.zIndex;
+            byId('art-opacity').value = layer.opacity;
+        }
+
+        function readArtForm() {
+            const layer = currentArtLayer();
+            if (!layer) return;
+            layer.placement = byId('art-placement').value === 'back' ? 'back' : 'front';
+            layer.x = Number(byId('art-x').value); layer.y = Number(byId('art-y').value);
+            layer.width = Math.max(1, Number(byId('art-width').value)); layer.height = Math.max(1, Number(byId('art-height').value));
+            layer.rotation = Number(byId('art-rotation').value); layer.zIndex = Number(byId('art-z').value);
+            layer.opacity = Number(byId('art-opacity').value);
+            draft = engine.normalizeTemplate(draft);
+            renderAll();
+        }
+
+        function renderArtTray() {
+            const tray = byId('asset-tray');
+            tray.innerHTML = '';
+            artAssets.forEach((asset, position) => {
+                const button = document.createElement('button');
+                button.title = `Add "${asset.name}" to artboard`;
+                button.innerHTML = `<img src="${asset.url}" alt="${escapeHtml(asset.name)}"><span class="asset-add">+</span>`;
+                button.onclick = () => addArtLayer(asset.url, asset.name);
+                tray.appendChild(button);
+            });
+        }
+
+        function renderArtLayerList() {
+            const list = byId('artboard-layer-list');
+            list.innerHTML = '';
+            draft.artboard.slice().sort((a, b) => a.zIndex - b.zIndex).forEach(layer => {
+                const div = document.createElement('div');
+                div.className = `editor-layer ${layer.id === selectedArtId ? 'active' : ''}`;
+                const swatch = document.createElement('span');
+                swatch.className = 'layer-swatch';
+                swatch.innerHTML = `<img src="${layer.url}" alt="">`;
+                const label = document.createElement('div');
+                label.innerHTML = `<span class="layer-label">${escapeHtml(layer.name)}</span><span class="layer-sub block">${layer.placement === 'back' ? 'แบ็กกราวด์' : 'กรอบ'} · x${layer.x} y${layer.y} · ${layer.width}×${layer.height} · z${layer.zIndex}${layer.visible === false ? ' · hidden' : ''}</span>`;
+                const eye = document.createElement('button');
+                eye.className = 'editor-button'; eye.style.minHeight = '28px'; eye.style.padding = '4px 8px';
+                eye.textContent = layer.visible === false ? '🚫' : '👁';
+                eye.onclick = event => { event.stopPropagation(); layer.visible = layer.visible === false; draft = engine.normalizeTemplate(draft); renderArtLayerList(); renderStage(); };
+                div.onclick = () => selectArtLayer(layer.id);
+                div.appendChild(swatch); div.appendChild(label); div.appendChild(eye);
+                list.appendChild(div);
+            });
+        }
+
+        function selectArtLayer(id) {
+            selectedArtId = id; selectedLayer = 'overlay';
+            writeArtForm(); renderArtLayerList(); renderLayerList(); renderStage();
+        }
+
+        function uploadArtAssets(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            let count = 0;
+            files.forEach(file => {
+                if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 3 * 1024 * 1024) return;
+                const reader = new FileReader();
+                reader.onload = () => { artAssets.push({ url: reader.result, name: file.name }); renderArtTray(); count++; };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function addArtLayer(url, name) {
+            const canvas = draft.canvas;
+            const maxZ = Math.max(...draft.artboard.map(layer => layer.zIndex), 0);
+            const layer = {
+                id: `ab_${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+                name: name || 'Frame layer',
+                url,
+                placement: 'front',
+                x: Math.round(canvas.width * 0.15),
+                y: Math.round(canvas.height * 0.2),
+                width: Math.round(canvas.width * 0.7),
+                height: Math.round(canvas.height * 0.3),
+                rotation: 0,
+                zIndex: maxZ + 1,
+                opacity: 1,
+                visible: true
+            };
+            const probe = new Image();
+            probe.onload = () => {
+                const ratio = probe.naturalWidth / probe.naturalHeight;
+                if (ratio && isFinite(ratio)) {
+                    layer.height = Math.round(layer.width / ratio);
+                    layer.width = Math.min(layer.width, canvas.width);
+                    layer.height = Math.min(layer.height, canvas.height);
+                }
+                draft.artboard.push(layer);
+                draft = engine.normalizeTemplate(draft);
+                selectedArtId = layer.id;
+                writeArtForm(); renderAll();
+            };
+            probe.onerror = () => {
+                draft.artboard.push(layer);
+                draft = engine.normalizeTemplate(draft);
+                selectedArtId = layer.id;
+                writeArtForm(); renderAll();
+            };
+            probe.src = url;
+        }
+
+        function removeArtboardLayer() {
+            const layer = currentArtLayer();
+            if (!layer) { toast('เลือก layer ก่อน'); return; }
+            draft.artboard = draft.artboard.filter(item => item.id !== layer.id);
+            selectedArtId = draft.artboard.length ? draft.artboard[draft.artboard.length - 1].id : null;
+            draft = engine.normalizeTemplate(draft);
+            if (selectedArtId) writeArtForm(); renderAll();
+        }
+
+        function artboardLayerMove(action) {
+            const layer = currentArtLayer();
+            if (!layer) { toast('เลือก layer ก่อน'); return; }
+            const values = draft.artboard.map(item => item.zIndex);
+            if (action === 'front') layer.zIndex = Math.max(...values) + 1;
+            if (action === 'back') layer.zIndex = Math.min(...values) - 1;
+            if (action === 'forward') layer.zIndex += 1;
+            if (action === 'backward') layer.zIndex -= 1;
+            draft = engine.normalizeTemplate(draft);
+            writeArtForm(); renderArtLayerList(); renderStage();
         }
 
         function renderStage() {
@@ -216,32 +484,77 @@
             stage.style.height = `${Math.round(draft.canvas.height * scale)}px`;
             stage.style.background = draft.canvas.backgroundColor;
             stage.innerHTML = '';
-            draft.slots.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(slot => {
+            if (draft.canvas.backgroundImage && layerVisibility.background) {
+                const bg = document.createElement('img'); bg.className = 'editor-bg'; bg.src = draft.canvas.backgroundImage; stage.appendChild(bg);
+            }
+            const renderArtLayer = (layer, baseZ) => {
+                if (layer.visible === false) return;
                 const element = document.createElement('div');
-                element.className = `editor-slot ${slot.index === selectedSlotIndex ? 'active' : ''}`;
-                element.dataset.index = slot.index;
-                element.style.left = `${slot.x / draft.canvas.width * 100}%`;
-                element.style.top = `${slot.y / draft.canvas.height * 100}%`;
-                element.style.width = `${slot.width / draft.canvas.width * 100}%`;
-                element.style.height = `${slot.height / draft.canvas.height * 100}%`;
-                element.style.transform = `rotate(${slot.rotation}deg)`;
-                element.style.zIndex = slot.zIndex + 10;
-                element.onpointerdown = event => startDrag(event, slot.index, scale);
+                element.className = `editor-art ${layer.id === selectedArtId ? 'active' : ''}`;
+                element.dataset.artId = layer.id;
+                element.style.left = `${layer.x / draft.canvas.width * 100}%`;
+                element.style.top = `${layer.y / draft.canvas.height * 100}%`;
+                element.style.width = `${layer.width / draft.canvas.width * 100}%`;
+                element.style.height = `${layer.height / draft.canvas.height * 100}%`;
+                element.style.transform = `rotate(${layer.rotation}deg)`;
+                element.style.backgroundImage = `url(${layer.url})`;
+                element.style.opacity = layer.opacity;
+                element.style.zIndex = layer.zIndex + baseZ;
+                element.onpointerdown = event => startArtDrag(event, layer.id, scale);
                 stage.appendChild(element);
-            });
-            if (draft.overlay.url) {
+                if (layer.id === selectedArtId) {
+                    [['nw','nwse-resize'],['ne','nesw-resize'],['sw','nesw-resize'],['se','nwse-resize']].forEach(([corner, cursor]) => {
+                        const handle = document.createElement('div');
+                        handle.className = `editor-resize-handle ${corner}`;
+                        handle.style.cursor = cursor;
+                        handle.onpointerdown = event => startArtResize(event, layer.id, corner, scale);
+                        element.appendChild(handle);
+                    });
+                }
+            };
+            const backLayers = draft.artboard.filter(layer => layer.placement === 'back');
+            const frontLayers = draft.artboard.filter(layer => layer.placement === 'front');
+            if (backLayers.length) {
+                backLayers.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(layer => renderArtLayer(layer, 1));
+            }
+            if (layerVisibility.slots) {
+                draft.slots.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(slot => {
+                    const element = document.createElement('div');
+                    element.className = `editor-slot ${slot.index === selectedSlotIndex ? 'active' : ''}`;
+                    element.dataset.index = slot.index;
+                    element.style.left = `${slot.x / draft.canvas.width * 100}%`;
+                    element.style.top = `${slot.y / draft.canvas.height * 100}%`;
+                    element.style.width = `${slot.width / draft.canvas.width * 100}%`;
+                    element.style.height = `${slot.height / draft.canvas.height * 100}%`;
+                    element.style.transform = `rotate(${slot.rotation}deg)`;
+                    element.style.zIndex = slot.zIndex + 10;
+                    element.onpointerdown = event => startDrag(event, slot.index, scale);
+                    stage.appendChild(element);
+                });
+            }
+            if (frontLayers.length) {
+                frontLayers.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(layer => renderArtLayer(layer, 300));
+            }
+            if (draft.overlay.url && layerVisibility.overlay) {
                 const overlay = document.createElement('img'); overlay.className = 'editor-overlay'; overlay.src = draft.overlay.url; stage.appendChild(overlay);
+            }
+            if (byId('show-bleed-zone').checked) {
+                const bleed = document.createElement('div'); bleed.className = 'editor-bleed';
+                bleed.style.inset = `${draft.canvas.bleedMargin.top / draft.canvas.height * 100}% ${draft.canvas.bleedMargin.right / draft.canvas.width * 100}% ${draft.canvas.bleedMargin.bottom / draft.canvas.height * 100}% ${draft.canvas.bleedMargin.left / draft.canvas.width * 100}%`;
+                stage.appendChild(bleed);
             }
             if (byId('show-safe-zone').checked) {
                 const safe = document.createElement('div'); safe.className = 'editor-safe';
                 safe.style.inset = `${draft.canvas.safeMargin.top / draft.canvas.height * 100}% ${draft.canvas.safeMargin.right / draft.canvas.width * 100}% ${draft.canvas.safeMargin.bottom / draft.canvas.height * 100}% ${draft.canvas.safeMargin.left / draft.canvas.width * 100}%`;
                 stage.appendChild(safe);
             }
-            byId('canvas-meta').textContent = `${draft.canvas.width} × ${draft.canvas.height}px · ${draft.canvas.dpi} DPI · ${draft.type} · ${draft.slots.length} slots`;
+            const mmW = engine.pxToMm(draft.canvas.width, draft.canvas.dpi);
+            const mmH = engine.pxToMm(draft.canvas.height, draft.canvas.dpi);
+            byId('canvas-meta').textContent = `${draft.canvas.width} × ${draft.canvas.height}px · ${mmW} × ${mmH} mm · ${draft.canvas.dpi} DPI · ${draft.type} · ${draft.slots.length} slots`;
         }
 
         function startDrag(event, index, scale) {
-            selectedSlotIndex = index; writeSlotForm(); renderSlotList();
+            selectedSlotIndex = index; selectedLayer = 'slots'; writeSlotForm(); renderSlotList();
             document.querySelectorAll('.editor-slot').forEach(element => element.classList.toggle('active', Number(element.dataset.index) === index));
             const slot = currentSlot();
             dragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:slot.x, y:slot.y, scale, element:event.currentTarget };
@@ -260,6 +573,65 @@
         }
         function endDrag(event) { if (dragState && event.pointerId === dragState.pointerId) { dragState = null; renderAll(); } }
 
+        function startArtDrag(event, id, scale) {
+            const layer = draft.artboard.find(item => item.id === id);
+            if (!layer) return;
+            if (selectedArtId !== id) { selectedArtId = id; selectedLayer = 'overlay'; writeArtForm(); renderArtLayerList(); renderLayerList(); }
+            event.stopPropagation();
+            artDragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:layer.x, y:layer.y, scale, element:event.currentTarget };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.currentTarget.onpointermove = dragArtLayer;
+            event.currentTarget.onpointerup = endArtDrag;
+        }
+        function dragArtLayer(event) {
+            if (!artDragState || event.pointerId !== artDragState.pointerId) return;
+            const layer = draft.artboard.find(item => item.id === artDragState.element.dataset.artId);
+            if (!layer) return;
+            layer.x = Math.round(artDragState.x + (event.clientX - artDragState.startX) / artDragState.scale);
+            layer.y = Math.round(artDragState.y + (event.clientY - artDragState.startY) / artDragState.scale);
+            artDragState.element.style.left = `${layer.x / draft.canvas.width * 100}%`;
+            artDragState.element.style.top = `${layer.y / draft.canvas.height * 100}%`;
+            writeArtForm(); renderValidation();
+        }
+        function endArtDrag(event) { if (artDragState && event.pointerId === artDragState.pointerId) { artDragState = null; renderAll(); } }
+
+        function startArtResize(event, id, corner, scale) {
+            const layer = draft.artboard.find(item => item.id === id);
+            if (!layer) return;
+            event.stopPropagation();
+            const rect = event.currentTarget.closest('.editor-art').getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const rectW = rect.width / dpr, rectH = rect.height / dpr;
+            artResizeState = {
+                pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, corner,
+                element:event.currentTarget.closest('.editor-art'),
+                startW: layer.width, startH: layer.height,
+                widthPerPx: layer.width / rectW, heightPerPx: layer.height / rectH,
+                flipW: corner.includes('w'), flipH: corner.includes('n')
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.currentTarget.onpointermove = resizeArtLayer;
+            event.currentTarget.onpointerup = endArtResize;
+        }
+        function resizeArtLayer(event) {
+            if (!artResizeState || event.pointerId !== artResizeState.pointerId) return;
+            const layer = draft.artboard.find(item => item.id === artResizeState.element.dataset.artId);
+            if (!layer) return;
+            const dx = (event.clientX - artResizeState.startX) * artResizeState.widthPerPx * (artResizeState.flipW ? -1 : 1);
+            const dy = (event.clientY - artResizeState.startY) * artResizeState.heightPerPx * (artResizeState.flipH ? -1 : 1);
+            const newW = Math.max(4, Math.round(artResizeState.startW + dx));
+            const newH = Math.max(4, Math.round(artResizeState.startH + dy));
+            if (artResizeState.flipW) layer.x += artResizeState.startW - newW;
+            if (artResizeState.flipH) layer.y += artResizeState.startH - newH;
+            layer.width = newW; layer.height = newH;
+            artResizeState.element.style.left = `${layer.x / draft.canvas.width * 100}%`;
+            artResizeState.element.style.top = `${layer.y / draft.canvas.height * 100}%`;
+            artResizeState.element.style.width = `${layer.width / draft.canvas.width * 100}%`;
+            artResizeState.element.style.height = `${layer.height / draft.canvas.height * 100}%`;
+            writeArtForm(); renderValidation();
+        }
+        function endArtResize(event) { if (artResizeState && event.pointerId === artResizeState.pointerId) { artResizeState = null; renderAll(); } }
+
         function changeCanvasPreset() {
             const fresh = engine.createTemplate(draft.layoutId, byId('canvas-preset').value, { templateId:draft.templateId, name:draft.name, enabled:draft.enabled });
             draft = fresh; selectedSlotIndex = 1; writeForms(); renderAll();
@@ -272,7 +644,29 @@
         }
         function duplicateSelectedSlot() { draft = engine.duplicateSlot(draft, selectedSlotIndex); selectedSlotIndex = draft.slots.length; writeForms(); renderAll(); }
         function removeSelectedSlot() { draft = engine.removeSlot(draft, selectedSlotIndex); selectedSlotIndex = Math.min(selectedSlotIndex, draft.slots.length); writeForms(); renderAll(); }
-        function moveLayer(action) { draft = engine.moveSlotLayer(draft, selectedSlotIndex, action); writeSlotForm(); renderAll(); }
+        function moveLayer(action) {
+            if (selectedLayer === 'background') { toast('Background layer อยู่ล่างสุดเสมอ'); return; }
+            if (selectedLayer === 'overlay') {
+                const values = draft.slots.map(item => item.zIndex);
+                const maxZ = Math.max(...values, 0);
+                if (action === 'front') draft.overlay.zIndex = maxZ + 100;
+                if (action === 'back') draft.overlay.zIndex = maxZ - 1;
+                if (action === 'forward') draft.overlay.zIndex += 1;
+                if (action === 'backward') draft.overlay.zIndex -= 1;
+                renderLayerList(); renderStage();
+                return;
+            }
+            draft = engine.moveSlotLayer(draft, selectedSlotIndex, action);
+            selectedSlotIndex = currentSlot()?.index || draft.slots[0].index;
+            writeSlotForm(); renderAll();
+        }
+
+        function uploadBackgroundImage(event) {
+            const file = event.target.files[0]; if (!file) return;
+            if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 3 * 1024 * 1024) { toast('กรุณาใช้ PNG/JPEG/WebP ขนาดไม่เกิน 3 MB'); event.target.value=''; return; }
+            const reader = new FileReader(); reader.onload = () => { draft.canvas.backgroundImage = reader.result; renderAll(); }; reader.readAsDataURL(file);
+        }
+        function clearBackgroundImage() { draft.canvas.backgroundImage = ''; byId('background-image-file').value=''; renderAll(); }
 
         function renderValidation() {
             const result = engine.validateTemplate(draft); const box = byId('validation-message');

@@ -23,10 +23,12 @@
     <main class="flex-grow pt-20 pb-28 px-4 sm:px-6 lg:px-12 flex flex-col lg:flex-row gap-6 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter">
         
         <!-- Live Preview Side -->
-        <div class="w-full lg:w-1/2 flex items-center justify-center bg-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-[35vh] lg:min-h-[60vh] shrink-0">
+        <div class="w-full lg:w-1/2 flex flex-col items-center justify-center bg-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-[40vh] lg:min-h-[65vh] shrink-0">
             <!-- Background element for contrast -->
             <div class="absolute inset-0 bg-white/50 pointer-events-none"></div>
             
+
+
             <div id="preview-container" class="relative z-10 shadow-2xl transition-transform duration-500 hover:scale-[1.02] w-full h-full flex items-center justify-center">
                 <!-- Canvas will be injected here -->
             </div>
@@ -101,16 +103,16 @@
             
             globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
 
-            // Load Custom Layout Size (admin-configured physical cm per layout)
-            const currentLayoutStr = Session.layout || '4_1x1';
+            const paperMode = Kiosk.paperMode || 'photo4x6_dual';
+            const currentLayoutStr = Session.layout || '3_1x1';
             const currentLayoutSize = await fetchLayoutSizeFor(currentLayoutStr);
+            const schema = TemplateCatalog.current(currentLayoutStr, paperMode);
 
             // Load Custom Themes
             const customThemes = await fetchCustomThemes();
             customThemes.forEach(t => {
                 const icon = t.theme_type === 'png' ? 'image' : 'match_case';
                 
-                // Construct the HTML string instead of using innerHTML += which breaks event listeners
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'selection-card p-6 text-center';
                 cardDiv.dataset.template = t.id;
@@ -125,27 +127,30 @@
                 gridContainer.appendChild(cardDiv);
             });
 
-            Session.template = 'light';
+            Session.template = Session.template || 'light';
             
             async function updatePreview(templateId, isCustom) {
                 container.innerHTML = '<div class="spinner border-gray-300 mx-auto"></div>';
                 let themeObj = null;
-                if(isCustom) {
+                if (isCustom) {
                     themeObj = customThemes.find(t => t.id === templateId);
                 }
-                const canvas = await composePhotoByMode(globalPhotos, templateId, 400, themeObj, currentLayoutStr, currentLayoutSize); // 400px width for preview
-                canvas.className = 'rounded-sm shadow-xl max-w-full max-h-full object-contain';
+                const canvas = await composePhotoByMode(globalPhotos, templateId, 460, themeObj, currentLayoutStr, currentLayoutSize);
+                canvas.className = 'rounded-md shadow-2xl max-w-full max-h-[50vh] lg:max-h-[62vh] object-contain transition-all duration-300';
                 container.innerHTML = '';
                 container.appendChild(canvas);
             }
 
             // Init
-            updatePreview('light', false);
+            updatePreview(Session.template, false);
 
             // Selectors
             const setupCards = () => {
                 const cards = document.querySelectorAll('.selection-card');
                 cards.forEach(card => {
+                    if (card.dataset.template === Session.template) {
+                        card.classList.add('selected');
+                    }
                     card.addEventListener('click', () => {
                         cards.forEach(c => c.classList.remove('selected'));
                         card.classList.add('selected');
