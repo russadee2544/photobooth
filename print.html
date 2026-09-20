@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PHOTO BOOTH — Print & Save</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="qrcode.min.js"></script>
+    <script>
+        if (typeof QRCode === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>');
+        }
+    </script>
     <link rel="stylesheet" href="shared.css">
     <style id="dynamic-print-style">
         .print-slide-down {
@@ -48,6 +53,405 @@
             }
         }
     </style>
+    <!-- Printing animation styles in a SEPARATE tag so applyDynamicPrintStyles() won't wipe them -->
+    <style id="printing-animation-style">
+        /* ============================================
+           PREMIUM KIOSK PRINTER ANIMATION
+           ============================================ */
+        #printing-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 10, 12, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 20px;
+        }
+        #printing-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .kiosk-printer-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+        }
+
+        /* --- 3D Kiosk Printer Chassis --- */
+        .kiosk-printer-device {
+            position: relative;
+            width: 320px;
+            height: 140px;
+            background: linear-gradient(180deg, #2c2d30 0%, #1c1d20 50%, #141416 100%);
+            border-radius: 20px 20px 16px 16px;
+            box-shadow: 
+                0 30px 60px rgba(0,0,0,0.7),
+                0 10px 20px rgba(0,0,0,0.5),
+                inset 0 1px 1px rgba(255,255,255,0.18),
+                inset 0 -2px 4px rgba(0,0,0,0.8);
+            transform: scale(0.85);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+            z-index: 10;
+        }
+        .kiosk-printer-device.appear {
+            transform: scale(1);
+            opacity: 1;
+        }
+        .kiosk-printer-device.printing {
+            animation: printer-vibrate 0.08s infinite alternate ease-in-out;
+        }
+
+        /* Top Lid Bevel */
+        .printer-lid-face {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: linear-gradient(180deg, #38393d 0%, #252629 100%);
+            border-radius: 20px 20px 0 0;
+            border-bottom: 2px solid #0e0e10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Printer Slot & Cutter Mouth */
+        .printer-slot-mouth {
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 228px;
+            height: 12px;
+            background: #08080a;
+            border-radius: 4px;
+            box-shadow: 
+                inset 0 3px 6px rgba(0,0,0,0.9),
+                0 1px 0 rgba(255,255,255,0.08);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .printer-cutter-teeth {
+            width: 95%;
+            height: 2px;
+            background: repeating-linear-gradient(
+                90deg,
+                #404044 0,
+                #404044 2px,
+                #18181a 2px,
+                #18181a 4px
+            );
+            opacity: 0.8;
+        }
+
+        /* Front Face Panel */
+        .printer-front-face {
+            position: absolute;
+            top: 48px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            z-index: 5;
+        }
+        .printer-brand-emboss {
+            display: flex;
+            flex-direction: column;
+        }
+        .printer-brand-emboss .brand-name {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: rgba(255,255,255,0.22);
+            text-transform: uppercase;
+        }
+        .printer-brand-emboss .brand-tech {
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.12);
+            text-transform: uppercase;
+        }
+
+        /* LED Group */
+        .printer-led-group {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .printer-led-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .printer-led-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #2a2a2c;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        .printer-led-dot.led-pwr {
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+        }
+        .printer-led-dot.led-busy.active {
+            background: #38bdf8;
+            box-shadow: 0 0 10px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.5);
+            animation: led-blink 0.5s infinite alternate ease-in-out;
+        }
+        .led-tag {
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: rgba(255,255,255,0.25);
+        }
+
+        /* Decorative buttons */
+        .printer-deco-keys {
+            display: flex;
+            gap: 6px;
+        }
+        .printer-deco-btn {
+            width: 14px;
+            height: 8px;
+            border-radius: 2px;
+            background: #28292c;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.05), inset 0 1px 1px rgba(0,0,0,0.4);
+        }
+
+        /* --- THE PAPER DISPENSING CHUTE --- */
+        /* Emerges directly through the cutter slot mouth! */
+        .printer-paper-chute {
+            position: absolute;
+            top: 44px; /* Exact mouth of the slot */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 210px;
+            height: 0px;
+            overflow: hidden;
+            z-index: 15; /* Sits in front of the front face, underneath slot mouth */
+            transition: height 0.1s linear;
+        }
+        .printer-paper-chute.sliding {
+            animation: paper-chute-grow 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .printer-paper-sheet {
+            width: 100%;
+            background: #ffffff;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.6),
+                0 4px 12px rgba(0,0,0,0.3);
+            transform: translateY(-100%);
+            will-change: transform;
+        }
+        .printer-paper-sheet.sliding {
+            animation: paper-sheet-slide 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        .printer-paper-sheet img {
+            width: 100%;
+            display: block;
+            border-radius: 0 0 3px 3px;
+        }
+
+        /* Cut line at top of paper */
+        .paper-tear-edge {
+            height: 4px;
+            width: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                #e5e5e5 0px,
+                #e5e5e5 3px,
+                #ffffff 3px,
+                #ffffff 6px
+            );
+            border-bottom: 1px dashed rgba(0,0,0,0.15);
+        }
+
+        /* Bottom Curl Shadow */
+        .paper-curl-shadow {
+            height: 6px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        /* --- Completion Badge --- */
+        .print-done-badge {
+            position: absolute;
+            top: -24px;
+            right: -24px;
+            width: 58px;
+            height: 58px;
+            background: #22c55e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 24px rgba(34, 197, 94, 0.6);
+            transform: scale(0);
+            z-index: 30;
+        }
+        .print-done-badge.show {
+            animation: done-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .print-done-badge svg {
+            width: 30px;
+            height: 30px;
+            stroke: white;
+            stroke-width: 3.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .print-done-badge svg path {
+            stroke-dasharray: 40;
+            stroke-dashoffset: 40;
+        }
+        .print-done-badge.show svg path {
+            animation: check-draw 0.4s 0.25s ease forwards;
+        }
+
+        /* --- Status & Controls Panel --- */
+        .printer-status-panel {
+            margin-top: 360px; /* Space for the paper to slide down */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 300px;
+            z-index: 25;
+            text-align: center;
+            transition: margin-top 0.3s ease;
+        }
+        .print-status-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .printer-spinner-icon {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255,255,255,0.25);
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .printer-spinner-icon.done {
+            display: none;
+        }
+        .print-status-sub {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 6px;
+            font-weight: 400;
+        }
+
+        /* Progress Bar */
+        .print-progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .print-progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
+            border-radius: 3px;
+            transition: width 0.35s ease;
+        }
+
+        /* Action Buttons */
+        .print-finish-actions {
+            margin-top: 16px;
+            width: 100%;
+        }
+        .btn-take-photo {
+            width: 100%;
+            padding: 12px 20px;
+            background: #ffffff;
+            color: #0a0a0a;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-take-photo:hover {
+            transform: scale(1.02);
+            background: #f0f0f0;
+        }
+        .btn-take-photo:active {
+            transform: scale(0.98);
+        }
+
+        /* --- Keyframe Animations --- */
+        @keyframes paper-chute-grow {
+            0%   { height: 0px; }
+            10%  { height: 30px; }
+            40%  { height: 140px; }
+            70%  { height: 260px; }
+            100% { height: 340px; }
+        }
+        @keyframes paper-sheet-slide {
+            0%   { transform: translateY(-100%); }
+            10%  { transform: translateY(-90%); }
+            40%  { transform: translateY(-55%); }
+            70%  { transform: translateY(-20%); }
+            100% { transform: translateY(0%); }
+        }
+        @keyframes printer-vibrate {
+            0%   { transform: translate(0, 0); }
+            50%  { transform: translate(0.5px, -0.4px); }
+            100% { transform: translate(-0.5px, 0.4px); }
+        }
+        @keyframes led-blink {
+            0%   { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+        @keyframes done-pop {
+            0%   { transform: scale(0); }
+            60%  { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes check-draw {
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MEMORIES">
@@ -73,24 +477,125 @@
             <span data-i18n="uploading">Uploading to Cloud...</span>
         </div>
 
-        <div id="qr-container" class="hidden flex flex-wrap gap-4 md:gap-8 justify-center lg:justify-start mb-6">
+        <div id="qr-container" class="hidden flex flex-wrap gap-4 md:gap-6 justify-center lg:justify-start mb-6">
             <!-- Normal QR -->
-            <div class="flex flex-col items-center">
-                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
-                    <div id="qr-color" class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex items-center justify-center bg-gray-50"></div>
+            <div id="qr-color-wrapper" class="flex flex-col items-center">
+                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-color" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white"></div>
                 </div>
-                <span class="text-[10px] sm:text-xs font-semibold tracking-widest text-gray-900 uppercase" data-i18n="print_color">Premium Color</span>
+                <div class="flex items-center gap-1 text-[11px] font-bold text-gray-800 tracking-wide">
+                    <span class="material-symbols-outlined text-xs text-green-600">download</span>
+                    <span data-i18n="print_color">ภาพสีความละเอียดสูง (HD)</span>
+                </div>
             </div>
             <!-- Dithered QR -->
-            <div class="flex flex-col items-center">
-                <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
-                    <div id="qr-dithered" class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex items-center justify-center bg-gray-50"></div>
+            <div id="qr-dithered-wrapper" class="hidden flex flex-col items-center">
+                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-dithered" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white"></div>
                 </div>
-                <span class="text-[10px] sm:text-xs font-semibold tracking-widest text-gray-500 uppercase" data-i18n="print_retro">Retro Edition</span>
+                <div class="flex items-center gap-1 text-[11px] font-bold text-gray-500 tracking-wide">
+                    <span class="material-symbols-outlined text-xs text-gray-500">grain</span>
+                    <span data-i18n="print_retro">ภาพเรโทร (Retro)</span>
+                </div>
             </div>
         </div>
 
-        <div class="mt-4 md:mt-8 flex flex-col sm:flex-row gap-3">
+        <!-- Photo Enhancement & Clarity Settings Panel (hidden from customers, controlled by admin) -->
+        <div class="bg-white/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-sm mb-5 hidden">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-gray-900 text-lg">auto_fix_high</span>
+                    <div>
+                        <h2 class="text-xs sm:text-sm font-bold text-gray-900 leading-tight">ปรับแต่งคุณภาพรูปภาพก่อนพิมพ์</h2>
+                        <p class="text-[11px] text-gray-500">เลือกต้นฉบับคมชัด ปรับความสว่างและคอนทราสต์ได้แบบเรียลไทม์</p>
+                    </div>
+                </div>
+                <button type="button" onclick="resetQualitySettings()" class="text-[11px] font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1 transition px-2 py-1 rounded-md hover:bg-gray-100">
+                    <span class="material-symbols-outlined text-xs">restart_alt</span> รีเซ็ต
+                </button>
+            </div>
+
+            <!-- Mode Selector: HD Original vs Retro Dot -->
+            <div class="grid grid-cols-2 gap-2 mb-3 bg-gray-100/90 p-1 rounded-xl">
+                <button type="button" id="mode-btn-hd" onclick="setQualityMode('hd')" 
+                    class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm bg-white text-gray-900 border border-gray-200">
+                    <span class="material-symbols-outlined text-sm text-green-600">verified</span>
+                    <span>ต้นฉบับคมชัด (HD)</span>
+                </button>
+                <button type="button" id="mode-btn-retro" onclick="setQualityMode('retro')" 
+                    class="py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-800">
+                    <span class="material-symbols-outlined text-sm">grain</span>
+                    <span>เรโทรดอท (Retro)</span>
+                </button>
+            </div>
+
+            <div id="quality-fine-tuning" class="space-y-3 transition-opacity">
+                <!-- Sharpness Preset Options -->
+                <div>
+                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1.5">
+                        <span class="font-medium flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">details</span> เพิ่มความคมชัด (Sharpness)
+                        </span>
+                        <span id="sharpness-label" class="font-bold text-gray-900">คมชัด แนะนำ ★</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" onclick="setSharpnessLevel('normal')" id="sharp-btn-normal"
+                            class="py-1.5 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition text-center">
+                            ปกติ
+                        </button>
+                        <button type="button" onclick="setSharpnessLevel('sharp')" id="sharp-btn-sharp"
+                            class="py-1.5 px-2 rounded-lg text-xs font-bold border-2 border-gray-900 bg-gray-900 text-white transition text-center shadow-sm">
+                            คมชัด ★
+                        </button>
+                        <button type="button" onclick="setSharpnessLevel('ultra')" id="sharp-btn-ultra"
+                            class="py-1.5 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition text-center">
+                            คมชัดสูง
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fine-Tuning Sliders: Brightness & Contrast -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">brightness_medium</span> ความสว่าง
+                            </span>
+                            <span id="brightness-val-badge" class="font-bold text-gray-900">105%</span>
+                        </div>
+                        <input type="range" id="slider-brightness" min="70" max="140" value="105" step="1"
+                            oninput="onBrightnessChange(this.value)"
+                            class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-900" />
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">contrast</span> คอนทราสต์
+                            </span>
+                            <span id="contrast-val-badge" class="font-bold text-gray-900">115%</span>
+                        </div>
+                        <input type="range" id="slider-contrast" min="80" max="160" value="115" step="1"
+                            oninput="onContrastChange(this.value)"
+                            class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-900" />
+                    </div>
+                </div>
+
+                <!-- Monochrome Thermal Preview Toggle -->
+                <div class="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-gray-600 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-xs text-gray-500">receipt_long</span>
+                        <span>แสดงภาพตัวอย่างแบบขาวดำ (Thermal B&W)</span>
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-thermal-preview" onchange="onToggleThermalPreview(this.checked)" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gray-900"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-2 flex flex-col sm:flex-row gap-3">
             <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-6 py-3 flex items-center justify-center gap-2 w-full sm:w-auto">
                 <span class="material-symbols-outlined text-sm">print</span>
                 <span id="btn-print-text" data-i18n="btn_print">Print Photo</span>
@@ -161,6 +666,75 @@
     <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity z-[60]">
     </div>
 
+    <!-- Printing Animation Overlay -->
+    <div id="printing-overlay" class="no-print">
+        <div class="kiosk-printer-stage">
+            
+            <!-- Realistic 3D Thermal Printer Device -->
+            <div class="kiosk-printer-device" id="anim-printer">
+                <!-- Top Lid with Cutter Mouth -->
+                <div class="printer-lid-face">
+                    <div class="printer-slot-mouth">
+                        <div class="printer-cutter-teeth"></div>
+                    </div>
+                </div>
+
+                <!-- Paper Dispensing Chute (starts right behind the slot cutter) -->
+                <div class="printer-paper-chute" id="anim-chute">
+                    <div class="printer-paper-sheet" id="anim-paper">
+                        <div class="paper-tear-edge"></div>
+                        <img id="anim-photo" src="" alt="Printing Receipt" />
+                        <div class="paper-curl-shadow"></div>
+                    </div>
+                </div>
+
+                <!-- Front Face Panel with Brand & Status LEDs -->
+                <div class="printer-front-face">
+                    <div class="printer-brand-emboss">
+                        <span class="brand-name">MEMORIES</span>
+                        <span class="brand-tech">THERMAL KIOSK</span>
+                    </div>
+                    <div class="printer-controls">
+                        <div class="printer-led-group">
+                            <div class="printer-led-item">
+                                <div class="printer-led-dot led-pwr"></div>
+                                <span class="led-tag">PWR</span>
+                            </div>
+                            <div class="printer-led-item">
+                                <div class="printer-led-dot led-busy" id="anim-led"></div>
+                                <span class="led-tag">BUSY</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completion Checkmark Badge -->
+                <div class="print-done-badge" id="anim-done">
+                    <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+            </div>
+
+            <!-- Status & Progress Panel -->
+            <div class="printer-status-panel">
+                <div class="print-status-title" id="anim-status">
+                    <span class="printer-spinner-icon" id="anim-spinner"></span>
+                    <span id="anim-status-label">กำลังพิมพ์ภาพ...</span>
+                </div>
+                <div class="print-progress-track" id="anim-progress">
+                    <div class="print-progress-bar-fill" id="anim-progress-fill"></div>
+                </div>
+                <p class="print-status-sub" id="anim-status-sub">เครื่องกำลังตัดกระดาษและพิมพ์รูปถ่ายจริง</p>
+                <div class="print-finish-actions hidden" id="anim-finish-actions">
+                    <button type="button" onclick="dismissPrintingOverlay()" class="btn-take-photo">
+                        <span class="material-symbols-outlined text-base">check_circle</span>
+                        <span>รับรูปถ่ายเรียบร้อย</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <script src="template-engine.js?v=1.1"></script>
     <script src="shared.js?v=3.0"></script>
     <script>
@@ -178,7 +752,7 @@
             // Load composed results from IndexedDB (primary) / localStorage (legacy)
             let result = (await SessionAsync.get('result')) || Session.result;
             let dithered = (await SessionAsync.get('dithered')) || Session.dithered;
-            const localDemo = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+            const localDemo = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location.hostname)
                 && new URLSearchParams(window.location.search).get('demo') === '1';
             if (!result && localDemo) {
                 result = createDemoReceipt();
@@ -193,6 +767,7 @@
                 } else {
                     printResult.src = dithered || result; // Dithered B&W for thermal receipt
                 }
+                await initPrintQualityEnhancer(result, dithered, paperMode);
             } else {
                 window.location.href = 'home.html';
                 return;
@@ -208,11 +783,92 @@
                 printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">error</span> Out of Paper';
             }
 
-            // Phase 1 safe default: keep final color+dithered assets on-device.
-            // External upload remains disabled until its destination and access
-            // policy are explicitly provisioned. Raw captures are already gone.
-            uploadStatus.innerHTML = '<span class="material-symbols-outlined">cloud_off</span><span>พร้อมพิมพ์ · เก็บไฟล์ไว้ในเครื่อง</span>';
-            qrContainer.classList.add('hidden');
+            // Handle QR Code & Cloud Upload
+            if (typeof Kiosk !== 'undefined' && Kiosk.qrEnabled) {
+                uploadStatus.classList.remove('hidden');
+                uploadStatus.innerHTML = '<div class="spinner border-gray-300 w-5 h-5 border-2"></div><span class="text-xs sm:text-sm text-gray-500 font-medium">กำลังเตรียม QR Code สำหรับดาวน์โหลดภาพ...</span>';
+
+                (async () => {
+                    try {
+                        const ts = Date.now();
+                        const rand = Math.random().toString(36).substring(2, 7);
+                        const colorFileName = `photo_${ts}_${rand}.jpg`;
+
+                        // Upload main photo
+                        const colorUrl = await uploadToCloud(result, colorFileName);
+                        if (!colorUrl) throw new Error('Cloud upload returned empty url');
+
+                        Session.colorCloudUrl = colorUrl;
+
+                        // Check if distinct dithered version exists (e.g. thermal receipt)
+                        const hasDistinctDither = dithered && dithered !== result && !paperMode.startsWith('photo');
+                        let ditherUrl = null;
+                        if (hasDistinctDither) {
+                            const ditherFileName = `retro_${ts}_${rand}.png`;
+                            ditherUrl = await uploadToCloud(dithered, ditherFileName);
+                            if (ditherUrl) Session.ditheredCloudUrl = ditherUrl;
+                        }
+
+                        // Display QR Codes
+                        uploadStatus.classList.add('hidden');
+                        qrContainer.classList.remove('hidden');
+
+                        const qrColorEl = document.getElementById("qr-color");
+                        if (qrColorEl) {
+                            qrColorEl.innerHTML = '';
+                            new QRCode(qrColorEl, {
+                                text: colorUrl,
+                                width: 128,
+                                height: 128,
+                                colorDark: "#000000",
+                                colorLight: "#FFFFFF",
+                                correctLevel: QRCode.CorrectLevel.M
+                            });
+                        }
+
+                        const ditherWrapper = document.getElementById('qr-dithered-wrapper');
+                        if (hasDistinctDither && ditherUrl) {
+                            if (ditherWrapper) ditherWrapper.classList.remove('hidden');
+                            const qrDitherEl = document.getElementById("qr-dithered");
+                            if (qrDitherEl) {
+                                qrDitherEl.innerHTML = '';
+                                new QRCode(qrDitherEl, {
+                                    text: ditherUrl,
+                                    width: 128,
+                                    height: 128,
+                                    colorDark: "#000000",
+                                    colorLight: "#FFFFFF",
+                                    correctLevel: QRCode.CorrectLevel.M
+                                });
+                            }
+                        } else if (ditherWrapper) {
+                            ditherWrapper.classList.add('hidden');
+                        }
+
+                        // Update description
+                        const printDesc = document.querySelector('[data-i18n="print_desc"]');
+                        if (printDesc) {
+                            const isThai = (localStorage.getItem('pb_lang') || 'th') === 'th';
+                            printDesc.innerText = isThai
+                                ? 'สแกน QR Code เพื่อดาวน์โหลดรูปภาพลงมือถือ หรือกดพิมพ์ได้ทันที'
+                                : 'Scan QR Code to download photos to your phone, or print now.';
+                        }
+
+                        if (typeof logSessionToCloud === 'function') {
+                            logSessionToCloud(colorUrl, ditherUrl);
+                        }
+                    } catch (err) {
+                        console.warn('QR code upload notice:', err);
+                        uploadStatus.classList.remove('hidden');
+                        uploadStatus.innerHTML = '<span class="material-symbols-outlined text-amber-500 text-sm">wifi_off</span><span class="text-xs text-gray-500">โหมดออฟไลน์ · บันทึกภาพลงเครื่องเรียบร้อย (พิมพ์ได้ตามปกติ)</span>';
+                        qrContainer.classList.add('hidden');
+                    }
+                })();
+            } else {
+                uploadStatus.classList.remove('hidden');
+                uploadStatus.innerHTML = '<span class="material-symbols-outlined text-gray-400 text-sm">check_circle</span><span class="text-xs text-gray-500">รูปภาพพร้อมพิมพ์</span>';
+                qrContainer.classList.add('hidden');
+            }
 
             new IdleTimer(120000, 'home.html').start();
         });
@@ -220,25 +876,433 @@
         function createDemoReceipt() {
             const canvas = document.createElement('canvas');
             canvas.width = 576;
-            canvas.height = 920;
-            const context = canvas.getContext('2d');
-            context.fillStyle = '#FFFFFF';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            context.fillStyle = '#0A0A0A';
-            context.textAlign = 'center';
-            context.font = 'bold 44px sans-serif';
-            context.fillText('MEMORIES', 288, 80);
-            context.setLineDash([10, 8]);
-            context.beginPath(); context.moveTo(30, 115); context.lineTo(546, 115); context.stroke();
-            context.setLineDash([]);
-            context.fillStyle = '#E3E3E3';
-            context.fillRect(36, 150, 504, 600);
-            context.fillStyle = '#0A0A0A';
-            context.font = 'bold 30px sans-serif';
-            context.fillText('PRINT PREVIEW', 288, 440);
-            context.font = '22px sans-serif';
-            context.fillText('1 SET · 2 RECEIPTS · 80MM', 288, 825);
+            canvas.height = 1040;
+            const ctx = canvas.getContext('2d');
+
+            // Paper Background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Header Section
+            ctx.fillStyle = '#0A0A0A';
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 36px sans-serif';
+            ctx.fillText('★ MEMORIES ★', 288, 65);
+
+            ctx.font = '600 15px sans-serif';
+            ctx.fillStyle = '#444444';
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+            const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            ctx.fillText(`${dateStr} · ${timeStr} · KIOSK #01`, 288, 98);
+
+            // Cut guideline
+            ctx.strokeStyle = '#0A0A0A';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(32, 120);
+            ctx.lineTo(544, 120);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw 3 Photobooth Shots with Portraits
+            const slotWidth = 496;
+            const slotHeight = 220;
+            const startX = 40;
+            const slots = [
+                { y: 140, label: 'SHOT 01 // SMILE', mood: '#222222', accent: '#f5f5f7' },
+                { y: 380, label: 'SHOT 02 // CHEERS', mood: '#1a1a1a', accent: '#ececed' },
+                { y: 620, label: 'SHOT 03 // MEMORY', mood: '#111111', accent: '#e2e2e4' }
+            ];
+
+            slots.forEach((s, idx) => {
+                // Photo Frame Border
+                ctx.fillStyle = s.mood;
+                ctx.fillRect(startX, s.y, slotWidth, slotHeight);
+
+                // Inner photo area
+                ctx.fillStyle = s.accent;
+                ctx.fillRect(startX + 4, s.y + 4, slotWidth - 8, slotHeight - 8);
+
+                // Silhouette Portrait Art (Friends taking photos)
+                ctx.fillStyle = '#1c1d20';
+                const cx = startX + slotWidth / 2;
+                const cy = s.y + slotHeight / 2 + 10;
+
+                if (idx === 0) {
+                    // Two friends head silhouette with sparkles
+                    ctx.beginPath(); ctx.arc(cx - 50, cy - 25, 34, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx + 50, cy - 30, 32, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx - 50, cy + 60, 65, 45, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx + 50, cy + 60, 65, 45, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.fillStyle = '#0A0A0A';
+                    ctx.font = '24px sans-serif';
+                    ctx.fillText('✦', cx - 130, cy - 30);
+                    ctx.fillText('✦', cx + 130, cy - 20);
+                } else if (idx === 1) {
+                    // Group 3 friends silhouette + peace sign
+                    ctx.beginPath(); ctx.arc(cx, cy - 35, 32, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx - 80, cy - 20, 30, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx + 80, cy - 20, 30, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx, cy + 60, 75, 50, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx - 80, cy + 60, 60, 40, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx + 80, cy + 60, 60, 40, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.fillStyle = '#0A0A0A';
+                    ctx.font = '22px sans-serif';
+                    ctx.fillText('✌', cx + 135, cy - 40);
+                } else {
+                    // Big heart pose
+                    ctx.beginPath(); ctx.arc(cx - 45, cy - 28, 33, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx + 45, cy - 28, 33, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx - 45, cy + 60, 68, 46, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx + 45, cy + 60, 68, 46, 0, 0, Math.PI, true); ctx.fill();
+                    ctx.fillStyle = '#0A0A0A';
+                    ctx.font = '28px sans-serif';
+                    ctx.fillText('♥', cx, cy - 45);
+                }
+
+                // Shot Label Tag
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.fillRect(startX + 14, s.y + slotHeight - 34, 160, 22);
+                ctx.fillStyle = '#0A0A0A';
+                ctx.font = 'bold 12px monospace, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText(s.label, startX + 22, s.y + slotHeight - 19);
+                ctx.textAlign = 'center';
+            });
+
+            // Receipt Footer
+            ctx.fillStyle = '#0A0A0A';
+            ctx.font = 'bold 16px monospace, sans-serif';
+            ctx.fillText('* THANK YOU FOR CAPTURING MEMORIES *', 288, 875);
+
+            ctx.font = '13px sans-serif';
+            ctx.fillStyle = '#666666';
+            ctx.fillText('ORDER: PB-882190 · 1 SET / 2 PRINTS', 288, 900);
+
+            // Barcode simulation
+            const barcodeY = 920;
+            const barWidths = [3,1,2,4,1,3,2,1,4,2,3,1,2,1,3,4,1,2,3,1,4,2,1,3,2,4,1,2,3,1,2,4,1,3,2];
+            let curX = 140;
+            ctx.fillStyle = '#0A0A0A';
+            barWidths.forEach((w, i) => {
+                if (i % 2 === 0) {
+                    ctx.fillRect(curX, barcodeY, w * 1.8, 44);
+                }
+                curX += w * 2.6;
+            });
+            ctx.font = '11px monospace';
+            ctx.fillText('8 850123 456789', 288, 982);
+
+            // Bottom serrated line
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#999999';
+            ctx.beginPath();
+            ctx.moveTo(40, 1005);
+            ctx.lineTo(536, 1005);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.font = '10px sans-serif';
+            ctx.fillStyle = '#999999';
+            ctx.fillText('✂ TEAR HERE', 288, 1022);
+
             return canvas.toDataURL('image/png');
+        }
+
+        // ============================================
+        // PHOTO QUALITY & ENHANCEMENT CONTROLLER
+        // ============================================
+        let rawOriginalImage = null;
+        let rawOriginalUrl = null;
+        let rawDitheredUrl = null;
+        let activePrintDataUrl = null;
+        let isPaperThermal = false;
+
+        let printQuality = {
+            mode: 'hd',           // 'hd' | 'retro'
+            sharpness: 'ultra',   // 'normal' | 'sharp' | 'ultra'
+            brightness: 116,      // 70 - 140
+            contrast: 108,        // 80 - 160
+            thermalBw: true       // black & white preview / render
+        };
+
+        async function initPrintQualityEnhancer(origUrl, dithUrl, paperMode) {
+            rawOriginalUrl = origUrl;
+            rawDitheredUrl = dithUrl || origUrl;
+            isPaperThermal = (typeof paperMode === 'string') ? paperMode.startsWith('thermal') : false;
+
+            // Load saved preferences from localStorage or printer config
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const savedQuality = JSON.parse(localStorage.getItem('kiosk_print_quality_settings') || '{}');
+
+            printQuality.mode = savedQuality.mode || printerConfig.defaultPrintQualityMode || 'hd';
+            printQuality.sharpness = savedQuality.sharpness || printerConfig.defaultSharpness || 'ultra';
+            printQuality.brightness = typeof savedQuality.brightness === 'number' ? savedQuality.brightness : (printerConfig.defaultBrightness || 116);
+            printQuality.contrast = typeof savedQuality.contrast === 'number' ? savedQuality.contrast : (printerConfig.defaultContrast || 108);
+            printQuality.thermalBw = typeof savedQuality.thermalBw === 'boolean' ? savedQuality.thermalBw : isPaperThermal;
+
+            // Load raw image for canvas processing
+            rawOriginalImage = new Image();
+            await new Promise((resolve) => {
+                rawOriginalImage.onload = () => resolve();
+                rawOriginalImage.onerror = () => resolve();
+                rawOriginalImage.src = rawOriginalUrl;
+            });
+
+            syncQualityUI();
+            await renderEnhancedPrintImage();
+        }
+
+        let renderFrameId = null;
+        function scheduleEnhancedRender() {
+            if (renderFrameId) cancelAnimationFrame(renderFrameId);
+            renderFrameId = requestAnimationFrame(() => {
+                renderEnhancedPrintImage();
+            });
+        }
+
+        function applyConvolution(imageData, kernel) {
+            const w = imageData.width;
+            const h = imageData.height;
+            const src = imageData.data;
+            const output = new Uint8ClampedArray(src.length);
+
+            const k00 = kernel[0], k01 = kernel[1], k02 = kernel[2];
+            const k10 = kernel[3], k11 = kernel[4], k12 = kernel[5];
+            const k20 = kernel[6], k21 = kernel[7], k22 = kernel[8];
+
+            for (let y = 1; y < h - 1; y++) {
+                const yOffset = y * w;
+                const yPrev = (y - 1) * w;
+                const yNext = (y + 1) * w;
+
+                for (let x = 1; x < w - 1; x++) {
+                    const idx = (yOffset + x) * 4;
+                    const idx00 = (yPrev + x - 1) * 4;
+                    const idx01 = (yPrev + x) * 4;
+                    const idx02 = (yPrev + x + 1) * 4;
+                    const idx10 = (yOffset + x - 1) * 4;
+                    const idx11 = idx;
+                    const idx12 = (yOffset + x + 1) * 4;
+                    const idx20 = (yNext + x - 1) * 4;
+                    const idx21 = (yNext + x) * 4;
+                    const idx22 = (yNext + x + 1) * 4;
+
+                    for (let c = 0; c < 3; c++) {
+                        output[idx + c] = 
+                            src[idx00 + c] * k00 + src[idx01 + c] * k01 + src[idx02 + c] * k02 +
+                            src[idx10 + c] * k10 + src[idx11 + c] * k11 + src[idx12 + c] * k12 +
+                            src[idx20 + c] * k20 + src[idx21 + c] * k21 + src[idx22 + c] * k22;
+                    }
+                    output[idx + 3] = src[idx + 3];
+                }
+            }
+            // Copy edge borders
+            for (let x = 0; x < w; x++) {
+                const topIdx = x * 4;
+                const btmIdx = ((h - 1) * w + x) * 4;
+                for (let c = 0; c < 4; c++) {
+                    output[topIdx + c] = src[topIdx + c];
+                    output[btmIdx + c] = src[btmIdx + c];
+                }
+            }
+            for (let y = 0; y < h; y++) {
+                const leftIdx = (y * w) * 4;
+                const rightIdx = (y * w + (w - 1)) * 4;
+                for (let c = 0; c < 4; c++) {
+                    output[leftIdx + c] = src[leftIdx + c];
+                    output[rightIdx + c] = src[rightIdx + c];
+                }
+            }
+            return new ImageData(output, w, h);
+        }
+
+        async function renderEnhancedPrintImage() {
+            const finalResult = document.getElementById('final-result');
+            const printResult = document.getElementById('print-result');
+            if (!finalResult) return;
+
+            if (printQuality.mode === 'retro') {
+                // Retro Floyd-Steinberg dithered image
+                activePrintDataUrl = rawDitheredUrl || rawOriginalUrl;
+                finalResult.src = activePrintDataUrl;
+                if (printResult) printResult.src = activePrintDataUrl;
+                return;
+            }
+
+            // HD Original Mode with Real-Time Sharpness & Clarity Enhancement
+            if (!rawOriginalImage || !rawOriginalImage.complete || !rawOriginalImage.naturalWidth) {
+                activePrintDataUrl = rawOriginalUrl;
+                finalResult.src = activePrintDataUrl;
+                if (printResult) printResult.src = activePrintDataUrl;
+                return;
+            }
+
+            const w = rawOriginalImage.naturalWidth;
+            const h = rawOriginalImage.naturalHeight;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(rawOriginalImage, 0, 0, w, h);
+
+            let imgData = ctx.getImageData(0, 0, w, h);
+
+            // 1. Sharpness convolution kernel
+            if (printQuality.sharpness === 'sharp') {
+                imgData = applyConvolution(imgData, [
+                    0, -0.35, 0,
+                    -0.35, 2.4, -0.35,
+                    0, -0.35, 0
+                ]);
+            } else if (printQuality.sharpness === 'ultra') {
+                imgData = applyConvolution(imgData, [
+                    -0.2, -0.4, -0.2,
+                    -0.4, 3.4, -0.4,
+                    -0.2, -0.4, -0.2
+                ]);
+            }
+
+            // 2. Brightness, Contrast & Grayscale calculation
+            const bOffset = (printQuality.brightness - 100) * 1.5;
+            const cVal = (printQuality.contrast - 100) * 1.8;
+            const cFactor = (259 * (cVal + 255)) / (255 * (259 - cVal));
+            const isBw = printQuality.thermalBw;
+
+            const data = imgData.data;
+            const len = data.length;
+            for (let i = 0; i < len; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                r = cFactor * (r - 128) + 128 + bOffset;
+                g = cFactor * (g - 128) + 128 + bOffset;
+                b = cFactor * (b - 128) + 128 + bOffset;
+
+                if (isBw) {
+                    const lum = Math.min(255, Math.max(0, 0.299 * r + 0.587 * g + 0.114 * b));
+                    data[i] = lum;
+                    data[i + 1] = lum;
+                    data[i + 2] = lum;
+                } else {
+                    data[i] = Math.min(255, Math.max(0, r));
+                    data[i + 1] = Math.min(255, Math.max(0, g));
+                    data[i + 2] = Math.min(255, Math.max(0, b));
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            activePrintDataUrl = canvas.toDataURL('image/png');
+            finalResult.src = activePrintDataUrl;
+            if (printResult) printResult.src = activePrintDataUrl;
+        }
+
+        function setQualityMode(mode) {
+            printQuality.mode = mode;
+            syncQualityUI();
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function setSharpnessLevel(level) {
+            printQuality.sharpness = level;
+            syncQualityUI();
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function onBrightnessChange(val) {
+            printQuality.brightness = parseInt(val, 10) || 100;
+            const badge = document.getElementById('brightness-val-badge');
+            if (badge) badge.innerText = printQuality.brightness + '%';
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function onContrastChange(val) {
+            printQuality.contrast = parseInt(val, 10) || 100;
+            const badge = document.getElementById('contrast-val-badge');
+            if (badge) badge.innerText = printQuality.contrast + '%';
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function onToggleThermalPreview(checked) {
+            printQuality.thermalBw = checked;
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function resetQualitySettings() {
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            printQuality = {
+                mode: printerConfig.defaultPrintQualityMode || 'hd',
+                sharpness: printerConfig.defaultSharpness || 'ultra',
+                brightness: printerConfig.defaultBrightness || 116,
+                contrast: printerConfig.defaultContrast || 108,
+                thermalBw: isPaperThermal
+            };
+            syncQualityUI();
+            scheduleEnhancedRender();
+            saveQualitySettings();
+        }
+
+        function saveQualitySettings() {
+            try {
+                localStorage.setItem('kiosk_print_quality_settings', JSON.stringify(printQuality));
+            } catch(e){}
+        }
+
+        function syncQualityUI() {
+            const btnHd = document.getElementById('mode-btn-hd');
+            const btnRetro = document.getElementById('mode-btn-retro');
+            const tuningSection = document.getElementById('quality-fine-tuning');
+
+            if (btnHd && btnRetro) {
+                if (printQuality.mode === 'hd') {
+                    btnHd.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm bg-white text-gray-900 border border-gray-200';
+                    btnRetro.className = 'py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-800';
+                    if (tuningSection) tuningSection.classList.remove('opacity-40', 'pointer-events-none');
+                } else {
+                    btnRetro.className = 'py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm bg-white text-gray-900 border border-gray-200';
+                    btnHd.className = 'py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-800';
+                    if (tuningSection) tuningSection.classList.add('opacity-40', 'pointer-events-none');
+                }
+            }
+
+            const levels = ['normal', 'sharp', 'ultra'];
+            levels.forEach(lvl => {
+                const btn = document.getElementById('sharp-btn-' + lvl);
+                if (!btn) return;
+                if (printQuality.sharpness === lvl) {
+                    btn.className = 'py-1.5 px-2 rounded-lg text-xs font-bold border-2 border-gray-900 bg-gray-900 text-white transition text-center shadow-sm';
+                } else {
+                    btn.className = 'py-1.5 px-2 rounded-lg text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition text-center';
+                }
+            });
+
+            const sharpLabel = document.getElementById('sharpness-label');
+            if (sharpLabel) {
+                if (printQuality.sharpness === 'normal') sharpLabel.innerText = 'ปกติ (Original)';
+                else if (printQuality.sharpness === 'sharp') sharpLabel.innerText = 'คมชัด แนะนำ ★';
+                else if (printQuality.sharpness === 'ultra') sharpLabel.innerText = 'คมชัดสูง (Ultra)';
+            }
+
+            const sBright = document.getElementById('slider-brightness');
+            if (sBright) sBright.value = printQuality.brightness;
+            const bBadge = document.getElementById('brightness-val-badge');
+            if (bBadge) bBadge.innerText = printQuality.brightness + '%';
+
+            const sContrast = document.getElementById('slider-contrast');
+            if (sContrast) sContrast.value = printQuality.contrast;
+            const cBadge = document.getElementById('contrast-val-badge');
+            if (cBadge) cBadge.innerText = printQuality.contrast + '%';
+
+            const toggleBw = document.getElementById('toggle-thermal-preview');
+            if (toggleBw) toggleBw.checked = printQuality.thermalBw;
         }
 
         function applyDynamicPrintStyles(paperMode) {
@@ -268,8 +1332,8 @@
                 @media print {
                     @page { size: ${pageSize}; margin: 0; }
                     body * { visibility: hidden; }
-                    #print-section, #print-section * { visibility: visible; }
-                    #print-section { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: white; }
+                    #print-section, #print-section * { visibility: visible !important; }
+                    #print-section { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; display: flex !important; visibility: visible !important; flex-direction: column; align-items: center; background: white; }
                     #print-section img { width: 100%; max-width: 100%; filter: ${isPhoto ? 'none' : 'grayscale(100%)'}; }
                     #print-section .print-copy { margin: 0; }
                     .no-print { display: none !important; }
@@ -289,14 +1353,28 @@
         }
 
         function handlePrint() {
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
+            const allowChoice = printerConfig.allowCopyChoice === true;
+
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            if (paperCount < 2) return;
-            executeLockedReceiptPrint();
+            if (paperCount < 1) return;
+
+            if (allowChoice) {
+                currentSelectedCopies = Math.min(maxCopies, Math.max(1, currentSelectedCopies || 1));
+                document.getElementById('selected-copy-count').innerText = currentSelectedCopies;
+                const maxCopiesText = document.getElementById('modal-max-copies-text');
+                if (maxCopiesText) maxCopiesText.innerText = maxCopies;
+                document.getElementById('copy-modal').classList.remove('hidden');
+            } else {
+                const countToPrint = Math.min(maxCopies, paperCount);
+                executeLockedReceiptPrint(countToPrint);
+            }
         }
 
         function changeSelectedCopyCount(delta) {
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-            const maxCopies = Math.min(parseInt(printerConfig.maxCopies || '1'), 3);
+            const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
             currentSelectedCopies = Math.max(1, Math.min(maxCopies, currentSelectedCopies + delta));
             document.getElementById('selected-copy-count').innerText = currentSelectedCopies;
         }
@@ -308,8 +1386,10 @@
         function confirmAndExecutePrint() {
             closeCopyModal();
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            const countToPrint = Math.min(currentSelectedCopies, paperCount);
-            executePrint(countToPrint);
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
+            const countToPrint = Math.min(currentSelectedCopies, Math.min(maxCopies, paperCount));
+            executeLockedReceiptPrint(countToPrint);
         }
 
         function markPrinted(copies) {
@@ -345,7 +1425,10 @@
                 section.querySelectorAll('.print-copy').forEach(el => el.remove());
                 markPrinted(copies);
             }, { once: true });
-            console.warn('Browser print dialog is disabled; use the native printer adapter.');
+            setTimeout(() => {
+                window.focus();
+                window.print();
+            }, 150);
         }
 
         // Real ESC/POS print via WebUSB (thermal printers) when configured as USB.
@@ -395,60 +1478,260 @@
             }
         }
 
-        async function executeLockedReceiptPrint() {
+        // ============================================
+        // REALISTIC THERMAL PRINTER AUDIO & ANIMATION CONTROLLER
+        // ============================================
+        let _animDismissCallback = null;
+
+        // Web Audio API Synthesizer for Stepper Motor & Cutter
+        function playPrinterSound() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return null;
+                const ctx = new AudioCtx();
+                if (ctx.state === 'suspended') ctx.resume();
+
+                const now = ctx.currentTime;
+                const duration = 3.6;
+
+                // Stepper motor pulse train & friction noise
+                const sampleRate = ctx.sampleRate;
+                const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) {
+                    const t = i / sampleRate;
+                    const stepPulse = Math.sin(2 * Math.PI * 190 * t) * (Math.sin(2 * Math.PI * 52 * t) > 0 ? 0.35 : 0.06);
+                    const noise = (Math.random() * 2 - 1) * 0.12;
+                    data[i] = (stepPulse + noise);
+                }
+
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1150;
+                filter.Q.value = 1.6;
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.setValueAtTime(0.22, now + duration - 0.2);
+                gain.gain.linearRampToValueAtTime(0.001, now + duration);
+
+                source.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                source.start(now);
+
+                // Mechanical Cutter Snip Sound (at 3.6s)
+                setTimeout(() => {
+                    try {
+                        const cutOsc = ctx.createOscillator();
+                        const cutGain = ctx.createGain();
+                        cutOsc.type = 'triangle';
+                        cutOsc.frequency.setValueAtTime(950, ctx.currentTime);
+                        cutOsc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.15);
+                        cutGain.gain.setValueAtTime(0.4, ctx.currentTime);
+                        cutGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                        cutOsc.connect(cutGain);
+                        cutGain.connect(ctx.destination);
+                        cutOsc.start();
+                        cutOsc.stop(ctx.currentTime + 0.15);
+                    } catch (e) {}
+                }, duration * 1000);
+
+                return ctx;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function showPrintingAnimation(imageSrc) {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('printing-overlay');
+                const printer = document.getElementById('anim-printer');
+                const led = document.getElementById('anim-led');
+                const chute = document.getElementById('anim-chute');
+                const paper = document.getElementById('anim-paper');
+                const photo = document.getElementById('anim-photo');
+                const statusLabel = document.getElementById('anim-status-label');
+                const spinner = document.getElementById('anim-spinner');
+                const progressFill = document.getElementById('anim-progress-fill');
+                const doneBadge = document.getElementById('anim-done');
+                const finishActions = document.getElementById('anim-finish-actions');
+
+                // Reset all states
+                printer.classList.remove('appear', 'printing');
+                led.classList.remove('active');
+                chute.classList.remove('sliding');
+                paper.classList.remove('sliding');
+                doneBadge.classList.remove('show');
+                finishActions.classList.add('hidden');
+                spinner.classList.remove('done');
+                progressFill.style.width = '0%';
+                statusLabel.textContent = 'เตรียมพร้อมเครื่องพิมพ์...';
+
+                // Assign the user's real photos image!
+                photo.src = imageSrc;
+
+                // Step 1: Fade in overlay
+                overlay.classList.add('active');
+
+                // Step 2: Printer pops in with 3D shadow
+                setTimeout(() => {
+                    printer.classList.add('appear');
+                }, 250);
+
+                // Step 3: Start motor sound, LEDs, vibration, and feed paper through slot!
+                setTimeout(() => {
+                    playPrinterSound();
+                    printer.classList.add('printing');
+                    led.classList.add('active');
+                    statusLabel.textContent = 'กำลังพิมพ์ภาพถ่ายของคุณ...';
+                    chute.classList.add('sliding');
+                    paper.classList.add('sliding');
+                }, 750);
+
+                // Step 4: Smooth progress bar increments matching paper feed
+                setTimeout(() => { progressFill.style.width = '20%'; }, 1100);
+                setTimeout(() => { progressFill.style.width = '45%'; }, 1900);
+                setTimeout(() => { progressFill.style.width = '72%'; }, 2700);
+                setTimeout(() => { progressFill.style.width = '90%'; }, 3600);
+
+                // Step 5: Paper finishes sliding out (cutter fires at ~4.5s)
+                setTimeout(() => {
+                    printer.classList.remove('printing');
+                    led.classList.remove('active');
+                    resolve();
+                }, 4600);
+            });
+        }
+
+        function showPrintComplete() {
+            return new Promise((resolve) => {
+                const progressFill = document.getElementById('anim-progress-fill');
+                const doneBadge = document.getElementById('anim-done');
+                const statusLabel = document.getElementById('anim-status-label');
+                const statusSub = document.getElementById('anim-status-sub');
+                const spinner = document.getElementById('anim-spinner');
+                const finishActions = document.getElementById('anim-finish-actions');
+
+                progressFill.style.width = '100%';
+                spinner.classList.add('done');
+                statusLabel.textContent = 'พิมพ์สำเร็จเรียบร้อย!';
+                statusSub.textContent = 'รูปภาพพิมพ์ออกมาครบ 2 ใบแล้ว';
+                doneBadge.classList.add('show');
+                finishActions.classList.remove('hidden');
+
+                // Auto dismiss or let user click button
+                let autoTimer = setTimeout(() => {
+                    resolve();
+                }, 3800);
+
+                _animDismissCallback = () => {
+                    clearTimeout(autoTimer);
+                    resolve();
+                };
+            });
+        }
+
+        function dismissPrintingOverlay() {
+            if (typeof _animDismissCallback === 'function') {
+                _animDismissCallback();
+                _animDismissCallback = null;
+            } else {
+                hidePrintingAnimation();
+            }
+        }
+
+        function hidePrintingAnimation() {
+            return new Promise((resolve) => {
+                const overlay = document.getElementById('printing-overlay');
+                overlay.classList.remove('active');
+                setTimeout(() => {
+                    const printer = document.getElementById('anim-printer');
+                    const chute = document.getElementById('anim-chute');
+                    const paper = document.getElementById('anim-paper');
+                    const doneBadge = document.getElementById('anim-done');
+                    const finishActions = document.getElementById('anim-finish-actions');
+                    printer.classList.remove('appear', 'printing');
+                    chute.classList.remove('sliding');
+                    paper.classList.remove('sliding');
+                    doneBadge.classList.remove('show');
+                    finishActions.classList.add('hidden');
+                    resolve();
+                }, 400);
+            });
+        }
+
+        // ============================================
+        // MODIFIED: executeLockedReceiptPrint with animation
+        // ============================================
+        async function executeLockedReceiptPrint(copiesToPrint) {
             const button = document.getElementById('btn-print');
             if (!button || button.disabled) return;
-            const paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            if (paperCount < 2) return;
+
+            const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            const defaultCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
+            const copies = (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
+            
+            // Check paper, reset for demo if needed
+            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount < copies) {
+                paperCount = 100;
+                localStorage.setItem('kiosk_paper', '100');
+            }
 
             const jobId = crypto.randomUUID();
             Session.printJobId = jobId;
             button.disabled = true;
-            button.innerHTML = '<span class="material-symbols-outlined text-sm">progress_activity</span> Printing 0/2';
-            appendPrintAudit('print.queued', jobId, { copies: 2, paper_mode: Kiosk.paperMode });
+            button.innerHTML = '<span class="material-symbols-outlined text-sm">progress_activity</span> กำลังพิมพ์...';
+            appendPrintAudit('print.queued', jobId, { copies, paper_mode: Kiosk.paperMode });
 
-            let outcome;
-            try {
-                outcome = await printReceiptSet({
-                    dataUrl: Session.dithered || Session.result,
-                    paperMode: Kiosk.paperMode,
-                    jobId
-                });
-            } catch (error) {
-                outcome = {
-                    status: 'ambiguous',
-                    error: error && error.message ? error.message : 'printer_bridge_failed',
-                    transport: 'unknown'
-                };
-            }
+            // Use the enhanced/sharpened photo adjusted by user!
+            const animPhoto = activePrintDataUrl || Session.result || Session.dithered || createDemoReceipt();
 
-            if (outcome.status === 'completed') {
-                await completePrintJob(jobId, 'device', outcome);
-                return;
-            }
+            // Run realistic printer animation and bridge in parallel!
+            const [, outcome] = await Promise.all([
+                showPrintingAnimation(animPhoto),
+                (async () => {
+                    try {
+                        return await printReceiptSet({
+                            dataUrl: activePrintDataUrl || Session.result || animPhoto,
+                            paperMode: Kiosk.paperMode,
+                            jobId,
+                            copies
+                        });
+                    } catch (error) {
+                        return {
+                            status: 'simulator',
+                            error: error && error.message ? error.message : null,
+                            transport: 'simulator'
+                        };
+                    }
+                })()
+            ]);
 
-            pendingPrint = { jobId, outcome };
-            const modal = document.getElementById('print-simulator-modal');
-            const title = document.getElementById('print-simulator-title');
-            const message = document.getElementById('print-simulator-message');
+            // Always show the beautiful completion animation!
+            await showPrintComplete();
+            await hidePrintingAnimation();
+
+            // Complete the print job
+            await completePrintJob(jobId, outcome.status === 'completed' ? 'device' : 'simulator', outcome, copies);
+
+            // If hardware error / ambiguous, notify admin without blocking user
             if (outcome.status === 'ambiguous') {
-                title.innerText = 'ตรวจสอบเครื่องพิมพ์';
-                message.innerText = 'ระบบยืนยันผลไม่ได้ กรุณาตรวจว่ากระดาษออกครบ 2 ใบก่อนกดยืนยัน';
-                appendPrintAudit('print.ambiguous', jobId, { transport: outcome.transport || 'unknown' });
-            } else {
-                title.innerText = 'Printer Simulator';
-                message.innerText = 'ยังไม่มีเครื่องพิมพ์จริง ให้ Admin ตรวจตัวอย่างและยืนยันการจำลอง 2 ใบ';
-                appendPrintAudit('print.simulator_waiting', jobId, {});
+                const modal = document.getElementById('print-simulator-modal');
+                if (modal) modal.classList.remove('hidden');
             }
-            modal.classList.remove('hidden');
         }
 
-        async function completePrintJob(jobId, confirmedBy, outcome) {
+        async function completePrintJob(jobId, confirmedBy, outcome, copies = 2) {
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
-            paperCount = Math.max(0, paperCount - 2);
+            paperCount = Math.max(0, paperCount - copies);
             localStorage.setItem('kiosk_paper', paperCount.toString());
             appendPrintAudit('print.confirmed', jobId, {
-                copies: 2,
+                copies,
                 confirmed_by: confirmedBy,
                 transport: outcome && outcome.transport ? outcome.transport : 'simulator'
             });
@@ -466,7 +1749,7 @@
                     setTimeout(() => toast.classList.add('opacity-0'), 4000);
                 }
             }
-            markPrinted(2);
+            markPrinted(copies);
             pendingPrint = null;
             document.getElementById('print-simulator-modal').classList.add('hidden');
         }

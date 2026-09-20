@@ -48,15 +48,33 @@
         </div>
     </main>
 
-    <!-- Admin PIN Modal -->
-    <div id="admin-modal" class="fixed inset-0 bg-gray-900/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 p-4">
-        <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-white tracking-widest uppercase">Admin Access</h2>
-        <div class="flex gap-4 mb-6">
-            <input type="password" id="admin-pin" class="bg-gray-800 border border-gray-600 rounded-lg text-white text-3xl sm:text-4xl text-center w-48 sm:w-64 h-16 sm:h-20 tracking-[1em]" placeholder="****" maxlength="4">
-        </div>
-        <div class="flex gap-4">
-            <button onclick="hideAdminModal()" class="text-gray-400 hover:text-white px-6 py-3 font-medium">Cancel</button>
-            <button onclick="submitAdminPin()" class="bg-white text-gray-900 px-8 py-3 rounded-md font-bold hover:bg-gray-200">Enter</button>
+    <!-- Admin PIN Modal (Matches Image 2) -->
+    <div id="admin-modal" class="fixed inset-0 bg-gray-200/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center opacity-0 pointer-events-none transition-all duration-300 p-4" onclick="if(event.target===this) hideAdminModal()">
+        <div class="bg-white rounded-[28px] shadow-2xl p-8 sm:p-9 max-w-[360px] w-full flex flex-col items-center border border-gray-100/90 relative transform transition-all duration-300 scale-95" id="admin-modal-card">
+            
+            <!-- Top Lock Icon with Neon Green Accent -->
+            <div class="w-14 h-14 bg-gray-950 rounded-2xl flex items-center justify-center mb-4 shadow-md">
+                <span class="material-symbols-outlined text-2xl text-accent-mint font-bold" style="font-variation-settings: 'FILL' 1;">lock</span>
+            </div>
+
+            <!-- Title & Subtitle -->
+            <h2 class="text-2xl font-bold text-gray-900 tracking-tight mb-1.5 text-center">Admin Access</h2>
+            <p class="text-xs text-gray-400 text-center mb-6 max-w-[240px] leading-relaxed">กรุณากรอก PIN 4 หลักเพื่อเข้าสู่ระบบควบคุมตู้</p>
+
+            <!-- PIN Input Box with Neon Green border -->
+            <div class="relative w-56 h-14 rounded-xl border-2 border-accent-mint bg-white flex items-center justify-center transition-all overflow-hidden cursor-text" id="admin-pin-box" onclick="document.getElementById('admin-pin').focus()">
+                <input type="password" id="admin-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="••••"
+                    class="w-full h-full text-center text-gray-900 text-3xl font-mono tracking-[0.45em] bg-transparent border-0 outline-none focus:outline-none focus:ring-0 placeholder:text-gray-300 select-none cursor-text px-2"
+                    oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter') submitAdminPin()">
+            </div>
+
+            <!-- Error message (if any) -->
+            <div id="admin-pin-error" class="text-accent-coral text-xs font-semibold mt-2 min-h-4 text-center opacity-0 transition-opacity"></div>
+
+            <!-- Submit Button -->
+            <button onclick="submitAdminPin()" id="btn-admin-submit" class="bg-gray-950 hover:bg-black text-white px-9 py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all shadow-md mt-4 hover:scale-[1.02] active:scale-[0.98]">
+                เข้าสู่ระบบ
+            </button>
         </div>
     </div>
 
@@ -76,6 +94,32 @@
             Session.sessionId = crypto.randomUUID();
             await purgeExpiredFinalAssets();
             new IdleTimer(120000, 'home.html').start();
+
+            document.addEventListener('keydown', (e) => {
+                const modal = document.getElementById('admin-modal');
+                const isModalOpen = modal && !modal.classList.contains('pointer-events-none');
+                if (!isModalOpen) return;
+
+                if (e.key === 'Escape') {
+                    hideAdminModal();
+                    return;
+                }
+
+                const input = document.getElementById('admin-pin');
+                if (input && document.activeElement !== input) {
+                    if (/^[0-9]$/.test(e.key)) {
+                        if (input.value.length < 4) {
+                            input.value += e.key;
+                            handlePinInput(input);
+                        }
+                    } else if (e.key === 'Backspace') {
+                        input.value = input.value.slice(0, -1);
+                        handlePinInput(input);
+                    } else if (e.key === 'Enter') {
+                        submitAdminPin();
+                    }
+                }
+            });
         });
 
         function startSession() {
@@ -102,26 +146,78 @@
 
         function showAdminModal() {
             const modal = document.getElementById('admin-modal');
+            const card = document.getElementById('admin-modal-card');
+            const input = document.getElementById('admin-pin');
             modal.classList.remove('opacity-0', 'pointer-events-none');
             modal.classList.add('opacity-100', 'pointer-events-auto');
-            document.getElementById('admin-pin').value = '';
-            setTimeout(() => document.getElementById('admin-pin').focus(), 100);
+            if (card) {
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }
+            input.value = '';
+            setPinError('');
+            input.focus();
+            setTimeout(() => input.focus(), 50);
+            setTimeout(() => input.focus(), 150);
         }
 
         function hideAdminModal() {
             const modal = document.getElementById('admin-modal');
+            const card = document.getElementById('admin-modal-card');
             modal.classList.remove('opacity-100', 'pointer-events-auto');
             modal.classList.add('opacity-0', 'pointer-events-none');
+            if (card) {
+                card.classList.remove('scale-100');
+                card.classList.add('scale-95');
+            }
+            setPinError('');
+        }
+
+        function handlePinInput(input) {
+            const val = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+            input.value = val;
+            setPinError('');
+            if (val.length === 4) {
+                setTimeout(() => submitAdminPin(), 150);
+            }
+        }
+
+        function setPinError(msg) {
+            const err = document.getElementById('admin-pin-error');
+            if (!err) return;
+            if (msg) {
+                err.textContent = msg;
+                err.classList.remove('opacity-0');
+                err.classList.add('opacity-100');
+            } else {
+                err.textContent = '';
+                err.classList.add('opacity-0');
+                err.classList.remove('opacity-100');
+            }
         }
 
         async function submitAdminPin() {
-            const pin = document.getElementById('admin-pin').value;
+            const input = document.getElementById('admin-pin');
+            const pin = input.value;
+            if (!pin || pin.length < 4) {
+                setPinError('กรุณากรอก PIN ให้ครบ 4 หลัก');
+                return;
+            }
+            const btn = document.getElementById('btn-admin-submit');
+            if (btn) btn.textContent = 'กำลังตรวจสอบ...';
             const ok = await adminVerifyPin(pin);
+            if (btn) btn.textContent = 'เข้าสู่ระบบ';
             if (ok) {
                 window.location.href = 'admin.html';
             } else {
-                document.getElementById('admin-pin').classList.add('border-accent-coral', 'animate-pulse');
-                setTimeout(() => document.getElementById('admin-pin').classList.remove('border-accent-coral', 'animate-pulse'), 1000);
+                const box = document.getElementById('admin-pin-box');
+                if (box) {
+                    box.classList.add('border-accent-coral', 'animate-pulse');
+                    setTimeout(() => box.classList.remove('border-accent-coral', 'animate-pulse'), 800);
+                }
+                setPinError('PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                input.value = '';
+                input.focus();
             }
         }
     </script>

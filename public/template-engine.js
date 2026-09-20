@@ -84,12 +84,50 @@
         return { top, bottom, left, right };
     }
 
+    function getRatioMultiplier(ratio) {
+        switch (ratio) {
+            case '1x1':
+            case '1:1':
+            case 'square':
+                return 1.0;
+            case '4x3':
+            case '4:3':
+            case 'landscape':
+                return 3 / 4;
+            case '16x9':
+            case '16:9':
+            case 'wide':
+                return 9 / 16;
+            case '9x16':
+            case '9:16':
+            case 'story':
+                return 16 / 9;
+            case '2x3':
+            case '2:3':
+            case 'film':
+                return 3 / 2;
+            case '3x2':
+            case '3:2':
+                return 2 / 3;
+            case '3x4':
+            case '3:4':
+            case 'portrait':
+            default:
+                return 4 / 3;
+        }
+    }
+
     function parseLayout(layoutId) {
-        const match = String(layoutId || '').match(/^(\d+)(?:_([a-z0-9-]+))?$/i);
-        const rawRatio = match && match[2] ? match[2].toLowerCase() : '3x4';
+        const match = String(layoutId || '').match(/^(\d+)(?:_([a-z0-9:x-]+))?$/i);
+        const rawRatio = match && match[2] ? match[2].toLowerCase().replace(':', 'x') : '3x4';
         let ratio = '3x4';
-        if (rawRatio === '16x9') ratio = '16x9';
-        else if (rawRatio === '3x4' || rawRatio === '3:4' || rawRatio === '1x1') ratio = '3x4';
+        if (['square', '1:1', 'sq'].includes(rawRatio)) ratio = '1x1';
+        else if (['4x3', 'landscape'].includes(rawRatio)) ratio = '4x3';
+        else if (['16x9', 'wide'].includes(rawRatio)) ratio = '16x9';
+        else if (['9x16', 'story'].includes(rawRatio)) ratio = '9x16';
+        else if (['2x3', 'film'].includes(rawRatio)) ratio = '2x3';
+        else if (['3x2'].includes(rawRatio)) ratio = '3x2';
+        else ratio = '3x4';
         return {
             count: Math.min(MAX_SLOTS, Math.max(1, match ? Number(match[1]) : 3)),
             ratio
@@ -106,7 +144,6 @@
 
         // Fixed cut-sheet modes (4x6 postcard, 5x7 card) keep their standard aspect ratio/height
         const isCutSheet = ['4x6-portrait', '4x6-landscape', 'photo5x7'].includes(presetKey);
-        const is16x9 = ratio === '16x9';
 
         // Aesthetic margins (left/right, gap between photos)
         const marginX = Math.max(12, Math.round(width * 0.045));
@@ -127,14 +164,15 @@
         }
 
         // Dynamic paper height: length is NOT locked, it adapts to the template!
-        const header = Math.max(28, Math.round(width * 0.095));
-        const footer = Math.max(48, Math.round(width * 0.16));
+        // Dedicated Header (ส่วนหัวสำหรับ Logo/ชื่ออีเวนต์) and Footer (ส่วนท้ายสำหรับ Logo/แบรนด์/กรอบ)
+        const header = Math.max(70, Math.round(width * 0.18));
+        const footer = Math.max(100, Math.round(width * 0.28));
 
-        // 4 photos in standard 3:4 ratio -> arranged as 2:2 grid (ฝั่งซ้าย 2:2)
-        if (count === 4 && !is16x9) {
+        // 4 photos arranged as 2:2 grid when layout is 4 and ratio is not 16:9 or 9:16
+        if (count === 4 && ratio !== '16x9' && ratio !== '9x16') {
             const colW = Math.floor((availableWidth - gap) / 2);
             const slotWidth = colW;
-            const slotHeight = Math.round(slotWidth * (4 / 3));
+            const slotHeight = Math.round(slotWidth * getRatioMultiplier(ratio));
 
             const totalSlotsHeight = (slotHeight * 2) + gap;
             const height = header + totalSlotsHeight + footer;
@@ -175,10 +213,10 @@
             return { canvas, slots };
         }
 
-        // Single column (1, 2, 3 photos, or 4_16x9 photos vertically):
-        // Photos expand to fill full available paper width (width - margins) in their aspect ratio!
+        // Single column (1, 2, 3, 4 photos vertically):
+        // Photos expand to fill full available paper width (width - margins) in their chosen aspect ratio!
         const slotWidth = availableWidth;
-        const slotHeight = is16x9 ? Math.round(slotWidth * (9 / 16)) : Math.round(slotWidth * (4 / 3));
+        const slotHeight = Math.round(slotWidth * getRatioMultiplier(ratio));
 
         const totalSlotsHeight = (slotHeight * count) + (gap * (count - 1));
         const height = header + totalSlotsHeight + footer;
@@ -223,22 +261,21 @@
         const ratio = parsed.ratio;
         const safe = canvas.safeMargin;
         const gap = Math.max(8, Math.round(canvas.width * 0.028));
-        const header = Math.round(canvas.height * 0.045);
-        const footer = Math.round(canvas.height * 0.085);
+        const header = Math.max(60, Math.round(canvas.height * 0.075));
+        const footer = Math.max(90, Math.round(canvas.height * 0.11));
         const left = safe.left;
         const top = safe.top + header;
         const availableWidth = canvas.width - left - safe.right;
         const availableHeight = canvas.height - top - safe.bottom - footer;
         const slots = [];
-
-        const is16x9 = ratio === '16x9';
+        const mult = getRatioMultiplier(ratio);
 
         // Landscape canvas with 3 photos (1 large left + 2 stacked right)
-        if (canvas.width > canvas.height && count === 3 && !is16x9) {
+        if (canvas.width > canvas.height && count === 3 && ratio !== '16x9') {
             const leftH = availableHeight;
-            const leftW = Math.min(Math.floor(availableWidth * 0.58), Math.round(leftH * (3 / 4)));
+            const leftW = Math.min(Math.floor(availableWidth * 0.58), Math.round(leftH / mult));
             const rightH = Math.floor((availableHeight - gap) / 2);
-            const rightW = Math.min(availableWidth - leftW - gap, Math.round(rightH * (3 / 4)));
+            const rightW = Math.min(availableWidth - leftW - gap, Math.round(rightH / mult));
             const totalW = leftW + gap + rightW;
             const xStart = left + Math.max(0, Math.floor((availableWidth - totalW) / 2));
 
@@ -249,16 +286,16 @@
             ];
         }
 
-        // 4 photos in standard 3:4 ratio (2x2 grid)
-        if (count === 4 && !is16x9) {
+        // 4 photos in 2x2 grid
+        if (count === 4 && ratio !== '16x9' && ratio !== '9x16') {
             const colW = Math.floor((availableWidth - gap) / 2);
             let slotW = colW;
-            let slotH = Math.round(slotW * (4 / 3));
+            let slotH = Math.round(slotW * mult);
             const totalGridH = (slotH * 2) + gap;
             if (totalGridH > availableHeight) {
                 const maxRowH = Math.floor((availableHeight - gap) / 2);
                 slotH = maxRowH;
-                slotW = Math.round(slotH * (3 / 4));
+                slotW = Math.round(slotH / mult);
             }
             const totalGridW = (slotW * 2) + gap;
             const xStart = left + Math.max(0, Math.floor((availableWidth - totalGridW) / 2));
@@ -284,13 +321,11 @@
 
         // Single column stacked layout (1, 2, 3, 4 photos vertically)
         const maxSlotH = Math.floor((availableHeight - gap * (count - 1)) / count);
-        let slotW, slotH;
-        if (is16x9) {
-            slotW = Math.min(availableWidth, Math.floor(maxSlotH * (16 / 9)));
-            slotH = Math.round(slotW * (9 / 16));
-        } else {
-            slotW = Math.min(availableWidth, Math.floor(maxSlotH * (3 / 4)));
-            slotH = Math.round(slotW * (4 / 3));
+        let slotW = Math.min(availableWidth, Math.floor(maxSlotH / mult));
+        let slotH = Math.round(slotW * mult);
+        if (slotH > maxSlotH) {
+            slotH = maxSlotH;
+            slotW = Math.min(availableWidth, Math.round(slotH / mult));
         }
 
         const totalH = slotH * count + gap * (count - 1);
@@ -342,11 +377,21 @@
             'thermal80': 'Thermal 80mm',
             'thermal100': 'Thermal 100mm'
         };
+        const ratioLabels = {
+            '1x1': '1:1 Square',
+            '3x4': '3:4 Portrait',
+            '4x3': '4:3 Landscape',
+            '16x9': '16:9 Wide',
+            '9x16': '9:16 Story',
+            '2x3': '2:3 Film',
+            '3x2': '3:2 Film'
+        };
+        const ratioText = ratioLabels[parsed.ratio] ? ` · ${ratioLabels[parsed.ratio]}` : '';
         const template = {
             schemaVersion: VERSION,
-            templateId: `tpl_${presetKey.replace(/[^a-z0-9]/g, '_')}_${layoutId}`,
+            templateId: `tpl_${presetKey.replace(/[^a-z0-9]/g, '_')}_${layoutId.replace(/[^a-z0-9]/gi, '_')}`,
             layoutId,
-            name: `${typeNameMap[presetKey] || 'Photo Strip'} · ${parsed.count} ${parsed.count === 1 ? 'photo' : 'photos'}${parsed.ratio === '16x9' ? ' · 16:9' : ''}`,
+            name: `${typeNameMap[presetKey] || 'Photo Strip'} · ${parsed.count} ${parsed.count === 1 ? 'photo' : 'photos'}${ratioText}`,
             type: templateType,
             orientation: presetKey === '4x6-landscape' ? 'landscape' : 'portrait',
             enabled: true,
@@ -363,8 +408,18 @@
     }
 
     function createDefaultTemplates() {
-        const stripLayouts = ['1_1x1', '2_1x1', '3_1x1', '3_16x9', '4_1x1', '4_16x9'];
-        const postcardLayouts = ['1_1x1', '3_1x1', '4_1x1'];
+        const stripLayouts = [
+            '1_1x1', '1_3x4', '1_4x3',
+            '2_1x1', '2_3x4', '2_4x3',
+            '3_1x1', '3_3x4', '3_4x3', '3_16x9',
+            '4_1x1', '4_3x4', '4_16x9'
+        ];
+        const postcardLayouts = [
+            '1_1x1', '1_3x4', '1_4x3',
+            '2_1x1', '2_3x4',
+            '3_1x1', '3_3x4', '3_4x3',
+            '4_1x1', '4_3x4'
+        ];
         return [
             ...stripLayouts.map((layoutId) => createTemplate(layoutId, '2x6')),
             ...postcardLayouts.map((layoutId) => createTemplate(layoutId, '4x6-portrait')),
@@ -397,6 +452,7 @@
             dpi: Math.round(number(source.canvas && source.canvas.dpi, fallback.dpi || 300, 72, 600)),
             backgroundColor: /^#[0-9a-f]{6}$/i.test(source.canvas && source.canvas.backgroundColor) ? source.canvas.backgroundColor : '#FFFFFF',
             backgroundImage: String(source.canvas && source.canvas.backgroundImage || '').slice(0, 400000),
+            backgroundFitMode: ['cover', 'contain', 'stretch', 'tile'].includes(source.canvas && source.canvas.backgroundFitMode) ? source.canvas.backgroundFitMode : 'cover',
             safeMargin: {
                 top: Math.round(number(sourceSafe.top, 35, 0, height / 3)),
                 bottom: Math.round(number(sourceSafe.bottom, 35, 0, height / 3)),
@@ -439,10 +495,13 @@
             type: finalType,
             orientation: isLandscape ? 'landscape' : 'portrait',
             enabled: source.enabled !== false,
+            isCustom: source.isCustom === true,
+            universalThemeId: source.universalThemeId ? String(source.universalThemeId) : null,
             canvas,
             overlay: {
                 url: String(source.overlay && source.overlay.url || ''),
-                zIndex: Math.round(number(source.overlay && source.overlay.zIndex, 100, -1000, 1000))
+                zIndex: Math.round(number(source.overlay && source.overlay.zIndex, 100, -1000, 1000)),
+                fitMode: ['cover', 'contain', 'stretch'].includes(source.overlay && source.overlay.fitMode) ? source.overlay.fitMode : 'cover'
             },
             artboard: normalizeArtboard(source.artboard, canvas),
             slots,
@@ -531,6 +590,324 @@
         };
     }
 
+    function generateCustomTemplate(config = {}) {
+        const paperPreset = config.paperPreset || '2x6';
+        let basePreset = CANVAS_PRESETS[paperPreset] || CANVAS_PRESETS['2x6'];
+        let width = number(config.width, basePreset.width, 200, 5000);
+        let height = number(config.height, basePreset.height, 200, 5000);
+        let dpi = number(config.dpi, basePreset.dpi || 300, 72, 600);
+        
+        // safe margins
+        const marginType = config.marginType || 'normal'; // 'compact', 'normal', 'wide'
+        let marginPx = Math.round(width * 0.04);
+        if (marginType === 'compact') marginPx = Math.round(width * 0.02);
+        if (marginType === 'wide') marginPx = Math.round(width * 0.065);
+        
+        const safeMargin = {
+            top: marginPx,
+            left: marginPx,
+            right: marginPx,
+            bottom: marginPx
+        };
+
+        // Header & Footer space
+        const hfType = config.hfType || 'normal'; // 'none', 'compact', 'normal', 'large'
+        let headerPx = Math.round(height * 0.05);
+        let footerPx = Math.round(height * 0.08);
+        if (hfType === 'none') { headerPx = 0; footerPx = 0; }
+        else if (hfType === 'compact') { headerPx = Math.round(height * 0.025); footerPx = Math.round(height * 0.04); }
+        else if (hfType === 'large') { headerPx = Math.round(height * 0.08); footerPx = Math.round(height * 0.13); }
+
+        // Gap between slots
+        const gapType = config.gapType || 'normal'; // 'none', 'compact', 'normal', 'wide'
+        let gap = Math.round(width * 0.03);
+        if (gapType === 'none') gap = 0;
+        else if (gapType === 'compact') gap = Math.round(width * 0.015);
+        else if (gapType === 'wide') gap = Math.round(width * 0.055);
+
+        const count = number(config.photoCount, 3, 1, 8);
+        const ratio = config.aspectRatio || '3x4';
+        const mult = getRatioMultiplier(ratio);
+
+        const availableX = safeMargin.left;
+        const availableY = safeMargin.top + headerPx;
+        const availableW = Math.max(50, width - safeMargin.left - safeMargin.right);
+        const availableH = Math.max(50, height - availableY - safeMargin.bottom - footerPx);
+
+        const layoutStyle = config.layoutStyle || 'auto'; 
+        const slots = [];
+
+        if (layoutStyle === 'featured_top' && count === 3) {
+            // 1 big on top, 2 small stacked below
+            const topH = Math.floor((availableH - gap) * 0.58);
+            const topW = Math.min(availableW, Math.round(topH / mult));
+            const topX = availableX + Math.floor((availableW - topW) / 2);
+            
+            const btmRowH = availableH - topH - gap;
+            const btmSlotW = Math.floor((availableW - gap) / 2);
+            const btmSlotH = Math.min(btmRowH, Math.round(btmSlotW * mult));
+            const btmActualW = Math.round(btmSlotH / mult);
+            const btmTotalW = btmActualW * 2 + gap;
+            const btmXStart = availableX + Math.floor((availableW - btmTotalW) / 2);
+            const btmY = availableY + topH + gap + Math.floor((btmRowH - btmSlotH) / 2);
+
+            slots.push({ index: 1, x: topX, y: availableY, width: topW, height: topH, rotation: 0, zIndex: 1, focusX: 0.5, focusY: 0.42 });
+            slots.push({ index: 2, x: btmXStart, y: btmY, width: btmActualW, height: btmSlotH, rotation: 0, zIndex: 2, focusX: 0.5, focusY: 0.42 });
+            slots.push({ index: 3, x: btmXStart + btmActualW + gap, y: btmY, width: btmActualW, height: btmSlotH, rotation: 0, zIndex: 3, focusX: 0.5, focusY: 0.42 });
+        } else if (layoutStyle === 'grid2' || (layoutStyle === 'auto' && (count === 4 || count === 6 || count === 8) && width >= height * 0.6)) {
+            // 2 Columns Grid
+            const cols = 2;
+            const rows = Math.ceil(count / cols);
+            const maxSlotW = Math.floor((availableW - gap * (cols - 1)) / cols);
+            const maxSlotH = Math.floor((availableH - gap * (rows - 1)) / rows);
+
+            let slotW = maxSlotW;
+            let slotH = Math.round(slotW * mult);
+            if (slotH > maxSlotH) {
+                slotH = maxSlotH;
+                slotW = Math.round(slotH / mult);
+            }
+
+            const totalGridW = slotW * cols + gap * (cols - 1);
+            const totalGridH = slotH * rows + gap * (rows - 1);
+            const xStart = availableX + Math.max(0, Math.floor((availableW - totalGridW) / 2));
+            const yStart = availableY + Math.max(0, Math.floor((availableH - totalGridH) / 2));
+
+            for (let i = 0; i < count; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                slots.push({
+                    index: i + 1,
+                    x: xStart + col * (slotW + gap),
+                    y: yStart + row * (slotH + gap),
+                    width: slotW,
+                    height: slotH,
+                    rotation: 0,
+                    zIndex: i + 1,
+                    focusX: 0.5,
+                    focusY: 0.42
+                });
+            }
+        } else {
+            // Single Column Vertical Strip (or horizontal row for wide landscape)
+            if (width > height && count <= 4 && layoutStyle !== 'strip') {
+                // Horizontal row
+                const maxSlotW = Math.floor((availableW - gap * (count - 1)) / count);
+                let slotH = Math.min(availableH, Math.round(maxSlotW * mult));
+                let slotW = Math.round(slotH / mult);
+                if (slotW > maxSlotW) {
+                    slotW = maxSlotW;
+                    slotH = Math.round(slotW * mult);
+                }
+                const totalW = slotW * count + gap * (count - 1);
+                const xStart = availableX + Math.max(0, Math.floor((availableW - totalW) / 2));
+                const yStart = availableY + Math.max(0, Math.floor((availableH - slotH) / 2));
+
+                for (let i = 0; i < count; i++) {
+                    slots.push({
+                        index: i + 1,
+                        x: xStart + i * (slotW + gap),
+                        y: yStart,
+                        width: slotW,
+                        height: slotH,
+                        rotation: 0,
+                        zIndex: i + 1,
+                        focusX: 0.5,
+                        focusY: 0.42
+                    });
+                }
+            } else {
+                // Vertical Column Strip
+                const maxSlotH = Math.floor((availableH - gap * (count - 1)) / count);
+                let slotW = Math.min(availableW, Math.floor(maxSlotH / mult));
+                let slotH = Math.round(slotW * mult);
+                if (slotH > maxSlotH) {
+                    slotH = maxSlotH;
+                    slotW = Math.min(availableW, Math.round(slotH / mult));
+                }
+                const totalH = slotH * count + gap * (count - 1);
+                const yStart = availableY + Math.max(0, Math.floor((availableH - totalH) / 2));
+                const xStart = availableX + Math.max(0, Math.floor((availableW - slotW) / 2));
+
+                for (let i = 0; i < count; i++) {
+                    slots.push({
+                        index: i + 1,
+                        x: xStart,
+                        y: yStart + i * (slotH + gap),
+                        width: slotW,
+                        height: slotH,
+                        rotation: 0,
+                        zIndex: i + 1,
+                        focusX: 0.5,
+                        focusY: 0.42
+                    });
+                }
+            }
+        }
+
+        let templateType = '2x6';
+        if (paperPreset === '4x6-landscape' || paperPreset === '4x6-portrait' || paperPreset === '4x6') {
+            templateType = '4x6';
+        } else if (paperPreset.startsWith('thermal') || paperPreset === 'photo5x7') {
+            templateType = paperPreset;
+        }
+
+        const templateId = `custom_${crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'').slice(0,12) : Date.now().toString(36)}`;
+        const templateName = config.name || `ธีมกำหนดเอง · ${count} รูป (${ratio})`;
+
+        const template = {
+            schemaVersion: VERSION,
+            templateId,
+            layoutId: `${count}_${ratio}`,
+            name: templateName,
+            type: templateType,
+            orientation: width >= height ? 'landscape' : 'portrait',
+            isCustom: true,
+            enabled: true,
+            canvas: {
+                width,
+                height,
+                dpi,
+                backgroundColor: config.backgroundColor || '#FFFFFF',
+                safeMargin,
+                bleedMargin: defaultBleed(dpi)
+            },
+            overlay: { url: '', zIndex: 100 },
+            artboard: [],
+            slots,
+            printSettings: {
+                printTwoPerPage: basePreset.printTwoPerPage !== undefined ? basePreset.printTwoPerPage : (paperPreset === '2x6'),
+                paperSize: basePreset.paperSize || (width >= 1000 && height >= 1600 ? '4x6' : 'custom')
+            }
+        };
+
+        return normalizeTemplate(template);
+    }
+
+    function extractUniversalTheme(template, name) {
+        const source = normalizeTemplate(template);
+        const cw = source.canvas.width || 600;
+        const ch = source.canvas.height || 1800;
+        const themeId = `utheme_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        const themeName = (name || source.name || 'Untitled Theme')
+            .replace(/·.*$/, '')
+            .replace(/\(.*?\)/g, '')
+            .trim() || 'Universal Theme';
+
+        const artboard = (source.artboard || []).map((layer, index) => {
+            const w = Math.max(1, layer.width || 100);
+            const h = Math.max(1, layer.height || 100);
+            const aspect = w / h;
+            return {
+                id: layer.id || `ut_art_${index + 1}`,
+                name: layer.name || `Sticker ${index + 1}`,
+                url: layer.url || '',
+                placement: layer.placement === 'back' ? 'back' : 'front',
+                relX: layer.x / cw,
+                relY: layer.y / ch,
+                relWidth: layer.width / cw,
+                relHeight: layer.height / ch,
+                aspectRatio: aspect,
+                rotation: layer.rotation || 0,
+                zIndex: layer.zIndex || (index + 1),
+                opacity: typeof layer.opacity === 'number' ? layer.opacity : 1,
+                visible: layer.visible !== false,
+                scaleMode: 'width-relative'
+            };
+        });
+
+        return {
+            themeId,
+            name: themeName,
+            enabled: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            sourceCanvas: {
+                width: cw,
+                height: ch,
+                type: source.type,
+                orientation: source.orientation
+            },
+            style: {
+                backgroundColor: source.canvas.backgroundColor || '#FFFFFF',
+                backgroundImage: source.canvas.backgroundImage || '',
+                backgroundFitMode: source.canvas.backgroundFitMode || 'cover',
+                overlay: {
+                    url: (source.overlay && source.overlay.url) || '',
+                    zIndex: (source.overlay && source.overlay.zIndex) || 100,
+                    fitMode: (source.overlay && source.overlay.fitMode) || 'cover'
+                },
+                artboard
+            }
+        };
+    }
+
+    function applyUniversalTheme(universalTheme, targetTemplate) {
+        if (!universalTheme || !universalTheme.style) {
+            throw new Error('Universal Theme is invalid or missing style.');
+        }
+        const target = normalizeTemplate(targetTemplate);
+        const tw = target.canvas.width;
+        const th = target.canvas.height;
+        const style = universalTheme.style;
+
+        // 1. Background styling
+        target.canvas.backgroundColor = style.backgroundColor || '#FFFFFF';
+        target.canvas.backgroundImage = style.backgroundImage || '';
+        target.canvas.backgroundFitMode = style.backgroundFitMode || 'cover';
+
+        // 2. Overlay Frame PNG
+        target.overlay = {
+            url: (style.overlay && style.overlay.url) || '',
+            zIndex: (style.overlay && style.overlay.zIndex) || 100,
+            fitMode: (style.overlay && style.overlay.fitMode) || 'cover'
+        };
+
+        // 3. Artboard Stickers / Decorations
+        target.artboard = (style.artboard || []).map((layer, idx) => {
+            let lw, lh, lx, ly;
+            const scaleMode = layer.scaleMode || 'width-relative';
+
+            if (scaleMode === 'stretch') {
+                lw = Math.round(layer.relWidth * tw);
+                lh = Math.round(layer.relHeight * th);
+                lx = Math.round(layer.relX * tw);
+                ly = Math.round(layer.relY * th);
+            } else {
+                // width-relative: maintain sticker aspect ratio, scale relative to canvas width
+                lw = Math.round(layer.relWidth * tw);
+                const aspect = layer.aspectRatio || 1;
+                lh = Math.round(lw / aspect);
+                lx = Math.round(layer.relX * tw);
+                ly = Math.round(layer.relY * th);
+            }
+
+            return {
+                id: `ab_${Date.now().toString(36)}_${idx + 1}`,
+                name: layer.name || `Sticker ${idx + 1}`,
+                url: layer.url || '',
+                placement: layer.placement === 'back' ? 'back' : 'front',
+                x: lx,
+                y: ly,
+                width: Math.max(4, lw),
+                height: Math.max(4, lh),
+                rotation: layer.rotation || 0,
+                zIndex: layer.zIndex || (idx + 1),
+                opacity: typeof layer.opacity === 'number' ? layer.opacity : 1,
+                visible: layer.visible !== false
+            };
+        });
+
+        // 4. Metadata
+        target.isCustom = true;
+        target.universalThemeId = universalTheme.themeId;
+        const baseName = target.name.replace(/^[^(]+·\s*/, '').replace(/\(.*?\)/g, '').trim() || target.layoutId;
+        target.name = `${universalTheme.name} · ${baseName}`;
+        target.templateId = `custom_${universalTheme.themeId.replace(/^utheme_/, '')}_${target.type}_${target.layoutId}_${target.orientation}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        return normalizeTemplate(target);
+    }
+
     root.PhotoTemplateEngine = Object.freeze({
         VERSION,
         MAX_SLOTS,
@@ -543,11 +920,14 @@
         parseLayout,
         createTemplate,
         createDefaultTemplates,
+        generateCustomTemplate,
         normalizeTemplate,
         duplicateSlot,
         removeSlot,
         moveSlotLayer,
         validateTemplate,
-        getCoverCrop
+        getCoverCrop,
+        extractUniversalTheme,
+        applyUniversalTheme
     });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

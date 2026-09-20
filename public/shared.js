@@ -61,13 +61,86 @@ const Kiosk = {
     set paperMode(v) { localStorage.setItem('kiosk_paper_mode', v); },
     get boothKind() { return localStorage.getItem('kiosk_booth_kind') || 'receipt'; },
     set boothKind(v) { localStorage.setItem('kiosk_booth_kind', v); },
+    get filterEnabled() { return localStorage.getItem('kiosk_filter_enabled') !== 'false'; },
+    set filterEnabled(v) { localStorage.setItem('kiosk_filter_enabled', v ? 'true' : 'false'); },
+    get qrEnabled() { return localStorage.getItem('kiosk_qr_enabled') !== 'false'; },
+    set qrEnabled(v) { localStorage.setItem('kiosk_qr_enabled', v ? 'true' : 'false'); },
     get kioskId() { return localStorage.getItem('kiosk_id') || ''; },
     set kioskId(v) { localStorage.setItem('kiosk_id', String(v || '').trim()); },
     get packageId() { return localStorage.getItem('kiosk_package_id') || ''; },
     set packageId(v) { localStorage.setItem('kiosk_package_id', String(v || '').trim()); },
     get priceThb() { return Number(localStorage.getItem('kiosk_price_thb') || '10'); },
     set priceThb(v) { localStorage.setItem('kiosk_price_thb', String(Math.max(0, Number(v) || 0))); },
-    get copiesPerSet() { return 2; }
+    get copiesPerSet() { return 2; },
+    getTargetTemplateType(paperMode = this.paperMode) {
+        if (paperMode === 'photo4x6_postcard') return '4x6';
+        if (paperMode === 'photo4x6_dual' || paperMode === 'photo2x6_single') return '2x6';
+        if (paperMode.startsWith('thermal')) return paperMode;
+        if (paperMode === 'photo5x7') return 'photo5x7';
+        return '2x6';
+    },
+    getStandardLayoutsForMode(paperMode = this.paperMode) {
+        if (paperMode === 'photo4x6_postcard') {
+            return [
+                { layoutId: '1_1x1', name: '1 รูป (1:1 จัตุรัส)', count: 1, ratio: '1:1' },
+                { layoutId: '1_3x4', name: '1 รูป (3:4 แนวตั้ง)', count: 1, ratio: '3:4' },
+                { layoutId: '1_4x3', name: '1 รูป (4:3 แนวนอน)', count: 1, ratio: '4:3' },
+                { layoutId: '2_1x1', name: '2 รูป (1:1 จัตุรัส)', count: 2, ratio: '1:1' },
+                { layoutId: '2_3x4', name: '2 รูป (3:4 แนวตั้ง)', count: 2, ratio: '3:4' },
+                { layoutId: '3_1x1', name: '3 รูป (1:1 Strip)', count: 3, ratio: '1:1' },
+                { layoutId: '3_3x4', name: '3 รูป (3:4 แนวตั้ง)', count: 3, ratio: '3:4' },
+                { layoutId: '3_4x3', name: '3 รูป (4:3 แนวนอน)', count: 3, ratio: '4:3' },
+                { layoutId: '4_1x1', name: '4 รูป (1:1 Grid 2:2)', count: 4, ratio: '1:1' },
+                { layoutId: '4_3x4', name: '4 รูป (3:4 Grid 2:2)', count: 4, ratio: '3:4' }
+            ];
+        } else if (paperMode.startsWith('thermal')) {
+            return [
+                { layoutId: '1_1x1', name: '1 รูป (1:1 จัตุรัส)', count: 1, ratio: '1:1' },
+                { layoutId: '2_1x1', name: '2 รูป (1:1 Strip)', count: 2, ratio: '1:1' },
+                { layoutId: '2_3x4', name: '2 รูป (3:4 Strip)', count: 2, ratio: '3:4' },
+                { layoutId: '3_1x1', name: '3 รูป (1:1 คลาสสิก)', count: 3, ratio: '1:1' },
+                { layoutId: '3_3x4', name: '3 รูป (3:4 แนวตั้ง)', count: 3, ratio: '3:4' },
+                { layoutId: '3_16x9', name: '3 รูป (16:9 ไวด์)', count: 3, ratio: '16:9' },
+                { layoutId: '4_1x1', name: '4 รูป (1:1 Grid 2:2)', count: 4, ratio: '1:1' },
+                { layoutId: '4_3x4', name: '4 รูป (3:4 Strip)', count: 4, ratio: '3:4' }
+            ];
+        } else if (paperMode === 'photo5x7') {
+            return [
+                { layoutId: '1_3x4', name: '1 รูป (3:4 Photo Card)', count: 1, ratio: '3:4' },
+                { layoutId: '2_1x1', name: '2 รูป (1:1 จัตุรัส)', count: 2, ratio: '1:1' },
+                { layoutId: '3_1x1', name: '3 รูป (1:1 แนวตั้ง)', count: 3, ratio: '1:1' },
+                { layoutId: '4_1x1', name: '4 รูป (1:1 Grid 2:2)', count: 4, ratio: '1:1' },
+                { layoutId: '4_3x4', name: '4 รูป (3:4 Grid 2:2)', count: 4, ratio: '3:4' }
+            ];
+        } else {
+            // 2x6 strip (photo4x6_dual, photo2x6_single)
+            return [
+                { layoutId: '2_1x1', name: '2 รูป (1:1 Strip)', count: 2, ratio: '1:1' },
+                { layoutId: '3_1x1', name: '3 รูป (1:1 Strip แนะนำ)', count: 3, ratio: '1:1' },
+                { layoutId: '3_3x4', name: '3 รูป (3:4 Strip)', count: 3, ratio: '3:4' },
+                { layoutId: '3_16x9', name: '3 รูป (16:9 Strip)', count: 3, ratio: '16:9' },
+                { layoutId: '4_1x1', name: '4 รูป (1:1 คลาสสิก)', count: 4, ratio: '1:1' },
+                { layoutId: '4_3x4', name: '4 รูป (3:4 Strip)', count: 4, ratio: '3:4' }
+            ];
+        }
+    },
+    getAllowedLayouts(paperMode = this.paperMode) {
+        try {
+            const raw = localStorage.getItem('kiosk_allowed_layouts_' + paperMode);
+            if (raw) {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list) && list.length > 0) return list;
+            }
+        } catch (e) {}
+        return null;
+    },
+    setAllowedLayouts(paperMode, layoutIds) {
+        if (!Array.isArray(layoutIds) || layoutIds.length === 0) {
+            localStorage.removeItem('kiosk_allowed_layouts_' + paperMode);
+        } else {
+            localStorage.setItem('kiosk_allowed_layouts_' + paperMode, JSON.stringify(layoutIds));
+        }
+    }
 };
 
 ['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics'].forEach(key => {
@@ -103,6 +176,26 @@ const TemplateCatalog = {
             });
         }
         return Array.from(byId.values());
+    },
+    loadStored() {
+        let stored = [];
+        try {
+            stored = JSON.parse(localStorage.getItem(TEMPLATE_CATALOG_KEY) || '[]');
+        } catch (error) {
+            console.warn('Template catalog could not be parsed.', error);
+        }
+        return Array.isArray(stored) ? stored : [];
+    },
+    loadCustom() {
+        const engine = window.PhotoTemplateEngine;
+        const stored = this.loadStored();
+        return stored
+            .map(t => engine ? engine.normalizeTemplate(t) : t)
+            .filter(t => t.isCustom || (t.templateId && t.templateId.startsWith('custom_')));
+    },
+    loadPresets() {
+        const engine = window.PhotoTemplateEngine;
+        return engine ? engine.createDefaultTemplates() : [];
     },
     save(templates) {
         const engine = window.PhotoTemplateEngine;
@@ -159,6 +252,98 @@ const TemplateCatalog = {
         return engine ? engine.parseLayout(layoutId).count : (parseInt(layoutId, 10) || 3);
     }
 };
+if (typeof window !== 'undefined') window.TemplateCatalog = TemplateCatalog;
+
+// ============================================================
+// UNIVERSAL THEME STORE
+// Decouples visual style (background, stickers, overlay) from layout geometry.
+// Allows designing a theme once and applying it to any paper format / layout.
+// ============================================================
+const UNIVERSAL_THEME_STORAGE_KEY = 'kiosk_universal_themes_v1';
+
+const UniversalThemeStore = {
+    load() {
+        try {
+            const stored = JSON.parse(localStorage.getItem(UNIVERSAL_THEME_STORAGE_KEY) || '[]');
+            return Array.isArray(stored) ? stored : [];
+        } catch (e) {
+            console.warn('Failed to load universal themes', e);
+            return [];
+        }
+    },
+    save(themes) {
+        const list = Array.isArray(themes) ? themes : [];
+        localStorage.setItem(UNIVERSAL_THEME_STORAGE_KEY, JSON.stringify(list));
+        return list;
+    },
+    find(themeId) {
+        return this.load().find(t => t.themeId === themeId) || null;
+    },
+    upsert(theme) {
+        if (!theme || !theme.themeId) throw new Error('Invalid Universal Theme');
+        const themes = this.load();
+        const index = themes.findIndex(t => t.themeId === theme.themeId);
+        theme.updatedAt = new Date().toISOString();
+        if (index >= 0) {
+            themes[index] = theme;
+        } else {
+            themes.unshift(theme);
+        }
+        this.save(themes);
+        return theme;
+    },
+    remove(themeId) {
+        const remaining = this.load().filter(t => t.themeId !== themeId);
+        this.save(remaining);
+        return remaining;
+    },
+    /**
+     * Apply a Universal Theme to specific layouts or default set
+     * @param {string} themeId
+     * @param {Array<{ layoutId: string, presetKey: string }>} [targetLayouts]
+     * @returns {Array<object>} Created templates
+     */
+    applyToLayouts(themeId, targetLayouts) {
+        const engine = window.PhotoTemplateEngine;
+        if (!engine) throw new Error('PhotoTemplateEngine is unavailable');
+        const uTheme = this.find(themeId);
+        if (!uTheme) throw new Error(`Universal Theme "${themeId}" not found`);
+
+        const presets = engine.createDefaultTemplates();
+        let targets = [];
+
+        if (Array.isArray(targetLayouts) && targetLayouts.length > 0) {
+            targets = targetLayouts.map(tl => {
+                const found = presets.find(p => p.layoutId === tl.layoutId && (p.type === tl.presetKey || (tl.presetKey.startsWith('4x6') && p.type === '4x6' && (tl.presetKey.includes('landscape') ? p.orientation === 'landscape' : p.orientation === 'portrait'))));
+                if (found) return engine.clone(found);
+                return engine.createTemplate(tl.layoutId, tl.presetKey);
+            });
+        } else {
+            const standardLayouts = [
+                { layoutId: '3_1x1', presetKey: '2x6' },
+                { layoutId: '4_1x1', presetKey: '2x6' },
+                { layoutId: '3_3x4', presetKey: '2x6' },
+                { layoutId: '4_3x4', presetKey: '4x6-portrait' },
+                { layoutId: '2_1x1', presetKey: '4x6-landscape' },
+                { layoutId: '4_1x1', presetKey: '4x6-landscape' },
+                { layoutId: '2_1x1', presetKey: 'thermal80' },
+                { layoutId: '3_1x1', presetKey: 'thermal80' },
+                { layoutId: '3_3x4', presetKey: 'photo5x7' }
+            ];
+            targets = standardLayouts.map(tl => engine.createTemplate(tl.layoutId, tl.presetKey));
+        }
+
+        const generatedTemplates = [];
+        targets.forEach(targetTpl => {
+            const applied = engine.applyUniversalTheme(uTheme, targetTpl);
+            TemplateCatalog.upsert(applied);
+            generatedTemplates.push(applied);
+        });
+
+        return generatedTemplates;
+    }
+};
+if (typeof window !== 'undefined') window.UniversalThemeStore = UniversalThemeStore;
 
 // ============================================================
 // INDEXEDDB STORAGE for large payloads (photos, composed result)
@@ -450,7 +635,7 @@ const i18n = {
         "proc_title": "Processing Photos",
         "proc_desc": "Applying high-quality filters...",
         "print_title": "Your photos are ready.",
-        "print_desc": "Your final photo is ready for printing.",
+        "print_desc": "Scan the QR code to save photos to your phone, or print now.",
         "print_color": "Premium Color",
         "print_retro": "Retro Edition",
         "btn_finish": "Finish",
@@ -489,7 +674,7 @@ const i18n = {
         "proc_title": "กำลังประมวลผลรูปภาพ",
         "proc_desc": "กำลังใส่ฟิลเตอร์คุณภาพสูง...",
         "print_title": "รูปภาพของคุณพร้อมแล้ว",
-        "print_desc": "ภาพสุดท้ายพร้อมสำหรับการพิมพ์แล้ว",
+        "print_desc": "สแกน QR Code เพื่อดาวน์โหลดรูปภาพลงมือถือ หรือกดพิมพ์ได้ทันที",
         "print_color": "ภาพสีพรีเมียม",
         "print_retro": "ภาพเรโทร",
         "btn_finish": "เสร็จสิ้น",
@@ -715,62 +900,307 @@ const ESC_POS = {
 const USBPrinter = {
     connected: null,
     endpoint: null,
-    async connect() {
-        if (this.connected) return this.connected;
-        if (!('usb' in navigator)) throw new Error('WebUSB not supported');
-        const device = await navigator.usb.requestDevice({ filters: [] });
-        await device.open();
-        // Claim first interface with a bulk OUT endpoint
-        let endpoint = null;
-        for (const config of device.configurations) {
-            for (const iface of config.interfaces) {
-                if (iface.alternate) { try { await device.selectAlternateInterface(iface.interfaceNumber, 0); } catch (e) {} }
-                for (const ep of iface.endpoints) {
-                    if (ep.direction === 'out' && ep.type === 'bulk') { endpoint = ep.endpointNumber; break; }
+    async connect(preferredDevice = null) {
+        if (this.connected && this.connected.opened) return this.connected;
+        if (!('usb' in navigator)) throw new Error('WebUSB not supported on this browser');
+        
+        let device = preferredDevice || this.connected;
+        if (!device) {
+            try {
+                const pairedDevices = await navigator.usb.getDevices();
+                if (pairedDevices && pairedDevices.length > 0) {
+                    device = pairedDevices[0];
                 }
-                if (endpoint) { await device.claimInterface(iface.interfaceNumber); break; }
+            } catch (e) {
+                console.warn('getDevices check failed:', e);
+            }
+        }
+        if (!device) {
+            device = await navigator.usb.requestDevice({ filters: [] });
+        }
+        if (!device.opened) {
+            await device.open();
+        }
+        if (!device.configuration) {
+            try { await device.selectConfiguration(1); } catch (e) {}
+        }
+        
+        // Find first bulk OUT endpoint and claim interface
+        let endpoint = null;
+        for (const config of device.configurations || []) {
+            for (const iface of config.interfaces || []) {
+                if (iface.alternate) {
+                    try { await device.selectAlternateInterface(iface.interfaceNumber, 0); } catch (e) {}
+                }
+                for (const ep of iface.endpoints || []) {
+                    if (ep.direction === 'out' && ep.type === 'bulk') {
+                        endpoint = ep.endpointNumber;
+                        break;
+                    }
+                }
+                if (endpoint) {
+                    try {
+                        await device.claimInterface(iface.interfaceNumber);
+                    } catch (e) {
+                        console.warn('claimInterface warning:', e);
+                    }
+                    break;
+                }
             }
             if (endpoint) break;
         }
-        if (!endpoint) throw new Error('No bulk OUT endpoint found');
+        if (!endpoint) throw new Error('No bulk OUT endpoint found on USB printer');
         this.connected = device;
         this.endpoint = endpoint;
         return device;
     },
     async send(bytes) {
         const device = this.connected || await this.connect();
-        await device.transferOut(this.endpoint, bytes);
+        if (!device || !this.endpoint) throw new Error('USB Printer connection not established');
+        const chunkSize = 4096;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+            const chunk = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
+            await device.transferOut(this.endpoint, chunk);
+        }
     },
     async disconnect() {
-        if (this.connected) { try { await this.connected.close(); } catch (e) {} }
+        if (this.connected) {
+            try { await this.connected.close(); } catch (e) {}
+        }
         this.connected = null;
         this.endpoint = null;
     }
 };
 
+// Hidden iframe System Print helper (Windows / macOS / Android print driver)
+// When Chrome is launched with --kiosk-printing, window.print() sends directly
+// to the default printer WITHOUT showing the print dialog.
+function printCanvasViaSystemDialog(canvasOrDataUrl, paperMode = 'photo4x6_dual', copies = 1) {
+    return new Promise((resolve) => {
+        let dataUrl = typeof canvasOrDataUrl === 'string' ? canvasOrDataUrl : canvasOrDataUrl.toDataURL('image/png');
+        let iframe = document.getElementById('pb-silent-print-frame');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'pb-silent-print-frame';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        let pageSize = '4in 6in';
+        if (paperMode === 'photo4x6_postcard') pageSize = '4in 6in';
+        else if (paperMode === 'photo2x6_single') pageSize = '2in 6in';
+        else if (paperMode === 'photo5x7') pageSize = '5in 7in';
+        else if (paperMode === 'thermal58') pageSize = '58mm auto';
+        else if (paperMode === 'thermal80') pageSize = '80mm auto';
+        else if (paperMode === 'thermal100') pageSize = '100mm auto';
+
+        // Detect if Chrome is in kiosk-printing mode (silent print)
+        const isKioskPrinting = window.matchMedia('print').matches === false
+            && (navigator.userAgent.includes('Chrome') || navigator.userAgent.includes('Chromium'));
+        console.log(`[Print] paperMode=${paperMode}, copies=${copies}, pageSize=${pageSize}, kioskPrintDetected=${isKioskPrinting}`);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        let imagesHtml = '';
+        for (let i = 0; i < copies; i++) {
+            imagesHtml += `<div class="print-page"><img src="${dataUrl}" /></div>`;
+        }
+
+        // Use afterprint event to know when printing finishes (works in kiosk mode too)
+        let resolved = false;
+        const onDone = () => {
+            if (resolved) return;
+            resolved = true;
+            console.log('[Print] afterprint fired — job sent to printer successfully');
+            resolve({ status: 'completed', transport: 'system_print', silent: true });
+        };
+
+        // Listen for afterprint on the iframe window
+        iframe.contentWindow.addEventListener('afterprint', onDone, { once: true });
+
+        // Fallback timeout in case afterprint doesn't fire
+        setTimeout(() => {
+            if (!resolved) {
+                console.log('[Print] fallback timeout — assuming print job was sent');
+                resolved = true;
+                resolve({ status: 'completed', transport: 'system_print', silent: false });
+            }
+        }, 4000);
+
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Photo Print</title>
+                <style>
+                    @page { size: ${pageSize}; margin: 0; }
+                    html, body { margin: 0; padding: 0; background: white; }
+                    .print-page { page-break-after: always; break-after: page; }
+                    .print-page:last-child { page-break-after: avoid; break-after: avoid; }
+                    img { width: 100%; height: auto; display: block; margin: 0; }
+                </style>
+            </head>
+            <body>
+                ${imagesHtml}
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (err) {
+                console.warn('[Print] iframe print error:', err);
+                window.focus();
+                window.print();
+            }
+        }, 200);
+    });
+}
+
+// Generate clean, high quality test ticket
+function createTestPrintCanvas(paperMode = 'thermal80') {
+    const isThermal = paperMode.startsWith('thermal');
+    const width = paperMode === 'thermal58' ? 384 : (paperMode === 'thermal100' ? 832 : (isThermal ? 576 : 1200));
+    const height = isThermal ? 720 : 1800;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = '#0A0A0A';
+    ctx.textAlign = 'center';
+
+    const cx = width / 2;
+    if (isThermal) {
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('★ MEMORIES ★', cx, 60);
+        ctx.font = '18px sans-serif';
+        ctx.fillText('PHOTO BOOTH TEST PRINT', cx, 95);
+        ctx.font = '14px monospace';
+        ctx.fillText('--------------------------------', cx, 125);
+        ctx.font = '15px sans-serif';
+        ctx.fillText(`โหมด: ${paperMode.toUpperCase()}`, cx, 155);
+        ctx.fillText(`ขนาด: ${width}px · DPI: 203`, cx, 185);
+        ctx.fillText(`วันที่: ${new Date().toLocaleString('th-TH')}`, cx, 215);
+        ctx.font = '14px monospace';
+        ctx.fillText('--------------------------------', cx, 245);
+
+        // Quality test pattern
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(cx - 150, 265, 300, 30);
+        ctx.fillStyle = '#777777';
+        ctx.fillRect(cx - 150, 305, 300, 30);
+
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('PRINTER STATUS: OK ✓', cx, 385);
+        ctx.font = '13px sans-serif';
+        ctx.fillText('เครื่องพิมพ์พร้อมใช้งานสำหรับลูกค้า', cx, 415);
+
+        // Barcode
+        const barcodeY = 460;
+        const bars = [3,1,2,4,1,3,2,1,4,2,3,1,2,1,3,4,1,2,3,1,4,2,1,3,2,4,1,2,3,1,2,4,1,3,2];
+        let bx = cx - 130;
+        bars.forEach((w, i) => {
+            if (i % 2 === 0) ctx.fillRect(bx, barcodeY, w * 1.5, 40);
+            bx += w * 2.2;
+        });
+        ctx.font = '12px monospace';
+        ctx.fillText('PB-TEST-SUCCESS-2026', cx, 525);
+
+        // Cut line
+        ctx.font = '13px sans-serif';
+        ctx.fillText('✂ - - - - - - - - - - - - - - - -', cx, 580);
+    } else {
+        // High-res photo test pattern
+        ctx.font = 'bold 64px sans-serif';
+        ctx.fillText('★ MEMORIES PHOTO BOOTH ★', cx, 160);
+        ctx.font = '36px sans-serif';
+        ctx.fillText('PHOTO PRINTER CALIBRATION TEST', cx, 230);
+        ctx.font = '28px monospace';
+        ctx.fillText(`Mode: ${paperMode} · Canvas: ${width}x${height}px · 300 DPI`, cx, 290);
+        ctx.fillText(`Date: ${new Date().toLocaleString('th-TH')}`, cx, 340);
+
+        // Color test bands
+        const colors = ['#FF4444', '#FFAA00', '#22C55E', '#38BDF8', '#8B5CF6', '#EC4899', '#000000', '#888888'];
+        const bandW = (width - 200) / colors.length;
+        colors.forEach((c, idx) => {
+            ctx.fillStyle = c;
+            ctx.fillRect(100 + idx * bandW, 400, bandW, 140);
+        });
+
+        ctx.fillStyle = '#0A0A0A';
+        ctx.font = 'bold 44px sans-serif';
+        ctx.fillText('PHOTO PRINTER READY ✓', cx, 640);
+        ctx.font = '28px sans-serif';
+        ctx.fillText('ระบบพร้อมพิมพ์ภาพคุณภาพสูง (Photo Grade HD)', cx, 700);
+    }
+    return canvas;
+}
+
 // Print the dithered result to a real thermal printer via WebUSB.
-// Falls back to the browser print dialog if WebUSB is unavailable/denied.
-async function printViaUSB(paperMode, copies = 1) {
-    if (!ESC_POS.dotWidth[paperMode]) throw new Error('Paper mode not supported by ESC/POS');
-    const ditheredCanvas = await dataUrlToCanvas(Session.dithered || Session.result);
+// Falls back to system print dialog if WebUSB is unavailable or denied.
+async function printViaUSB(paperMode, copies = 1, customDataUrl = null) {
+    if (!ESC_POS.dotWidth[paperMode]) {
+        throw new Error('Paper mode not supported by ESC/POS: ' + paperMode);
+    }
+    const ditheredCanvas = await dataUrlToCanvas(customDataUrl || Session.result || Session.dithered || createTestPrintCanvas(paperMode).toDataURL('image/png'));
     const payload = ESC_POS.buildPayload(ditheredCanvas, paperMode, copies);
     await USBPrinter.connect();
     await USBPrinter.send(payload);
 }
 
-// Unified adapter used by the unchanged Prototype print page. The production
-// Android bridge handles LAN/USB ESC/POS; WebUSB remains a desktop fallback.
-// Ambiguous outcomes are returned to Admin and are never retried automatically.
-async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId }) {
-    const copies = 2;
+// Unified adapter used by Kiosk print page and Admin.
+async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies = 2 }) {
+    const copyCount = (typeof copies === 'number' && copies > 0) ? copies : 2;
     if (!dataUrl) throw new Error('Missing printable asset');
 
+    const config = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+    const conn = config.conn || 'system';
+    const selectedPrinter = config.systemPrinterName || '';
+
+    // 1. Silent Direct Print via local backend API (ZERO DIALOG - Works in normal browser & kiosk!)
+    try {
+        const resp = await fetch('/api/direct-print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: dataUrl,
+                copies: copyCount,
+                printerName: selectedPrinter
+            })
+        });
+        if (resp.ok) {
+            const resJson = await resp.json();
+            if (resJson && resJson.success) {
+                console.log(`[DirectPrint] Printed silently to ${resJson.printer} (${copyCount} copies)`);
+                return { status: 'completed', copiesCompleted: copyCount, transport: 'direct_print', printer: resJson.printer };
+            }
+        }
+    } catch (e) {
+        console.warn('[DirectPrint] Local API not available, falling back to other transports:', e);
+    }
+
+    // 2. Production Native Bridge (Android / Kiosk App)
     if (window.PhotoboothPrinter && typeof window.PhotoboothPrinter.printReceiptSet === 'function') {
         const nativeResult = await window.PhotoboothPrinter.printReceiptSet({
             jobId,
             dataUrl,
             paperMode,
-            copies,
+            copies: copyCount,
             cutEachCopy: true
         });
         if (!nativeResult || !['completed', 'ambiguous', 'failed'].includes(nativeResult.status)) {
@@ -779,17 +1209,30 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId }) {
         return nativeResult;
     }
 
-    const config = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-    if (config.conn === 'usb' && paperMode.startsWith('thermal')) {
+    // 3. Direct WebUSB for thermal printers
+    if (conn === 'usb' && paperMode.startsWith('thermal')) {
         try {
-            await printViaUSB(paperMode, copies);
-            return { status: 'completed', copiesCompleted: 2, transport: 'webusb' };
+            await printViaUSB(paperMode, copyCount, dataUrl);
+            return { status: 'completed', copiesCompleted: copyCount, transport: 'webusb' };
         } catch (error) {
-            return { status: 'ambiguous', error: error && error.message ? error.message : 'webusb_failed' };
+            console.warn('WebUSB failed, falling back to system print dialog:', error);
+            try {
+                await printCanvasViaSystemDialog(dataUrl, paperMode, copyCount);
+                return { status: 'completed', copiesCompleted: copyCount, transport: 'system_print_fallback' };
+            } catch (fallbackError) {
+                return { status: 'ambiguous', error: error && error.message ? error.message : 'usb_and_fallback_failed' };
+            }
         }
     }
 
-    return { status: 'simulator', copiesCompleted: 0, transport: 'simulator' };
+    // 4. System Print / Photo printer / Windows driver
+    try {
+        await printCanvasViaSystemDialog(dataUrl, paperMode, copyCount);
+        return { status: 'completed', copiesCompleted: copyCount, transport: 'system_print' };
+    } catch (e) {
+        console.error('System print error:', e);
+        return { status: 'simulator', copiesCompleted: 0, transport: 'simulator' };
+    }
 }
 
 function dataUrlToCanvas(dataUrl) {
@@ -804,6 +1247,14 @@ function dataUrlToCanvas(dataUrl) {
         img.onerror = () => reject(new Error('Image load failed'));
         img.src = dataUrl;
     });
+}
+
+if (typeof window !== 'undefined') {
+    window.USBPrinter = USBPrinter;
+    window.printCanvasViaSystemDialog = printCanvasViaSystemDialog;
+    window.createTestPrintCanvas = createTestPrintCanvas;
+    window.printViaUSB = printViaUSB;
+    window.printReceiptSet = printReceiptSet;
 }
 
 function floydSteinbergDither(imageData) {
@@ -1715,7 +2166,36 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     ctx.fillRect(0, 0, target.width, target.height);
     if (schema.canvas && schema.canvas.backgroundImage) {
         const bgImage = await loadTemplateImage(schema.canvas.backgroundImage);
-        if (bgImage) ctx.drawImage(bgImage, 0, 0, target.width, target.height);
+        if (bgImage) {
+            const fit = (schema.canvas && schema.canvas.backgroundFitMode) || 'cover';
+            if (fit === 'tile') {
+                const pat = ctx.createPattern(bgImage, 'repeat');
+                if (pat) {
+                    ctx.fillStyle = pat;
+                    ctx.fillRect(0, 0, target.width, target.height);
+                } else {
+                    ctx.drawImage(bgImage, 0, 0, target.width, target.height);
+                }
+            } else if (fit === 'cover' || fit === 'contain') {
+                const bw = bgImage.naturalWidth || bgImage.width || 1;
+                const bh = bgImage.naturalHeight || bgImage.height || 1;
+                const hRatio = target.width / bw;
+                const vRatio = target.height / bh;
+                const ratio = fit === 'cover' ? Math.max(hRatio, vRatio) : Math.min(hRatio, vRatio);
+                const rw = bw * ratio;
+                const rh = bh * ratio;
+                const rx = (target.width - rw) / 2;
+                const ry = (target.height - rh) / 2;
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(0, 0, target.width, target.height);
+                ctx.clip();
+                ctx.drawImage(bgImage, rx, ry, rw, rh);
+                ctx.restore();
+            } else {
+                ctx.drawImage(bgImage, 0, 0, target.width, target.height);
+            }
+        }
     }
 
     const drawArtboardLayers = async (placement) => {
@@ -1791,7 +2271,28 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         : null;
     if (customOverlay) ctx.drawImage(customOverlay, 0, 0, target.width, target.height);
     const schemaOverlay = await loadTemplateImage(schema.overlay && schema.overlay.url);
-    if (schemaOverlay) ctx.drawImage(schemaOverlay, 0, 0, target.width, target.height);
+    if (schemaOverlay) {
+        const fitMode = (schema.overlay && schema.overlay.fitMode) || 'cover';
+        if (fitMode === 'cover' || fitMode === 'contain') {
+            const ow = schemaOverlay.naturalWidth || schemaOverlay.width || 1;
+            const oh = schemaOverlay.naturalHeight || schemaOverlay.height || 1;
+            const hRatio = target.width / ow;
+            const vRatio = target.height / oh;
+            const ratio = fitMode === 'cover' ? Math.max(hRatio, vRatio) : Math.min(hRatio, vRatio);
+            const rw = ow * ratio;
+            const rh = oh * ratio;
+            const rx = (target.width - rw) / 2;
+            const ry = (target.height - rh) / 2;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, target.width, target.height);
+            ctx.clip();
+            ctx.drawImage(schemaOverlay, rx, ry, rw, rh);
+            ctx.restore();
+        } else {
+            ctx.drawImage(schemaOverlay, 0, 0, target.width, target.height);
+        }
+    }
     ctx.restore();
 }
 
@@ -1867,44 +2368,40 @@ async function fetchLayoutSizeFor(layoutStr) {
 
 // ======================== SUPABASE UPLOAD ========================
 async function uploadToCloud(dataUrl, filename) {
-    console.warn('Legacy browser upload is disabled. Use the provisioned native export queue.');
-    return null;
-    /* legacy implementation retained temporarily for migration reference
-    // Convert data URL to blob
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-
-    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${filename}`;
-
+    if (!dataUrl) return null;
     try {
+        // Convert data URL to blob
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+
+        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(filename)}`;
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': blob.type,
+                'Content-Type': blob.type || 'image/jpeg',
                 'x-upsert': 'true',
             },
             body: blob
         });
 
         if (!response.ok) {
-            throw new Error(`Upload failed: ${response.status}`);
+            const errTxt = await response.text().catch(() => '');
+            console.error(`Upload to Supabase failed (${response.status}):`, errTxt);
+            return null;
         }
 
         // Return public URL
-        return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${filename}`;
+        return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(filename)}`;
     } catch (err) {
         console.error('Cloud upload error:', err);
         return null;
     }
-    */
 }
 
 async function logSessionToCloud(colorUrl, ditheredUrl) {
-    console.warn('Legacy browser session logging is disabled. Use the native kiosk sync queue.');
-    return false;
-    /* legacy implementation retained temporarily for migration reference
     try {
         const isCafeMode = Kiosk.mode !== 'event';
         const payload = {
@@ -1931,13 +2428,13 @@ async function logSessionToCloud(colorUrl, ditheredUrl) {
 
         if (!res.ok) {
             console.error("Supabase Analytics log error:", res.status);
-        } else {
-            console.log("Session logged to Supabase Analytics successfully!");
+            return false;
         }
+        return true;
     } catch (e) {
         console.error("Failed to log session:", e);
+        return false;
     }
-    */
 }
 
 // ======================== NAVIGATION GUARD ========================

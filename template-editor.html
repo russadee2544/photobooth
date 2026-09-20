@@ -17,10 +17,17 @@
         .editor-button:hover { background:#E5E7EB; }
         .editor-button.primary { border-color:#0A0A0A; background:#0A0A0A; color:#FFFFFF; }
         .editor-button.danger { color:#D63F2E; }
-        .template-list { display:grid; gap:8px; max-height:50vh; overflow:auto; }
-        .template-list button { padding:12px; border:1px solid #E3E3E3; border-radius:10px; background:#FFFFFF; color:#0A0A0A; text-align:left; cursor:pointer; }
-        .template-list button:hover { background:#F3F4F6; }
-        .template-list button.active { border-color:#4C65FF; box-shadow:inset 4px 0 #4C65FF; background:#F3F4F6; }
+        .template-list { display:grid; gap:8px; max-height:55vh; overflow:auto; padding-right:2px; }
+        .template-group { border:1px solid #E5E7EB; border-radius:10px; background:#FFFFFF; overflow:hidden; transition:all 0.2s ease; }
+        .template-group-header { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; background:#F9FAFB; cursor:pointer; user-select:none; font-size:12px; font-weight:700; color:#111827; transition:background 0.15s ease; }
+        .template-group-header:hover { background:#F3F4F6; }
+        .template-group-caret { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:4px; color:#6B7280; transition:transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .template-group.collapsed .template-group-caret { transform:rotate(-90deg); }
+        .template-group-items { padding:6px; display:grid; gap:6px; background:#FAFAFA; border-top:1px solid #E5E7EB; }
+        .template-group.collapsed .template-group-items { display:none; }
+        .template-group-items button { padding:9px 11px; border:1px solid #E5E7EB; border-radius:8px; background:#FFFFFF; color:#0A0A0A; text-align:left; cursor:pointer; transition:all 0.15s ease; }
+        .template-group-items button:hover { background:#F3F4F6; border-color:#D1D5DB; }
+        .template-group-items button.active { border-color:#4C65FF; box-shadow:inset 3px 0 #4C65FF; background:#F0F4FF; }
         .editor-stage-wrap { min-height:70vh; display:grid; place-items:center; overflow:auto; border-radius:14px; background:repeating-conic-gradient(#F0F0F0 0 25%,#E3E3E3 0 50%) 50%/20px 20px; padding:22px; }
         .editor-stage { position:relative; max-width:100%; max-height:68vh; background:white; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; user-select:none; touch-action:none; }
         .editor-safe { position:absolute; border:2px dashed #ef4444; pointer-events:none; z-index:500; }
@@ -56,37 +63,520 @@
         .editor-message.ok { background:#D1FAE5; color:#064E3B; }
         @media (max-width:1050px) { .editor-shell { grid-template-columns:280px 1fr; } .editor-properties { grid-column:1/-1; } }
         @media (max-width:720px) { .editor-shell { grid-template-columns:1fr; } .editor-properties { grid-column:auto; } .editor-stage-wrap { min-height:50vh; } }
+/* Zoom & Pan */
+.editor-stage-wrap { overflow:hidden; position:relative; cursor:default; }
+.editor-stage-wrap.panning { cursor:grabbing; }
+.editor-viewport { transform-origin:0 0; transition:none; }
+.editor-zoom-bar { display:flex; align-items:center; justify-content:center; gap:8px; padding:8px; background:#fff; border:1px solid #E3E3E3; border-radius:10px; margin-top:8px; }
+.editor-zoom-bar button { min-height:32px; padding:4px 10px; border:1px solid #E3E3E3; border-radius:6px; background:#F3F4F6; font-weight:700; cursor:pointer; font-size:12px; }
+.editor-zoom-bar button:hover { background:#E5E7EB; }
+.editor-zoom-bar span { font-size:13px; font-weight:700; min-width:50px; text-align:center; }
+
+/* Guide lines */
+.guide-line { position:absolute; background:#FF00FF; pointer-events:none; z-index:999; opacity:0.8; }
+.guide-line.vertical { width:1px; top:0; bottom:0; }
+.guide-line.horizontal { height:1px; left:0; right:0; }
+
+/* Advanced handles */
+.editor-resize-handle.n { left:50%; top:-4px; transform:translateX(-50%); width:14px; height:6px; border-radius:3px; cursor:ns-resize; }
+.editor-resize-handle.s { left:50%; bottom:-4px; transform:translateX(-50%); width:14px; height:6px; border-radius:3px; cursor:ns-resize; }
+.editor-resize-handle.e { top:50%; right:-4px; transform:translateY(-50%); width:6px; height:14px; border-radius:3px; cursor:ew-resize; }
+.editor-resize-handle.w { top:50%; left:-4px; transform:translateY(-50%); width:6px; height:14px; border-radius:3px; cursor:ew-resize; }
+.editor-rotation-line { position:absolute; left:50%; top:-30px; width:1px; height:26px; background:#4C65FF; pointer-events:none; transform:translateX(-0.5px); }
+.editor-rotation-handle { position:absolute; left:50%; top:-38px; width:14px; height:14px; background:#4C65FF; border:2px solid #fff; border-radius:50%; cursor:grab; transform:translateX(-50%); z-index:601; }
+.editor-rotation-handle:active { cursor:grabbing; }
+.editor-angle-badge { position:absolute; left:50%; top:-58px; transform:translateX(-50%); background:#4C65FF; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:6px; white-space:nowrap; pointer-events:none; z-index:602; }
+.editor-dimension-badge { position:absolute; left:50%; bottom:-24px; transform:translateX(-50%); background:#0A0A0A; color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; white-space:nowrap; pointer-events:none; z-index:602; }
+
+/* Header & Footer zones */
+.editor-header-guide, .editor-footer-guide {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 502;
+    background: rgba(76, 101, 255, 0.04);
+    border: 1.5px dashed rgba(76, 101, 255, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4C65FF;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    user-select: none;
+}
+.editor-header-guide { top: 0; border-top: none; border-left: none; border-right: none; }
+.editor-footer-guide { bottom: 0; border-bottom: none; border-left: none; border-right: none; }
+.editor-header-guide span, .editor-footer-guide span { background: rgba(255, 255, 255, 0.9); padding: 2px 8px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+/* Ratio buttons */
+.ratio-btn { min-height:28px; padding:3px 6px; border:1px solid #E3E3E3; border-radius:6px; background:#F3F4F6; color:#0A0A0A; font-weight:700; font-size:11px; cursor:pointer; transition:all 0.15s ease; text-align:center; }
+.ratio-btn:hover { background:#E5E7EB; border-color:#4C65FF; color:#4C65FF; }
+.ratio-btn.active { background:#4C65FF; border-color:#4C65FF; color:#FFFFFF; }
+
+/* Undo/Redo buttons */
+.editor-undo-btn { width:34px; height:34px; border:none; border-radius:7px; background:transparent; color:#374151; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s ease; }
+.editor-undo-btn:hover { background:#E5E7EB; color:#111827; }
+.editor-undo-btn:disabled { opacity:0.3; cursor:default; }
+.editor-undo-btn:disabled:hover { background:transparent; }
+
+/* Accordion Sections with Carets */
+.accordion-section {
+    border: 1px solid #E5E7EB;
+    border-radius: 10px;
+    background: #FFFFFF;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #F9FAFB;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.accordion-header:hover {
+    background: #F3F4F6;
+}
+.accordion-header .title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.accordion-caret {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    color: #6B7280;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease, background 0.15s ease;
+}
+.accordion-header:hover .accordion-caret {
+    background: #E5E7EB;
+    color: #111827;
+}
+.accordion-section.collapsed .accordion-caret {
+    transform: rotate(-90deg);
+}
+.accordion-body {
+    padding: 12px;
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid #E5E7EB;
+    background: #FFFFFF;
+}
+.accordion-section.collapsed .accordion-body {
+    display: none;
+}
+
+/* View Switcher Tabs */
+.view-tab-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    background: #F3F4F6;
+    padding: 3px;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+.view-tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 6px 14px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    user-select: none;
+}
+.view-tab-btn.active {
+    background: #0A0A0A;
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.view-tab-btn:not(.active) {
+    background: transparent;
+    color: #4B5563;
+}
+.view-tab-btn:not(.active):hover {
+    color: #111827;
+    background: #E5E7EB;
+}
+
+/* Manager Cards & Grid */
+.manager-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+    gap: 20px; 
+}
+.theme-card { 
+    background: #FFFFFF; 
+    border: 1px solid #E5E7EB; 
+    border-radius: 18px; 
+    overflow: hidden; 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    display: flex; 
+    flex-direction: column; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03); 
+}
+.theme-card:hover { 
+    border-color: #4C65FF; 
+    transform: translateY(-3px); 
+    box-shadow: 0 16px 32px rgba(0,0,0,0.08); 
+}
+.theme-thumb-wrap { 
+    aspect-ratio: 4/3; 
+    background: #F9FAFB; 
+    position: relative; 
+    overflow: hidden; 
+    display: grid; 
+    place-items: center; 
+    border-bottom: 1px solid #F0F2F5; 
+}
+.theme-thumb-wrap img { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain; 
+}
+.theme-card-body { 
+    padding: 16px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+    flex: 1; 
+}
+.theme-toggle-btn { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 6px; 
+    padding: 5px 12px; 
+    border-radius: 9999px; 
+    font-size: 11px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    transition: all 0.15s ease; 
+    border: 1px solid transparent; 
+}
+.theme-toggle-btn.enabled { 
+    background: #DCFCE7; 
+    color: #15803D; 
+    border-color: #86EFAC; 
+}
+.theme-toggle-btn.disabled { 
+    background: #F3F4F6; 
+    color: #6B7280; 
+    border-color: #D1D5DB; 
+}
+.filter-chip { 
+    padding: 7px 15px; 
+    border-radius: 9999px; 
+    font-size: 12px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    border: 1px solid #E5E7EB; 
+    background: #FFFFFF; 
+    color: #4B5563; 
+    transition: all 0.15s ease; 
+    display: inline-flex; 
+    align-items: center; 
+    line-height: 1.2;
+}
+.filter-chip:hover { 
+    background: #F3F4F6; 
+    color: #111827; 
+    border-color: #D1D5DB;
+}
+.filter-chip.active { 
+    background: #0A0A0A; 
+    color: #FFFFFF; 
+    border-color: #0A0A0A; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.stat-pill { 
+    background: #FFFFFF; 
+    border: 1px solid #E5E7EB; 
+    border-radius: 16px; 
+    padding: 16px 20px; 
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02); 
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-pill:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.04);
+}
+
+/* Manager Search Field */
+.manager-search-field {
+    width: 100%;
+    padding: 8px 14px 8px 38px;
+    border: 1px solid #E5E7EB;
+    border-radius: 9999px;
+    font-size: 13px;
+    background: #F9FAFB;
+    color: #111827;
+    transition: all 0.2s ease;
+}
+.manager-search-field:focus {
+    outline: none;
+    background: #FFFFFF;
+    border-color: #4C65FF;
+    box-shadow: 0 0 0 3px rgba(76, 101, 255, 0.12);
+}
+
+/* Empty State Card Proportions */
+.manager-empty-card {
+    background: #FFFFFF;
+    border: 1.5px dashed #D1D5DB;
+    border-radius: 28px;
+    padding: 48px 32px;
+    text-align: center;
+    max-width: 640px;
+    width: 100%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.empty-icon-bubble {
+    width: 72px;
+    height: 72px;
+    border-radius: 24px;
+    background: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    display: grid;
+    place-items: center;
+    margin-bottom: 12px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.hidden { display: none !important; }
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+}
+.modal-overlay.hidden {
+    display: none !important;
+}
+
+/* Canvas Builder Modal Layout */
+.cb-modal-container {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid #E5E7EB;
+    width: 100%;
+    max-width: 960px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: auto;
+}
+.cb-modal-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid #F3F4F6;
+    background: #F9FAFB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.cb-modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: 1fr 310px;
+    gap: 18px;
+    align-items: start;
+}
+@media (max-width: 800px) {
+    .cb-modal-body {
+        grid-template-columns: 1fr;
+    }
+}
+.cb-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #F3F4F6;
+    background: #F9FAFB;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.cb-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+@media (max-width: 600px) {
+    .cb-preset-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+.cb-count-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+}
+.cb-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+@media (max-width: 500px) {
+    .cb-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+.cb-preset-btn { border-color:#E5E7EB; background:#FFFFFF; cursor:pointer; }
+.cb-preset-btn:hover { border-color:#4C65FF; background:#F8FAFC; }
+.cb-preset-btn.active { border-color:#4C65FF; background:#EFF6FF; box-shadow:inset 0 0 0 1px #4C65FF; }
+.cb-chip-btn { border-color:#E5E7EB; background:#FFFFFF; color:#374151; cursor:pointer; transition:all 0.15s ease; }
+.cb-chip-btn:hover { background:#F3F4F6; }
+.cb-chip-btn.active { border-color:#0A0A0A; background:#0A0A0A; color:#FFFFFF; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans min-h-screen p-4 sm:p-6">
-    <header class="flex flex-wrap items-center justify-between gap-4 max-w-[1500px] mx-auto mb-6 border-b border-gray-100 pb-5">
-        <div>
-            <a href="admin.html" class="text-accent-blue text-sm font-bold">← Admin Control</a>
-            <h1 class="text-2xl sm:text-3xl font-bold mt-2">Template & Frame Editor</h1>
-            <p class="text-gray-500 text-sm mt-1">JSON schema · 300 DPI · Safe zone · Layer hierarchy</p>
+    <header class="max-w-[1500px] mx-auto mb-6 bg-white border border-gray-200/90 rounded-2xl px-6 py-5 shadow-sm flex flex-wrap md:flex-nowrap items-center justify-between gap-6">
+        <!-- ฝั่งซ้าย: ย้อนกลับ & ชื่อหน้า -->
+        <div class="flex items-center gap-4 shrink-0">
+            <a href="admin.html" class="w-11 h-11 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all shadow-sm shrink-0" title="กลับไปหน้า Admin">
+                <span class="material-symbols-outlined text-2xl">arrow_back</span>
+            </a>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-gray-900 leading-snug">Template & Theme Studio</h1>
+                <p class="text-xs text-gray-500 mt-0.5">สตูดิโอออกแบบกรอบรูป & จัดการคลังธีม</p>
+            </div>
         </div>
-        <div class="flex flex-wrap gap-2">
-            <button class="editor-button" onclick="exportCatalog()">Export JSON</button>
-            <label class="editor-button cursor-pointer">Import JSON<input id="import-file" type="file" accept="application/json" class="hidden"></label>
-            <button class="editor-button primary" onclick="saveTemplate()">Save Template</button>
+
+        <!-- ฝั่งขวา: วางบนล่างกันอย่างสมดุล -->
+        <div class="flex flex-col items-end gap-3 shrink-0 ml-auto">
+            <!-- แถวบน: แท็บสลับหน้า ออกแบบธีม / คลังธีม -->
+            <div class="view-tab-group">
+                <button type="button" id="tab-btn-editor" onclick="switchView('editor')" class="view-tab-btn active">
+                    <span class="material-symbols-outlined text-[17px]">brush</span> ออกแบบธีม
+                </button>
+                <button type="button" id="tab-btn-manager" onclick="switchView('manager')" class="view-tab-btn">
+                    <span class="material-symbols-outlined text-[17px]">inventory_2</span> คลังธีม
+                    <span id="badge-custom-count" class="ml-1.5 px-2 py-0.5 bg-accent-blue text-white rounded-full text-[10px] font-bold font-mono">0</span>
+                </button>
+            </div>
+
+            <!-- แถวล่าง: ปุ่มคำสั่ง (Actions) -->
+            <div class="flex items-center justify-end gap-2.5">
+                <div id="editor-actions" class="flex items-center gap-2 flex-nowrap">
+                    <div class="flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200 shadow-inner">
+                        <button class="editor-undo-btn" onclick="undo()" id="undo-btn" disabled title="Undo (Ctrl+Z)"><span class="material-symbols-outlined text-[17px]">undo</span></button>
+                        <button class="editor-undo-btn" onclick="redo()" id="redo-btn" disabled title="Redo (Ctrl+Y)"><span class="material-symbols-outlined text-[17px]">redo</span></button>
+                    </div>
+                    <button class="editor-button flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 whitespace-nowrap shadow-xs" onclick="saveAsNewTemplate()" title="บันทึกเป็นธีมใหม่แยกสำเนา">
+                        <span class="material-symbols-outlined text-[17px] text-gray-600">copy_all</span> บันทึกเป็นธีมใหม่
+                    </button>
+                    <button class="editor-button flex items-center gap-1.5 text-xs font-bold py-2 px-3.5 whitespace-nowrap shadow-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300" onclick="saveAsUniversalTheme()" title="บันทึกหน้าตาธีมนี้เป็น Universal Theme เพื่อนำไปปรับใช้กับทุก Layout">
+                        <span class="material-symbols-outlined text-[17px] text-amber-600">auto_awesome</span> เซฟเป็น Universal Theme
+                    </button>
+                    <button class="editor-button primary flex items-center gap-1.5 text-xs font-bold py-2 px-4 shadow-sm whitespace-nowrap" onclick="saveTemplate()">
+                        <span class="material-symbols-outlined text-[18px]">save</span> บันทึกธีมลงคลัง
+                    </button>
+                </div>
+                <div id="manager-actions" class="flex items-center gap-2.5 flex-nowrap hidden">
+                    <button class="editor-button primary flex items-center gap-1.5 text-xs font-bold py-2 px-4 shadow-sm whitespace-nowrap" onclick="createNewThemeFromManager()">
+                        <span class="material-symbols-outlined text-[18px]">add</span> + ออกแบบธีมใหม่
+                    </button>
+                    <button class="editor-button flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 whitespace-nowrap" onclick="exportCatalog()">
+                        <span class="material-symbols-outlined text-[17px] text-gray-600">file_download</span> Export
+                    </button>
+                    <label class="editor-button flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 whitespace-nowrap cursor-pointer">
+                        <span class="material-symbols-outlined text-[17px] text-gray-600">file_upload</span> Import<input id="import-file" type="file" accept="application/json" class="hidden">
+                    </label>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="editor-shell max-w-[1500px] mx-auto">
-        <aside class="editor-panel">
-            <div class="flex items-center justify-between gap-2 mb-4">
-                <h2 class="font-bold">Event layouts</h2>
-                <button class="editor-button primary" onclick="createNewTemplate()">+ New</button>
-            </div>
-            <div id="template-list" class="template-list"></div>
-            <div class="border-t border-gray-100 mt-4 pt-4 grid gap-3">
-                <div class="editor-field"><label>Name</label><input id="template-name" maxlength="80"></div>
-                <div class="editor-grid">
-                    <div class="editor-field"><label>Canvas</label><select id="canvas-preset"><option value="2x6">2×6 Strip</option><option value="4x6-portrait">4×6 Portrait</option><option value="4x6-landscape">4×6 Landscape</option></select></div>
-                    <div class="editor-field"><label>Layout key</label><input id="layout-id" placeholder="3_1x1"></div>
+    <!-- 1. DESIGN EDITOR VIEW -->
+    <main id="view-editor" class="editor-shell max-w-[1500px] mx-auto">
+        <aside class="editor-panel flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-2">
+                <div>
+                    <h2 class="font-bold flex items-center gap-1.5 text-sm text-gray-900">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">dashboard</span>
+                        โครงร่างเริ่มต้น (Base Presets)
+                    </h2>
+                    <p class="text-[11px] text-gray-500 mt-0.5">เลือกขนาดกระดาษเพื่อเริ่มออกแบบ</p>
                 </div>
-                <label class="flex items-center gap-2 text-sm text-gray-600"><input id="template-enabled" type="checkbox"> เปิดให้ลูกค้าเลือกใน Event นี้</label>
-                <button class="editor-button danger" onclick="deleteTemplate()">Delete custom template</button>
+            </div>
+
+            <!-- ปุ่มสร้างหน้ากระดาษ & เลย์เอาต์ใหม่ -->
+            <button type="button" onclick="openCanvasBuilderModal()" class="w-full py-2.5 px-3 rounded-xl border border-dashed border-accent-blue bg-blue-50/70 hover:bg-blue-100/70 text-accent-blue font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs">
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                + สร้างหน้ากระดาษ & เลย์เอาต์ใหม่
+            </button>
+
+            <div id="template-list" class="template-list"></div>
+
+            <div id="acc-tpl-props" class="accordion-section mt-1">
+                <div class="accordion-header" onclick="toggleAccordion('acc-tpl-props')">
+                    <div class="title-wrap">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">tune</span>
+                        <span>Theme Settings (ข้อมูลธีม)</span>
+                    </div>
+                    <span class="accordion-caret"><span class="material-symbols-outlined text-base">expand_more</span></span>
+                </div>
+                <div class="accordion-body">
+                    <div class="editor-field"><label>Name (ชื่อธีม)</label><input id="template-name" maxlength="80"></div>
+                    <div class="editor-grid">
+                        <div class="editor-field"><label>Canvas</label><select id="canvas-preset"><option value="2x6">2×6 Photo Strip</option><option value="4x6-portrait">4×6 Portrait</option><option value="4x6-landscape">4×6 Landscape</option><option value="thermal58">Thermal 58mm</option><option value="thermal80">Thermal 80mm</option><option value="thermal100">Thermal 100mm</option><option value="photo5x7">5×7 Photo Card</option></select></div>
+                        <div class="editor-field"><label>Layout key</label><input id="layout-id" placeholder="3_3x4"></div>
+                    </div>
+                    <div class="editor-field">
+                        <label>Layout ratio (สัดส่วนทั้งแผ่น)</label>
+                        <select id="layout-ratio-select" onchange="changeLayoutRatioFromSelect()">
+                            <option value="3x4">3:4 Portrait (แนวตั้งมาตรฐาน)</option>
+                            <option value="1x1">1:1 Square (สี่เหลี่ยมจัตุรัส)</option>
+                            <option value="4x3">4:3 Landscape (แนวนอน)</option>
+                            <option value="16x9">16:9 Wide (จอกว้าง)</option>
+                            <option value="9x16">9:16 Story (แนวตั้งมือถือ)</option>
+                            <option value="2x3">2:3 Film (สัดส่วนฟิล์ม)</option>
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer"><input id="template-enabled" type="checkbox"> เปิดให้ลูกค้าเลือกใน Event นี้ (Active)</label>
+                    <button class="editor-button danger flex items-center justify-center gap-1.5" onclick="deleteTemplate()"><span class="material-symbols-outlined text-sm">delete</span> Delete custom theme</button>
+                </div>
             </div>
         </aside>
 
@@ -94,95 +584,550 @@
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div><h2 class="font-bold">Canvas preview</h2><p id="canvas-meta" class="text-xs text-gray-500 mt-1"></p></div>
                 <div class="flex flex-wrap gap-3 text-sm">
-                    <label class="flex items-center gap-2"><input id="show-bleed-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-green-500 align-middle"></span> Bleed 3mm</label>
-                    <label class="flex items-center gap-2"><input id="show-safe-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-red-500 align-middle"></span> Safe zone 3mm</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input id="snap-enabled" type="checkbox" checked> <span class="material-symbols-outlined text-sm text-gray-500">straighten</span> Snap</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input id="show-header-footer" type="checkbox" checked> <span class="material-symbols-outlined text-sm text-gray-500">vertical_align_top</span> Header/Footer</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input id="show-bleed-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-green-500 align-middle rounded-sm"></span> Bleed 3mm</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input id="show-safe-zone" type="checkbox" checked> <span class="inline-block w-3 h-3 border-2 border-dashed border-red-500 align-middle rounded-sm"></span> Safe zone 3mm</label>
                 </div>
             </div>
-            <div class="editor-stage-wrap"><div id="editor-stage" class="editor-stage"></div></div>
+            
+            <div class="editor-stage-wrap" id="stage-wrap">
+                <div class="editor-viewport" id="editor-viewport">
+                    <div id="editor-stage" class="editor-stage"></div>
+                    <div id="guide-lines"></div>
+                </div>
+            </div>
+            <div class="editor-zoom-bar" id="zoom-bar">
+                <button onclick="zoomToFit()" class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">aspect_ratio</span> Fit</button>
+                <button onclick="zoomBy(-0.1)" class="flex items-center justify-center"><span class="material-symbols-outlined text-xs">remove</span></button>
+                <span id="zoom-level">100%</span>
+                <button onclick="zoomBy(0.1)" class="flex items-center justify-center"><span class="material-symbols-outlined text-xs">add</span></button>
+                <button onclick="setZoom(1)">100%</button>
+            </div>
             <div id="validation-message" class="editor-message ok mt-4">Template ready</div>
         </section>
 
-        <aside class="editor-panel editor-properties grid gap-4">
-            <div class="border border-gray-100 rounded-lg p-3 grid gap-2">
-                <div class="flex items-center justify-between gap-2">
-                    <h2 class="font-bold">Layer hierarchy</h2>
-                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Cake model</span>
-                </div>
-                <div id="layer-list" class="grid gap-2"></div>
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                    <button class="editor-button" onclick="moveLayer('back')">Send to Back</button>
-                    <button class="editor-button" onclick="moveLayer('backward')">Send Backward</button>
-                    <button class="editor-button" onclick="moveLayer('forward')">Bring Forward</button>
-                    <button class="editor-button" onclick="moveLayer('front')">Bring to Front</button>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-2"><h2 class="font-bold">Photo slots</h2><button class="editor-button" onclick="duplicateSelectedSlot()">Duplicate</button></div>
-            <div id="slot-list" class="flex flex-wrap gap-2"></div>
-            <div class="editor-grid">
-                <div class="editor-field"><label>X</label><input id="slot-x" type="number"></div>
-                <div class="editor-field"><label>Y</label><input id="slot-y" type="number"></div>
-                <div class="editor-field"><label>Width</label><input id="slot-width" type="number" min="1"></div>
-                <div class="editor-field"><label>Height</label><input id="slot-height" type="number" min="1"></div>
-                <div class="editor-field"><label>Rotation</label><input id="slot-rotation" type="number" min="-180" max="180" step="0.5"></div>
-                <div class="editor-field"><label>Z-index</label><input id="slot-z" type="number"></div>
-                <div class="editor-field"><label>Focus X (0–1)</label><input id="slot-focus-x" type="number" min="0" max="1" step="0.05"></div>
-                <div class="editor-field"><label>Focus Y (0–1)</label><input id="slot-focus-y" type="number" min="0" max="1" step="0.05"></div>
-            </div>
-            <button class="editor-button danger" onclick="removeSelectedSlot()">Remove selected slot</button>
-
-            <div class="border-t border-gray-100 pt-4 grid gap-3">
-                <div class="flex items-center justify-between gap-2">
-                    <h2 class="font-bold">อัปโหลดภาพตกแต่ง</h2>
-                </div>
-                <p class="text-xs text-gray-500">ภาพที่อัปโหลดใช้ตกแต่งเท่านั้น — เลือกวางเป็น <b>แบ็กกราวด์</b> (หลังรูปถ่าย) หรือ <b>กรอบ</b> (หน้ารูปถ่าย) ส่วนตรงกลางคือช่องรูปถ่ายจากกล้องที่ปรับตำแหน่งได้</p>
-                <label class="editor-button cursor-pointer text-center">⬆ Upload images<input id="artboard-file" type="file" accept="image/png,image/jpeg,image/webp" multiple class="hidden"></label>
-                <div id="asset-tray" class="asset-tray"></div>
-                <div class="border-t border-gray-100 pt-3 grid gap-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <h3 class="text-sm font-bold">Layers</h3>
-                        <button class="editor-button" onclick="artboardLayerMove('back')">Back</button>
-                        <button class="editor-button" onclick="artboardLayerMove('backward')">▼</button>
-                        <button class="editor-button" onclick="artboardLayerMove('forward')">▲</button>
-                        <button class="editor-button" onclick="artboardLayerMove('front')">Front</button>
+        <aside class="editor-panel editor-properties flex flex-col gap-3">
+            <!-- 1. Layer hierarchy Accordion -->
+            <div id="acc-layers" class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion('acc-layers')">
+                    <div class="title-wrap">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">layers</span>
+                        <span>Layer hierarchy</span>
+                        <span class="text-[10px] text-gray-400 font-normal uppercase">Cake model</span>
                     </div>
-                    <div id="artboard-layer-list" class="grid gap-2"></div>
+                    <span class="accordion-caret"><span class="material-symbols-outlined text-base">expand_more</span></span>
                 </div>
-                <div class="editor-grid">
-                    <div class="editor-field"><label>วางตำแหน่ง</label><select id="art-placement"><option value="back">แบ็กกราวด์ (หลังรูป)</option><option value="front">กรอบ (หน้ารูป)</option></select></div>
-                    <div class="editor-field"><label>X</label><input id="art-x" type="number"></div>
-                    <div class="editor-field"><label>Y</label><input id="art-y" type="number"></div>
-                    <div class="editor-field"><label>Width</label><input id="art-width" type="number" min="1"></div>
-                    <div class="editor-field"><label>Height</label><input id="art-height" type="number" min="1"></div>
-                    <div class="editor-field"><label>Rotation</label><input id="art-rotation" type="number" min="-180" max="180" step="0.5"></div>
-                    <div class="editor-field"><label>Z-index</label><input id="art-z" type="number"></div>
-                    <div class="editor-field"><label>Opacity (0–1)</label><input id="art-opacity" type="number" min="0" max="1" step="0.05"></div>
+                <div class="accordion-body">
+                    <div id="layer-list" class="grid gap-2"></div>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button class="editor-button flex items-center justify-center gap-1 text-xs" onclick="moveLayer('back')"><span class="material-symbols-outlined text-sm">vertical_align_bottom</span> To Back</button>
+                        <button class="editor-button flex items-center justify-center gap-1 text-xs" onclick="moveLayer('backward')"><span class="material-symbols-outlined text-sm">arrow_downward</span> Backward</button>
+                        <button class="editor-button flex items-center justify-center gap-1 text-xs" onclick="moveLayer('forward')"><span class="material-symbols-outlined text-sm">arrow_upward</span> Forward</button>
+                        <button class="editor-button flex items-center justify-center gap-1 text-xs" onclick="moveLayer('front')"><span class="material-symbols-outlined text-sm">vertical_align_top</span> To Front</button>
+                    </div>
                 </div>
-                <button class="editor-button danger" onclick="removeArtboardLayer()">Remove selected layer</button>
             </div>
 
-            <div class="border-t border-gray-100 pt-4 grid gap-3">
-                <h2 class="font-bold">Canvas & frame</h2>
-                <div class="editor-field"><label>Background color</label><input id="background-color" type="color" value="#ffffff" class="h-11"></div>
-                <div class="editor-field"><label>Background pattern (ลวดลาย)</label><input id="background-image-file" type="file" accept="image/png,image/jpeg,image/webp"></div>
-                <button class="editor-button" onclick="clearBackgroundImage()">Clear background pattern</button>
-                <div class="editor-grid">
-                    <div class="editor-field"><label>Safe top</label><input id="safe-top" type="number" min="0"></div>
-                    <div class="editor-field"><label>Safe right</label><input id="safe-right" type="number" min="0"></div>
-                    <div class="editor-field"><label>Safe bottom</label><input id="safe-bottom" type="number" min="0"></div>
-                    <div class="editor-field"><label>Safe left</label><input id="safe-left" type="number" min="0"></div>
+            <!-- 2. Photo slots Accordion -->
+            <div id="acc-slots" class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion('acc-slots')">
+                    <div class="title-wrap">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">grid_view</span>
+                        <span>Photo slots</span>
+                        <span id="acc-slots-count" class="text-[11px] text-accent-blue font-bold">1 slot</span>
+                    </div>
+                    <span class="accordion-caret"><span class="material-symbols-outlined text-base">expand_more</span></span>
                 </div>
-                <div class="editor-grid">
-                    <div class="editor-field"><label>Bleed top (ตัดตก)</label><input id="bleed-top" type="number" min="0"></div>
-                    <div class="editor-field"><label>Bleed right</label><input id="bleed-right" type="number" min="0"></div>
-                    <div class="editor-field"><label>Bleed bottom</label><input id="bleed-bottom" type="number" min="0"></div>
-                    <div class="editor-field"><label>Bleed left</label><input id="bleed-left" type="number" min="0"></div>
+                <div class="accordion-body">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div id="slot-list" class="flex flex-wrap gap-1.5 flex-1"></div>
+                        <div class="flex gap-1.5 shrink-0">
+                            <button class="editor-button flex items-center gap-1 text-xs py-1.5 px-2.5" onclick="autoBalanceSlots()" title="ปรับระยะช่องรูปให้เว้นหัว-ท้ายสวยงาม"><span class="material-symbols-outlined text-sm text-amber-500">auto_fix_high</span> จัดหัว-ท้าย</button>
+                            <button class="editor-button flex items-center gap-1 text-xs py-1.5 px-2.5" onclick="duplicateSelectedSlot()"><span class="material-symbols-outlined text-sm">content_copy</span> Duplicate</button>
+                        </div>
+                    </div>
+
+                    <!-- Aspect ratio sub-card -->
+                    <div class="border border-gray-100 rounded-lg p-2.5 bg-gray-50/70">
+                        <label class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold text-gray-700">Aspect ratio (อัตราส่วนมาตรฐาน)</span>
+                            <span id="current-slot-ratio" class="text-accent-blue font-mono font-bold text-[11px]">3:4</span>
+                        </label>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button type="button" class="ratio-btn" data-ratio="1:1" onclick="applySlotRatio('1:1')">1:1 Square</button>
+                            <button type="button" class="ratio-btn" data-ratio="3:4" onclick="applySlotRatio('3:4')">3:4 Portrait</button>
+                            <button type="button" class="ratio-btn" data-ratio="4:3" onclick="applySlotRatio('4:3')">4:3 Land</button>
+                            <button type="button" class="ratio-btn" data-ratio="16:9" onclick="applySlotRatio('16:9')">16:9 Wide</button>
+                            <button type="button" class="ratio-btn" data-ratio="9:16" onclick="applySlotRatio('9:16')">9:16 Story</button>
+                            <button type="button" class="ratio-btn" data-ratio="2:3" onclick="applySlotRatio('2:3')">2:3 Film</button>
+                            <button type="button" class="ratio-btn" data-ratio="3:2" onclick="applySlotRatio('3:2')">3:2 Film</button>
+                            <button type="button" class="ratio-btn" data-ratio="fit-width" onclick="applySlotRatio('fit-width')" title="ปรับความกว้างเต็มกระดาษ">↔ เต็มกว้าง</button>
+                        </div>
+                    </div>
+
+                    <div class="editor-grid">
+                        <div class="editor-field"><label>X</label><input id="slot-x" type="number"></div>
+                        <div class="editor-field"><label>Y</label><input id="slot-y" type="number"></div>
+                        <div class="editor-field"><label>Width</label><input id="slot-width" type="number" min="1"></div>
+                        <div class="editor-field"><label>Height</label><input id="slot-height" type="number" min="1"></div>
+                        <div class="editor-field"><label>Rotation</label><input id="slot-rotation" type="number" min="-180" max="180" step="0.5"></div>
+                        <div class="editor-field"><label>Z-index</label><input id="slot-z" type="number"></div>
+                        <div class="editor-field"><label>Focus X (0–1)</label><input id="slot-focus-x" type="number" min="0" max="1" step="0.05"></div>
+                        <div class="editor-field"><label>Focus Y (0–1)</label><input id="slot-focus-y" type="number" min="0" max="1" step="0.05"></div>
+                    </div>
+                    <button class="editor-button danger flex items-center justify-center gap-1.5" onclick="removeSelectedSlot()"><span class="material-symbols-outlined text-sm">delete</span> Remove selected slot</button>
                 </div>
-                <div class="editor-field"><label>Transparent PNG overlay</label><input id="overlay-file" type="file" accept="image/png"></div>
-                <button class="editor-button" onclick="clearOverlay()">Clear overlay</button>
+            </div>
+
+            <!-- 3. Artwork & Stickers Accordion -->
+            <div id="acc-artboard" class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion('acc-artboard')">
+                    <div class="title-wrap">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">palette</span>
+                        <span>Artwork & Stickers</span>
+                        <span id="acc-art-count" class="text-[11px] text-gray-400 font-normal">0 layers</span>
+                    </div>
+                    <span class="accordion-caret"><span class="material-symbols-outlined text-base">expand_more</span></span>
+                </div>
+                <div class="accordion-body">
+                    <p class="text-xs text-gray-500 leading-relaxed">ภาพที่อัปโหลดใช้ตกแต่งเท่านั้น — เลือกวางเป็น <b>แบ็กกราวด์</b> (หลังรูปถ่าย) หรือ <b>กรอบ</b> (หน้ารูปถ่าย)</p>
+                    <label class="editor-button flex items-center justify-center gap-1.5 cursor-pointer text-center"><span class="material-symbols-outlined text-sm">add_photo_alternate</span> Upload images<input id="artboard-file" type="file" accept="image/png,image/jpeg,image/webp" multiple class="hidden"></label>
+                    <div id="asset-tray" class="asset-tray"></div>
+                    <div class="border-t border-gray-100 pt-3 grid gap-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Layers Order</h3>
+                            <div class="flex gap-1">
+                                <button class="editor-button text-xs px-2" onclick="artboardLayerMove('back')" title="To Back"><span class="material-symbols-outlined text-xs">vertical_align_bottom</span></button>
+                                <button class="editor-button text-xs px-2" onclick="artboardLayerMove('backward')" title="Backward"><span class="material-symbols-outlined text-xs">arrow_downward</span></button>
+                                <button class="editor-button text-xs px-2" onclick="artboardLayerMove('forward')" title="Forward"><span class="material-symbols-outlined text-xs">arrow_upward</span></button>
+                                <button class="editor-button text-xs px-2" onclick="artboardLayerMove('front')" title="To Front"><span class="material-symbols-outlined text-xs">vertical_align_top</span></button>
+                            </div>
+                        </div>
+                        <div id="artboard-layer-list" class="grid gap-2"></div>
+                    </div>
+                    <div class="editor-grid">
+                        <div class="editor-field"><label>วางตำแหน่ง</label><select id="art-placement"><option value="back">แบ็กกราวด์ (หลังรูป)</option><option value="front">กรอบ (หน้ารูป)</option></select></div>
+                        <div class="editor-field"><label>X</label><input id="art-x" type="number"></div>
+                        <div class="editor-field"><label>Y</label><input id="art-y" type="number"></div>
+                        <div class="editor-field"><label>Width</label><input id="art-width" type="number" min="1"></div>
+                        <div class="editor-field"><label>Height</label><input id="art-height" type="number" min="1"></div>
+                        <div class="editor-field"><label>Rotation</label><input id="art-rotation" type="number" min="-180" max="180" step="0.5"></div>
+                        <div class="editor-field"><label>Z-index</label><input id="art-z" type="number"></div>
+                        <div class="editor-field"><label>Opacity (0–1)</label><input id="art-opacity" type="number" min="0" max="1" step="0.05"></div>
+                    </div>
+                    <button class="editor-button danger flex items-center justify-center gap-1.5" onclick="removeArtboardLayer()"><span class="material-symbols-outlined text-sm">delete</span> Remove selected layer</button>
+                </div>
+            </div>
+
+            <!-- 4. Canvas & Frame Accordion -->
+            <div id="acc-canvas" class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion('acc-canvas')">
+                    <div class="title-wrap">
+                        <span class="material-symbols-outlined text-gray-500 text-[18px]">crop_free</span>
+                        <span>Canvas & Frame</span>
+                    </div>
+                    <span class="accordion-caret"><span class="material-symbols-outlined text-base">expand_more</span></span>
+                </div>
+                <div class="accordion-body">
+                    <div class="editor-field"><label>Background color</label><input id="background-color" type="color" value="#ffffff" class="h-11"></div>
+                    <div class="editor-field"><label>Background pattern (ลวดลาย)</label><input id="background-image-file" type="file" accept="image/png,image/jpeg,image/webp"></div>
+                    <div class="editor-field"><label>การจัดวางภาพพื้นหลัง (Fit Mode)</label>
+                        <select id="background-fit-mode">
+                            <option value="cover">Cover (เต็มขอบ รักษาสัดส่วน)</option>
+                            <option value="contain">Contain (พอดีขอบ)</option>
+                            <option value="tile">Tile (ปูกระเบื้อง ซ้ำลาย)</option>
+                            <option value="stretch">Stretch (ยืดเต็มภาพ)</option>
+                        </select>
+                    </div>
+                    <button class="editor-button flex items-center justify-center gap-1.5 text-xs" onclick="clearBackgroundImage()"><span class="material-symbols-outlined text-sm">backspace</span> Clear pattern</button>
+                    
+                    <div class="border-t border-gray-100 pt-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5">Safe margin (ระยะปลอดภัย)</label>
+                        <div class="editor-grid">
+                            <div class="editor-field"><label>Top</label><input id="safe-top" type="number" min="0"></div>
+                            <div class="editor-field"><label>Right</label><input id="safe-right" type="number" min="0"></div>
+                            <div class="editor-field"><label>Bottom</label><input id="safe-bottom" type="number" min="0"></div>
+                            <div class="editor-field"><label>Left</label><input id="safe-left" type="number" min="0"></div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5">Bleed margin (ระยะตัดตก 3mm)</label>
+                        <div class="editor-grid">
+                            <div class="editor-field"><label>Top</label><input id="bleed-top" type="number" min="0"></div>
+                            <div class="editor-field"><label>Right</label><input id="bleed-right" type="number" min="0"></div>
+                            <div class="editor-field"><label>Bottom</label><input id="bleed-bottom" type="number" min="0"></div>
+                            <div class="editor-field"><label>Left</label><input id="bleed-left" type="number" min="0"></div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-2 grid gap-2">
+                        <div class="editor-field"><label>Transparent PNG overlay (กรอบใสทับบน)</label><input id="overlay-file" type="file" accept="image/png"></div>
+                        <div class="editor-field"><label>การจัดวาง Overlay (Fit Mode)</label>
+                            <select id="overlay-fit-mode">
+                                <option value="cover">Cover (ตัดขอบ รักษาสัดส่วน)</option>
+                                <option value="contain">Contain (เห็นครบ ไม่บิดเบี้ยว)</option>
+                                <option value="stretch">Stretch (ยืดเต็มภาพ)</option>
+                            </select>
+                        </div>
+                        <button class="editor-button flex items-center justify-center gap-1.5 text-xs" onclick="clearOverlay()"><span class="material-symbols-outlined text-sm">backspace</span> Clear overlay</button>
+                    </div>
+                </div>
             </div>
         </aside>
     </main>
+
+    <!-- 2. THEME STOCK & MANAGER VIEW -->
+    <section id="view-manager" class="max-w-[1360px] mx-auto w-full px-4 sm:px-6 py-6 hidden flex flex-col gap-6">
+        <!-- Stats summary -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="stat-pill">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-accent-blue grid place-items-center shrink-0">
+                    <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                </div>
+                <div>
+                    <span id="stat-total-themes" class="text-2xl font-bold text-gray-900 block leading-tight">0</span>
+                    <span class="text-xs text-gray-500">ทั้งหมดในสต็อก (Total Stock)</span>
+                </div>
+            </div>
+            <div class="stat-pill">
+                <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 grid place-items-center shrink-0">
+                    <span class="material-symbols-outlined text-2xl">check_circle</span>
+                </div>
+                <div>
+                    <span id="stat-active-themes" class="text-2xl font-bold text-green-600 block leading-tight">0</span>
+                    <span class="text-xs text-gray-500">เปิดใช้งานในระบบ (Active in Kiosk)</span>
+                </div>
+            </div>
+            <div class="stat-pill">
+                <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 grid place-items-center shrink-0">
+                    <span class="material-symbols-outlined text-2xl">pause_circle</span>
+                </div>
+                <div>
+                    <span id="stat-stock-themes" class="text-2xl font-bold text-gray-600 block leading-tight">0</span>
+                    <span class="text-xs text-gray-500">แบบร่าง / เก็บในสต็อก (Draft / Stock)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Universal Themes Section (สร้าง 1 ครั้ง ใช้ได้ทุก Layout) -->
+        <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-5 rounded-2xl border border-amber-200/90 flex flex-col gap-4 shadow-xs">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-white grid place-items-center shadow-xs">
+                        <span class="material-symbols-outlined text-2xl">auto_awesome</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-bold text-gray-900 text-base">Universal Themes (ธีมสากล)</h2>
+                            <span id="stat-universal-count" class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-full text-xs font-bold font-mono">0</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-0.5">ออกแบบหน้าตาธีม 1 ครั้ง (สีพื้น, สติกเกอร์, กรอบ) แล้วกด Apply ปรับใช้กับทุกขนาดกระดาษได้ทันที</p>
+                    </div>
+                </div>
+                <button type="button" onclick="switchView('editor')" class="editor-button py-2 px-4 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-white border-transparent shadow-xs flex items-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-base">brush</span> + ออกแบบ Universal Theme ใน Editor
+                </button>
+            </div>
+            
+            <!-- Universal Themes Grid List -->
+            <div id="universal-theme-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 hidden"></div>
+            <div id="universal-theme-empty" class="text-center py-5 text-xs text-gray-500 border border-dashed border-amber-300/60 rounded-xl bg-white/70">
+                ยังไม่มี Universal Theme — กดปุ่ม <span class="font-bold text-amber-800">"เซฟเป็น Universal Theme"</span> ในหน้า Editor เพื่อนำดีไซน์มาเก็บไว้ที่นี่
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="bg-white px-5 py-3.5 rounded-2xl border border-gray-200 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+            <div class="flex items-center gap-2 flex-wrap flex-1 min-w-[280px]">
+                <button type="button" class="filter-chip active" data-filter="all" onclick="setManagerFilter('all')">ทั้งหมด</button>
+                <button type="button" class="filter-chip" data-filter="active" onclick="setManagerFilter('active')">🟢 เปิดใช้งานอยู่</button>
+                <button type="button" class="filter-chip" data-filter="stock" onclick="setManagerFilter('stock')">⚪ สต็อก / ปิด</button>
+                <button type="button" class="filter-chip" data-filter="2x6" onclick="setManagerFilter('2x6')">2×6 Strip</button>
+                <button type="button" class="filter-chip" data-filter="4x6" onclick="setManagerFilter('4x6')">4×6 Postcard</button>
+                <button type="button" class="filter-chip" data-filter="thermal" onclick="setManagerFilter('thermal')">Thermal</button>
+                <button type="button" class="filter-chip" data-filter="photo5x7" onclick="setManagerFilter('photo5x7')">5×7</button>
+                <button type="button" class="filter-chip" data-filter="universal" onclick="setManagerFilter('universal')">✨ Universal Themes</button>
+            </div>
+            <div class="relative w-full sm:w-72">
+                <input id="manager-search-input" type="text" placeholder="ค้นหาชื่อธีม..." oninput="renderThemeManager()" class="manager-search-field">
+                <span class="material-symbols-outlined text-gray-400 text-lg absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+            </div>
+        </div>
+
+        <!-- Theme Cards Grid -->
+        <div id="theme-manager-grid" class="manager-grid"></div>
+
+        <!-- Empty State -->
+        <div id="theme-manager-empty" class="hidden my-4 sm:my-8 flex justify-center w-full">
+            <div class="manager-empty-card">
+                <div class="empty-icon-bubble">
+                    <span class="material-symbols-outlined text-3xl text-gray-400">inventory_2</span>
+                </div>
+                <h3 class="font-bold text-gray-900 text-xl tracking-tight mt-1">ยังไม่มีธีมที่บันทึกไว้ในสต็อก</h3>
+                <p class="text-gray-500 text-sm max-w-md mx-auto leading-relaxed mt-2">
+                    เมื่อคุณออกแบบและบันทึกธีมในหน้า Editor ธีมทั้งหมดจะมาแสดงที่นี่ เพื่อให้คุณเลือกเปิด/ปิดใช้งานสำหรับตู้ Kiosk ได้อย่างสะดวก
+                </p>
+                <div class="flex items-center justify-center gap-3 mt-7 flex-wrap">
+                    <button onclick="createNewThemeFromManager()" class="editor-button primary py-2.5 px-5 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-base">brush</span> เริ่มออกแบบธีมแรก
+                    </button>
+                    <button type="button" onclick="byId('import-file').click()" class="editor-button py-2.5 px-4 rounded-xl font-semibold text-sm border border-gray-200 bg-white hover:bg-gray-50 flex items-center gap-2 cursor-pointer transition-all shadow-xs">
+                        <span class="material-symbols-outlined text-base text-gray-600">file_upload</span> นำเข้าไฟล์ธีม (Import)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. CUSTOM CANVAS & LAYOUT BUILDER MODAL -->
+    <div id="canvas-builder-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeCanvasBuilderModal()">
+        <div class="cb-modal-container">
+            <!-- Modal Header -->
+            <div class="cb-modal-header">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 text-accent-blue grid place-items-center">
+                        <span class="material-symbols-outlined text-xl">dashboard_customize</span>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-base text-gray-900 leading-tight">สร้างหน้ากระดาษ & เลย์เอาต์ใหม่</h2>
+                        <p class="text-xs text-gray-500">กำหนดขนาดกระดาษ จำนวนรูป สัดส่วน และระยะช่องไฟได้ตามต้องการ</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCanvasBuilderModal()" class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content (2 Columns: Controls on Left, Live Preview on Right) -->
+            <div class="cb-modal-body">
+                <!-- Left: Form Controls -->
+                <div class="flex flex-col gap-3.5">
+                    <!-- 1. Paper / Canvas Format -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">1. เลือกขนาดหน้ากระดาษ (Paper Format)</label>
+                        <div class="cb-preset-grid" id="cb-paper-presets">
+                            <button type="button" onclick="setCbPaperPreset('2x6')" class="cb-preset-btn active p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="2x6">
+                                <span class="font-bold text-xs block text-gray-900">2×6 Strip</span>
+                                <span class="text-[10px] text-gray-500">600×1800</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('4x6-portrait')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="4x6-portrait">
+                                <span class="font-bold text-xs block text-gray-900">4×6 ตั้ง</span>
+                                <span class="text-[10px] text-gray-500">1200×1800</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('4x6-landscape')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="4x6-landscape">
+                                <span class="font-bold text-xs block text-gray-900">4×6 นอน</span>
+                                <span class="text-[10px] text-gray-500">1800×1200</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('photo5x7')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="photo5x7">
+                                <span class="font-bold text-xs block text-gray-900">5×7 Card</span>
+                                <span class="text-[10px] text-gray-500">1500×2100</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('thermal58')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="thermal58">
+                                <span class="font-bold text-xs block text-gray-900">Thermal 58</span>
+                                <span class="text-[10px] text-gray-500">384×1152</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('thermal80')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="thermal80">
+                                <span class="font-bold text-xs block text-gray-900">Thermal 80</span>
+                                <span class="text-[10px] text-gray-500">576×1728</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('thermal100')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="thermal100">
+                                <span class="font-bold text-xs block text-gray-900">Thermal 100</span>
+                                <span class="text-[10px] text-gray-500">832×2496</span>
+                            </button>
+                            <button type="button" onclick="setCbPaperPreset('custom')" class="cb-preset-btn p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all" data-preset="custom">
+                                <span class="font-bold text-xs block text-gray-900">กำหนดเอง</span>
+                                <span class="text-[10px] text-gray-500">Custom W×H</span>
+                            </button>
+                        </div>
+
+                        <!-- Custom Dimension input (hidden unless custom selected) -->
+                        <div id="cb-custom-dim-box" class="grid grid-cols-3 gap-2 mt-2 hidden bg-gray-50 p-2 rounded-xl border border-gray-200">
+                            <div class="editor-field">
+                                <label class="text-[10px]">กว้าง (W px)</label>
+                                <input type="number" id="cb-custom-w" value="1200" min="200" max="4000" oninput="updateCbPreview()">
+                            </div>
+                            <div class="editor-field">
+                                <label class="text-[10px]">สูง (H px)</label>
+                                <input type="number" id="cb-custom-h" value="1800" min="200" max="4000" oninput="updateCbPreview()">
+                            </div>
+                            <div class="editor-field">
+                                <label class="text-[10px]">DPI</label>
+                                <select id="cb-custom-dpi" onchange="updateCbPreview()">
+                                    <option value="300">300 DPI</option>
+                                    <option value="203">203 DPI</option>
+                                    <option value="150">150 DPI</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Theme Name & Background Color -->
+                    <div class="cb-two-col">
+                        <div class="editor-field">
+                            <label>ชื่อธีม / โครงร่าง</label>
+                            <input type="text" id="cb-theme-name" value="ธีมใหม่กำหนดเอง" placeholder="เช่น Summer 3-Shots Strip" oninput="updateCbPreview()">
+                        </div>
+                        <div class="editor-field">
+                            <label>สีพื้นหลังกระดาษ</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="cb-bg-color" value="#FFFFFF" class="w-9 h-9 p-0.5 rounded-lg cursor-pointer border border-gray-200" oninput="byId('cb-bg-color-text').value=this.value; updateCbPreview()">
+                                <input type="text" id="cb-bg-color-text" value="#FFFFFF" class="flex-1 font-mono text-xs" oninput="byId('cb-bg-color').value=this.value; updateCbPreview()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Photo Count & Aspect Ratio -->
+                    <div class="cb-two-col">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">จำนวนรูปถ่าย</label>
+                            <div class="cb-count-grid" id="cb-count-group">
+                                <button type="button" onclick="setCbCount(1)" class="cb-chip-btn py-1.5 text-xs font-bold rounded-lg border text-center" data-val="1">1</button>
+                                <button type="button" onclick="setCbCount(2)" class="cb-chip-btn py-1.5 text-xs font-bold rounded-lg border text-center" data-val="2">2</button>
+                                <button type="button" onclick="setCbCount(3)" class="cb-chip-btn active py-1.5 text-xs font-bold rounded-lg border text-center" data-val="3">3</button>
+                                <button type="button" onclick="setCbCount(4)" class="cb-chip-btn py-1.5 text-xs font-bold rounded-lg border text-center" data-val="4">4</button>
+                                <button type="button" onclick="setCbCount(6)" class="cb-chip-btn py-1.5 text-xs font-bold rounded-lg border text-center" data-val="6">6</button>
+                                <button type="button" onclick="setCbCount(8)" class="cb-chip-btn py-1.5 text-xs font-bold rounded-lg border text-center" data-val="8">8</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1.5">สัดส่วนรูปแต่ละช่อง</label>
+                            <select id="cb-aspect-ratio" class="w-full" onchange="updateCbPreview()">
+                                <option value="3x4" selected>3:4 Portrait (แนวตั้งมาตรฐาน)</option>
+                                <option value="1x1">1:1 Square (จัตุรัส)</option>
+                                <option value="4x3">4:3 Landscape (แนวนอน)</option>
+                                <option value="2x3">2:3 Film (ฟิล์ม/โพลาลอยด์)</option>
+                                <option value="16x9">16:9 Wide (ไวด์)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 4. Layout Arrangement Style & Spacing -->
+                    <div class="cb-two-col">
+                        <div class="editor-field">
+                            <label>รูปแบบการจัดวาง (Style)</label>
+                            <select id="cb-layout-style" onchange="updateCbPreview()">
+                                <option value="auto" selected>อัตโนมัติ (Auto Best Fit)</option>
+                                <option value="strip">แถวเดี่ยวตอนลึก (Single Strip)</option>
+                                <option value="grid2">ตาราง 2 คอลัมน์ (2 Columns Grid)</option>
+                                <option value="featured_top">รูปเด่นบน + รูปคู่ล่าง (เฉพาะ 3 รูป)</option>
+                            </select>
+                        </div>
+                        <div class="editor-field">
+                            <label>ช่องว่างระหว่างรูป (Gap)</label>
+                            <select id="cb-gap-type" onchange="updateCbPreview()">
+                                <option value="none">ไม่มีช่องว่าง (0px)</option>
+                                <option value="compact">ชิดกันเล็กน้อย (แคบ)</option>
+                                <option value="normal" selected>มาตรฐาน (พอดี)</option>
+                                <option value="wide">ห่างกัน (กว้าง)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 5. Margins & Header/Footer Space -->
+                    <div class="cb-two-col">
+                        <div class="editor-field">
+                            <label>ระยะขอบกระดาษ (Margin)</label>
+                            <select id="cb-margin-type" onchange="updateCbPreview()">
+                                <option value="compact">ขอบแคบ (พื้นที่รูปเยอะ)</option>
+                                <option value="normal" selected>ขอบมาตรฐาน</option>
+                                <option value="wide">ขอบกว้าง (สไตล์มินิมอล)</option>
+                            </select>
+                        </div>
+                        <div class="editor-field">
+                            <label>เว้นหัว/ท้าย (สำหรับตกแต่ง/โลโก้)</label>
+                            <select id="cb-hf-type" onchange="updateCbPreview()">
+                                <option value="none">ไม่เว้น</option>
+                                <option value="compact">เว้นเล็กน้อย</option>
+                                <option value="normal" selected>เว้นมาตรฐาน</option>
+                                <option value="large">เว้นเยอะ (มีพื้นที่กว้าง)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Live Real-time Visual Preview -->
+                <div class="bg-gray-100 rounded-2xl p-3.5 flex flex-col items-center justify-between border border-gray-200 sticky top-0">
+                    <div class="w-full flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                        <span class="font-bold text-gray-700 flex items-center gap-1 text-[11px]"><span class="material-symbols-outlined text-sm">visibility</span> ตัวอย่างเลย์เอาต์</span>
+                        <span id="cb-preview-meta" class="font-mono text-[10px]">600 × 1800 px</span>
+                    </div>
+                    
+                    <div class="w-full flex-1 flex items-center justify-center p-1 min-h-[220px] max-h-[300px] overflow-hidden">
+                        <div id="cb-preview-canvas" class="shadow-lg relative transition-all rounded-sm border border-gray-300 overflow-hidden flex items-center justify-center" style="background:#FFFFFF;">
+                            <!-- Slots rendered via JS -->
+                        </div>
+                    </div>
+
+                    <div id="cb-preview-summary" class="w-full mt-2 bg-white p-2 rounded-xl border border-gray-200 text-center text-[11px] text-gray-600 font-medium leading-tight">
+                        กระดาษ 2×6 นิ้ว · 3 ช่องรูป (3:4) · ตัดครึ่ง 2 แถบ
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer (Always Visible at bottom) -->
+            <div class="cb-modal-footer">
+                <button type="button" onclick="closeCanvasBuilderModal()" class="editor-button px-4 py-2 text-xs font-bold">
+                    ยกเลิก
+                </button>
+                <button type="button" onclick="applyCustomCanvasBuilder()" class="editor-button primary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                    <span class="material-symbols-outlined text-base">brush</span>
+                    ✨ สร้างหน้ากระดาษ & เริ่มออกแบบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. APPLY UNIVERSAL THEME MODAL -->
+    <div id="apply-universal-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeApplyUniversalModal()">
+        <div class="cb-modal-container max-w-2xl">
+            <!-- Modal Header -->
+            <div class="cb-modal-header">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 grid place-items-center">
+                        <span class="material-symbols-outlined text-xl">auto_awesome</span>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-base text-gray-900 leading-tight">Apply Universal Theme ไปยัง Layouts</h2>
+                        <p class="text-xs text-gray-500" id="apply-modal-subtitle">เลือก Layouts ที่ต้องการนำธีมนี้ไปปรับใช้</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeApplyUniversalModal()" class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Body (Layout checklist) -->
+            <div class="p-5 flex flex-col gap-4 max-h-[65vh] overflow-y-auto">
+                <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
+                    <span class="text-xs font-bold text-gray-700">เลือกขนาดและเลย์เอาต์ที่ต้องการสร้าง:</span>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="toggleAllApplyLayouts(true)" class="text-xs text-accent-blue hover:underline font-semibold">เลือกทั้งหมด</button>
+                        <span class="text-gray-300">|</span>
+                        <button type="button" onclick="toggleAllApplyLayouts(false)" class="text-xs text-gray-500 hover:underline">ล้างการเลือก</button>
+                    </div>
+                </div>
+                <div id="apply-layout-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <!-- Dynamic grouped checkboxes -->
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="cb-modal-footer">
+                <span id="apply-selected-count" class="text-xs text-gray-600 font-semibold">เลือก 0 เลย์เอาต์</span>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeApplyUniversalModal()" class="editor-button px-4 py-2 text-xs font-bold">
+                        ยกเลิก
+                    </button>
+                    <button type="button" onclick="confirmApplyUniversalTheme()" id="btn-confirm-apply" class="editor-button primary px-5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 border-amber-500 flex items-center gap-1.5 shadow-sm">
+                        <span class="material-symbols-outlined text-base">rocket_launch</span>
+                        สร้างและบันทึกลงคลัง
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="template-engine.js?v=1.0"></script>
     <script src="shared.js?v=2.9"></script>
@@ -198,57 +1143,773 @@
         let dragState = null;
         let artDragState = null;
         let artResizeState = null;
+        
+        let historyStack = [];
+        let historyIndex = -1;
+        let viewport = { scale: 1, panX: 0, panY: 0 };
+        let isPanning = false;
+        let panStartState = null;
 
         const byId = id => document.getElementById(id);
-        const templateInputIds = ['template-name', 'layout-id', 'template-enabled', 'background-color', 'safe-top', 'safe-right', 'safe-bottom', 'safe-left', 'bleed-top', 'bleed-right', 'bleed-bottom', 'bleed-left'];
+        const templateInputIds = ['template-name', 'layout-id', 'template-enabled', 'background-color', 'background-fit-mode', 'overlay-fit-mode', 'safe-top', 'safe-right', 'safe-bottom', 'safe-left', 'bleed-top', 'bleed-right', 'bleed-bottom', 'bleed-left'];
         const slotInputIds = ['slot-x', 'slot-y', 'slot-width', 'slot-height', 'slot-rotation', 'slot-z', 'slot-focus-x', 'slot-focus-y'];
         const artInputIds = ['art-x', 'art-y', 'art-width', 'art-height', 'art-rotation', 'art-z', 'art-opacity'];
+
+        // ==========================================
+        // CUSTOM CANVAS & LAYOUT BUILDER LOGIC
+        // ==========================================
+        let cbState = {
+            paperPreset: '2x6',
+            photoCount: 3
+        };
+
+        function openCanvasBuilderModal() {
+            const modal = byId('canvas-builder-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            setCbPaperPreset(cbState.paperPreset || '2x6');
+            setCbCount(cbState.photoCount || 3);
+            updateCbPreview();
+        }
+
+        function closeCanvasBuilderModal() {
+            const modal = byId('canvas-builder-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        function setCbPaperPreset(presetKey) {
+            cbState.paperPreset = presetKey;
+            document.querySelectorAll('#cb-paper-presets .cb-preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === presetKey);
+            });
+            const isCustom = presetKey === 'custom';
+            byId('cb-custom-dim-box').classList.toggle('hidden', !isCustom);
+
+            const presetNames = {
+                '2x6': '2×6 Photo Strip',
+                '4x6-portrait': '4×6 Postcard (แนวตั้ง)',
+                '4x6-landscape': '4×6 Postcard (แนวนอน)',
+                'photo5x7': '5×7 Photo Card',
+                'thermal58': 'Thermal 58mm',
+                'thermal80': 'Thermal 80mm',
+                'thermal100': 'Thermal 100mm',
+                'custom': 'Custom Paper'
+            };
+            const nameInput = byId('cb-theme-name');
+            if (!nameInput.value || nameInput.value.startsWith('ธีมใหม่') || nameInput.value.startsWith('New Theme')) {
+                nameInput.value = `ธีมใหม่ · ${presetNames[presetKey] || 'Custom'}`;
+            }
+            updateCbPreview();
+        }
+
+        function setCbCount(count) {
+            cbState.photoCount = count;
+            document.querySelectorAll('#cb-count-group .cb-chip-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.val, 10) === count);
+            });
+            
+            const styleSelect = byId('cb-layout-style');
+            const featOption = styleSelect.querySelector('option[value="featured_top"]');
+            if (featOption) {
+                if (count === 3) {
+                    featOption.disabled = false;
+                } else {
+                    featOption.disabled = true;
+                    if (styleSelect.value === 'featured_top') styleSelect.value = 'auto';
+                }
+            }
+            updateCbPreview();
+        }
+
+        function getCbConfig() {
+            const paperPreset = cbState.paperPreset;
+            let customW = parseInt(byId('cb-custom-w').value, 10) || 1200;
+            let customH = parseInt(byId('cb-custom-h').value, 10) || 1800;
+            let customDpi = parseInt(byId('cb-custom-dpi').value, 10) || 300;
+
+            return {
+                paperPreset,
+                width: paperPreset === 'custom' ? customW : undefined,
+                height: paperPreset === 'custom' ? customH : undefined,
+                dpi: paperPreset === 'custom' ? customDpi : undefined,
+                name: byId('cb-theme-name').value.trim() || 'ธีมใหม่กำหนดเอง',
+                backgroundColor: byId('cb-bg-color').value || '#FFFFFF',
+                photoCount: cbState.photoCount,
+                aspectRatio: byId('cb-aspect-ratio').value,
+                layoutStyle: byId('cb-layout-style').value,
+                marginType: byId('cb-margin-type').value,
+                gapType: byId('cb-gap-type').value,
+                hfType: byId('cb-hf-type').value
+            };
+        }
+
+        function updateCbPreview() {
+            const config = getCbConfig();
+            const previewTpl = engine.generateCustomTemplate(config);
+            if (!previewTpl || !previewTpl.canvas) return;
+
+            const canvasW = previewTpl.canvas.width;
+            const canvasH = previewTpl.canvas.height;
+            const metaEl = byId('cb-preview-meta');
+            if (metaEl) metaEl.textContent = `${canvasW} × ${canvasH} px · ${previewTpl.canvas.dpi} DPI`;
+
+            const summaryEl = byId('cb-preview-summary');
+            if (summaryEl) {
+                const printNote = previewTpl.printSettings?.printTwoPerPage ? ' · ตัดครึ่ง 2 แถบอัตโนมัติ' : '';
+                summaryEl.textContent = `ขนาด ${canvasW}×${canvasH} px · ${previewTpl.slots.length} รูป (${previewTpl.layoutId.split('_')[1] || '3:4'})${printNote}`;
+            }
+
+            const canvasEl = byId('cb-preview-canvas');
+            if (!canvasEl) return;
+
+            const maxBoxW = 280;
+            const maxBoxH = 340;
+            const scale = Math.min(maxBoxW / canvasW, maxBoxH / canvasH);
+            const dispW = Math.round(canvasW * scale);
+            const dispH = Math.round(canvasH * scale);
+
+            canvasEl.style.width = `${dispW}px`;
+            canvasEl.style.height = `${dispH}px`;
+            canvasEl.style.backgroundColor = previewTpl.canvas.backgroundColor || '#FFFFFF';
+
+            let slotsHtml = '';
+            previewTpl.slots.forEach(slot => {
+                const sx = Math.round(slot.x * scale);
+                const sy = Math.round(slot.y * scale);
+                const sw = Math.round(slot.width * scale);
+                const sh = Math.round(slot.height * scale);
+
+                slotsHtml += `
+                    <div style="position:absolute; left:${sx}px; top:${sy}px; width:${sw}px; height:${sh}px; background:#F0F4FF; border:1.5px dashed #4C65FF; border-radius:3px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#4C65FF; font-weight:bold; font-size:${Math.max(9, Math.round(11 * scale * 2))}px; pointer-events:none;">
+                        <span>#${slot.index}</span>
+                    </div>
+                `;
+            });
+
+            const safe = previewTpl.canvas.safeMargin;
+            const sLeft = Math.round(safe.left * scale);
+            const sTop = Math.round(safe.top * scale);
+            const sW = Math.round((canvasW - safe.left - safe.right) * scale);
+            const sH = Math.round((canvasH - safe.top - safe.bottom) * scale);
+            slotsHtml += `
+                <div style="position:absolute; left:${sLeft}px; top:${sTop}px; width:${sW}px; height:${sH}px; border:1px dashed rgba(239, 68, 68, 0.4); pointer-events:none;"></div>
+            `;
+
+            canvasEl.innerHTML = slotsHtml;
+        }
+
+        function applyCustomCanvasBuilder() {
+            const config = getCbConfig();
+            const newTemplate = engine.generateCustomTemplate(config);
+            
+            draft = newTemplate;
+            selectedSlotIndex = draft.slots[0]?.index || 1;
+            
+            historyStack = []; 
+            historyIndex = -1;
+            pushHistory();
+            writeForms();
+            renderAll();
+            closeCanvasBuilderModal();
+            switchView('editor');
+            toast(`✨ สร้างหน้ากระดาษ "${draft.name}" เรียบร้อยแล้ว! พร้อมเริ่มตกแต่ง`);
+        }
+
+        let currentView = 'editor';
+        let managerFilter = 'all';
+
+        function switchView(viewName) {
+            currentView = viewName;
+            const isEditor = viewName === 'editor';
+            
+            byId('view-editor').classList.toggle('hidden', !isEditor);
+            byId('view-manager').classList.toggle('hidden', isEditor);
+            
+            byId('editor-actions').classList.toggle('hidden', !isEditor);
+            byId('manager-actions').classList.toggle('hidden', isEditor);
+
+            byId('tab-btn-editor').className = `view-tab-btn ${isEditor ? 'active' : ''}`;
+            byId('tab-btn-manager').className = `view-tab-btn ${!isEditor ? 'active' : ''}`;
+
+            if (!isEditor) {
+                renderThemeManager();
+            } else {
+                renderAll();
+            }
+
+            const url = new URL(window.location);
+            if (viewName === 'manager') url.searchParams.set('view', 'manager');
+            else url.searchParams.delete('view');
+            window.history.replaceState({}, '', url);
+        }
+
+        function setManagerFilter(filterKey) {
+            managerFilter = filterKey;
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filterKey);
+            });
+            renderThemeManager();
+        }
+
+        function updateStockBadge() {
+            const customThemes = TemplateCatalog.loadCustom();
+            const uthemes = (window.UniversalThemeStore && UniversalThemeStore.load()) || [];
+            const badge = byId('badge-custom-count');
+            if (badge) badge.textContent = customThemes.length;
+            const statTotal = byId('stat-total-themes');
+            if (statTotal) statTotal.textContent = customThemes.length;
+            const statActive = byId('stat-active-themes');
+            if (statActive) statActive.textContent = customThemes.filter(t => t.enabled !== false).length;
+            const statStock = byId('stat-stock-themes');
+            if (statStock) statStock.textContent = customThemes.filter(t => t.enabled === false).length;
+            const statUni = byId('stat-universal-count');
+            if (statUni) statUni.textContent = `${uthemes.length} ธีม`;
+        }
+
+        function renderThemeManager() {
+            updateStockBadge();
+            renderUniversalThemes();
+            const customThemes = TemplateCatalog.loadCustom();
+            const searchVal = (byId('manager-search-input')?.value || '').trim().toLowerCase();
+
+            let filtered = customThemes.filter(t => {
+                if (searchVal && !t.name.toLowerCase().includes(searchVal) && !t.layoutId.toLowerCase().includes(searchVal)) {
+                    return false;
+                }
+                if (managerFilter === 'active') return t.enabled !== false;
+                if (managerFilter === 'stock') return t.enabled === false;
+                if (managerFilter === '2x6') return t.type === '2x6';
+                if (managerFilter === '4x6') return t.type === '4x6';
+                if (managerFilter === 'thermal') return String(t.type || '').startsWith('thermal');
+                if (managerFilter === 'photo5x7') return t.type === 'photo5x7';
+                if (managerFilter === 'universal') return !!t.universalThemeId || (t.templateId && t.templateId.startsWith('custom_'));
+                return true;
+            });
+
+            const grid = byId('theme-manager-grid');
+            const empty = byId('theme-manager-empty');
+
+            if (!filtered.length) {
+                grid.innerHTML = '';
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            grid.classList.remove('hidden');
+            grid.innerHTML = '';
+
+            filtered.forEach(theme => {
+                const isEnabled = theme.enabled !== false;
+                const card = document.createElement('div');
+                card.className = `theme-card ${isEnabled ? 'border-green-200' : ''}`;
+
+                const previewHtml = buildThemeCardPreviewHtml(theme);
+
+                const typeMap = {
+                    '2x6': '2×6 Photo Strip',
+                    '4x6': theme.orientation === 'landscape' ? '4×6 Landscape' : '4×6 Portrait',
+                    'thermal58': 'Thermal 58mm',
+                    'thermal80': 'Thermal 80mm',
+                    'thermal100': 'Thermal 100mm',
+                    'photo5x7': '5×7 Photo Card'
+                };
+
+                const typeLabel = typeMap[theme.type] || theme.type || 'Custom Format';
+
+                card.innerHTML = `
+                    <div class="theme-thumb-wrap cursor-pointer" onclick="editTheme('${theme.templateId}')" title="คลิกเพื่อแก้ไขธีมนี้">
+                        ${previewHtml}
+                    </div>
+                    <div class="theme-card-body">
+                        <div class="flex items-start justify-between gap-2">
+                            <h3 class="font-bold text-gray-900 text-sm line-clamp-1 flex-1 leading-snug cursor-pointer hover:text-accent-blue" onclick="editTheme('${theme.templateId}')" title="${escapeHtml(theme.name)}">${escapeHtml(theme.name)}</h3>
+                            <button type="button" onclick="toggleThemeEnabled('${theme.templateId}')" class="theme-toggle-btn ${isEnabled ? 'enabled' : 'disabled'} shrink-0" title="คลิกเพื่อสลับเปิด/ปิดใช้งานในตู้">
+                                <span class="material-symbols-outlined text-xs">${isEnabled ? 'check_circle' : 'radio_button_unchecked'}</span>
+                                <span>${isEnabled ? 'เปิดใช้ในตู้' : 'สต็อก/ปิด'}</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                            <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
+                                <span class="material-symbols-outlined text-[13px]">crop</span> ${typeLabel}
+                            </span>
+                            <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
+                                <span class="material-symbols-outlined text-[13px]">grid_view</span> ${theme.slots.length} รูป
+                            </span>
+                            ${theme.universalThemeId ? `
+                                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/70 px-2 py-0.5 rounded text-[11px] font-bold">
+                                    <span class="material-symbols-outlined text-[12px] text-amber-600">auto_awesome</span> Universal
+                                </span>
+                            ` : ''}
+                        </div>
+                        <div class="border-t border-gray-100 pt-2.5 mt-auto flex items-center justify-between gap-2">
+                            <button type="button" onclick="editTheme('${theme.templateId}')" class="editor-button flex items-center gap-1 text-xs py-1 px-2.5">
+                                <span class="material-symbols-outlined text-sm">edit</span> แก้ไขใน Editor
+                            </button>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="duplicateTheme('${theme.templateId}')" class="editor-button text-xs p-1.5" title="คัดลอกเป็นธีมใหม่">
+                                    <span class="material-symbols-outlined text-sm text-gray-600">content_copy</span>
+                                </button>
+                                <button type="button" onclick="deleteTheme('${theme.templateId}')" class="editor-button danger text-xs p-1.5" title="ลบออกจากสต็อก">
+                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function buildThemeCardPreviewHtml(theme) {
+            if (!theme || !theme.canvas) return '';
+
+            const canvasW = theme.canvas.width || 600;
+            const canvasH = theme.canvas.height || 1800;
+            const ratioMultiplier = canvasH / canvasW;
+
+            let stageAspect = '';
+            if (ratioMultiplier >= 1) { // 2x6 strip, portrait 4x6, thermal, 5x7
+                const h = 150;
+                const w = Math.max(36, Math.round(h / ratioMultiplier));
+                stageAspect = `height:${h}px; width:${w}px;`;
+            } else { // 4x6 landscape
+                const w = 190;
+                const h = Math.max(40, Math.round(w * ratioMultiplier));
+                stageAspect = `width:${w}px; height:${h}px;`;
+            }
+
+            const bg = (theme.canvas && theme.canvas.backgroundColor) ? theme.canvas.backgroundColor : '#FFFFFF';
+            let bgImg = '';
+            if (theme.canvas && theme.canvas.backgroundImage) {
+                const fit = theme.canvas.backgroundFitMode || 'cover';
+                const size = fit === 'stretch' ? '100% 100%' : (fit === 'tile' ? 'auto' : fit);
+                const rep = fit === 'tile' ? 'repeat' : 'no-repeat';
+                bgImg = `background-image:url('${theme.canvas.backgroundImage}'); background-size:${size}; background-position:center; background-repeat:${rep};`;
+            }
+
+            // 1. Artboard Back Layers (Stickers / Background Elements)
+            const backLayers = (theme.artboard || []).filter(l => l.placement === 'back' && l.visible !== false);
+            const backHtml = backLayers.slice().sort((a,b) => (a.zIndex||0) - (b.zIndex||0)).map(l => {
+                const left = (l.x / canvasW * 100).toFixed(2);
+                const top = (l.y / canvasH * 100).toFixed(2);
+                const width = (l.width / canvasW * 100).toFixed(2);
+                const height = (l.height / canvasH * 100).toFixed(2);
+                const rot = l.rotation || 0;
+                const op = l.opacity !== undefined ? l.opacity : 1;
+                const z = (l.zIndex || 1) + 1;
+                return `<div style="position:absolute; left:${left}%; top:${top}%; width:${width}%; height:${height}%; transform:rotate(${rot}deg); background-image:url('${l.url}'); background-size:contain; background-repeat:no-repeat; background-position:center; opacity:${op}; z-index:${z}; pointer-events:none;"></div>`;
+            }).join('');
+
+            // 2. Photo Slots (Realistic Portrait Photobooth Simulation)
+            const slotsHtml = (theme.slots || []).slice().sort((a,b) => (a.zIndex||0) - (b.zIndex||0)).map(s => {
+                const l = (s.x / canvasW * 100).toFixed(2);
+                const t = (s.y / canvasH * 100).toFixed(2);
+                const w = (s.width / canvasW * 100).toFixed(2);
+                const h = (s.height / canvasH * 100).toFixed(2);
+                const rot = s.rotation || 0;
+                const z = (s.zIndex || 1) + 10;
+                return `
+                    <div style="position:absolute; left:${l}%; top:${t}%; width:${w}%; height:${h}%; transform:rotate(${rot}deg); z-index:${z}; background:linear-gradient(145deg, #EEF2F6 0%, #E2E8F0 50%, #CBD5E1 100%); border:1px solid rgba(0,0,0,0.1); border-radius:2px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,0.06);">
+                        <span class="material-symbols-outlined" style="font-size:11px; color:#64748B; opacity:0.75;">account_circle</span>
+                    </div>
+                `;
+            }).join('');
+
+            // 3. Artboard Front Layers (Decorations, text, stickers, foreground frames)
+            const frontLayers = (theme.artboard || []).filter(l => l.placement === 'front' && l.visible !== false);
+            const frontHtml = frontLayers.slice().sort((a,b) => (a.zIndex||0) - (b.zIndex||0)).map(l => {
+                const left = (l.x / canvasW * 100).toFixed(2);
+                const top = (l.y / canvasH * 100).toFixed(2);
+                const width = (l.width / canvasW * 100).toFixed(2);
+                const height = (l.height / canvasH * 100).toFixed(2);
+                const rot = l.rotation || 0;
+                const op = l.opacity !== undefined ? l.opacity : 1;
+                const z = (l.zIndex || 1) + 200;
+                return `<div style="position:absolute; left:${left}%; top:${top}%; width:${width}%; height:${height}%; transform:rotate(${rot}deg); background-image:url('${l.url}'); background-size:contain; background-repeat:no-repeat; background-position:center; opacity:${op}; z-index:${z}; pointer-events:none;"></div>`;
+            }).join('');
+
+            // 4. Overlay Frame PNG
+            const overlayHtml = (theme.overlay && theme.overlay.url) 
+                ? `<img src="${theme.overlay.url}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:${theme.overlay.fitMode === 'stretch' ? 'fill' : (theme.overlay.fitMode || 'cover')}; pointer-events:none; z-index:300;">` 
+                : '';
+
+            return `
+                <div style="position:relative; ${stageAspect}; background-color:${bg}; ${bgImg}; border:1px solid rgba(0,0,0,0.1); box-shadow:0 4px 16px rgba(0,0,0,0.1); border-radius:4px; overflow:hidden;">
+                    ${backHtml}
+                    ${slotsHtml}
+                    ${frontHtml}
+                    ${overlayHtml}
+                </div>
+            `;
+        }
+
+        function toggleThemeEnabled(templateId) {
+            const customThemes = TemplateCatalog.loadCustom();
+            const theme = customThemes.find(t => t.templateId === templateId);
+            if (theme) {
+                theme.enabled = !theme.enabled;
+                TemplateCatalog.upsert(theme);
+                renderThemeManager();
+                toast(theme.enabled ? `🟢 เปิดใช้งานธีม "${theme.name}" สำหรับตู้ Kiosk แล้ว` : `⚪ พักเก็บธีม "${theme.name}" ในสต็อกแล้ว`);
+            }
+        }
+
+        function editTheme(templateId) {
+            const catalog = TemplateCatalog.load();
+            const found = catalog.find(t => t.templateId === templateId);
+            if (found) {
+                draft = engine.clone(found);
+                selectedSlotIndex = draft.slots[0]?.index || 1;
+                historyStack = []; historyIndex = -1;
+                pushHistory();
+                writeForms();
+                switchView('editor');
+                toast(`กำลังแก้ไขธีม: ${draft.name}`);
+            }
+        }
+
+        function duplicateTheme(templateId) {
+            const catalog = TemplateCatalog.load();
+            const found = catalog.find(t => t.templateId === templateId);
+            if (found) {
+                const cloned = engine.clone(found);
+                cloned.templateId = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+                cloned.name = `${found.name} (Copy)`;
+                cloned.isCustom = true;
+                TemplateCatalog.upsert(cloned);
+                renderThemeManager();
+                toast(`คัดลอกธีมเป็น "${cloned.name}" แล้ว`);
+            }
+        }
+
+        function deleteTheme(templateId) {
+            const customThemes = TemplateCatalog.loadCustom();
+            const theme = customThemes.find(t => t.templateId === templateId);
+            const name = theme ? theme.name : 'this theme';
+            if (!confirm(`ต้องการลบธีม "${name}" ออกจากสต็อกหรือไม่?`)) return;
+            TemplateCatalog.remove(templateId);
+            renderThemeManager();
+            toast(`ลบธีม "${name}" แล้ว`);
+        }
+
+        function createNewThemeFromManager() {
+            switchView('editor');
+            openCanvasBuilderModal();
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             const status = await adminGetPinStatus();
             if (!status.authenticated) { window.location.href = `admin.html${location.search}`; return; }
+            
             catalog = TemplateCatalog.load();
-            selectTemplate(catalog[0].templateId);
-            templateInputIds.forEach(id => byId(id).addEventListener('input', readTemplateForm));
-            slotInputIds.forEach(id => byId(id).addEventListener('input', readSlotForm));
-            artInputIds.forEach(id => byId(id).addEventListener('input', readArtForm));
-            byId('art-placement').addEventListener('change', readArtForm);
+            const presets = TemplateCatalog.loadPresets();
+            const customThemes = TemplateCatalog.loadCustom();
+
+            // Default draft is first custom theme or first preset
+            if (customThemes.length > 0) {
+                draft = engine.clone(customThemes[0]);
+            } else {
+                draft = engine.clone(presets[0]);
+                draft.templateId = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+                draft.name = 'My First Theme';
+                draft.isCustom = true;
+            }
+
+            selectedSlotIndex = draft.slots[0]?.index || 1;
+            pushHistory();
+            writeForms();
+            renderAll();
+            updateStockBadge();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('view') === 'manager') {
+                switchView('manager');
+            } else {
+                switchView('editor');
+            }
+
+            templateInputIds.forEach(id => byId(id).addEventListener('input', () => { readTemplateForm(); pushHistory(); }));
+            slotInputIds.forEach(id => byId(id).addEventListener('input', () => { readSlotForm(); pushHistory(); }));
+            artInputIds.forEach(id => byId(id).addEventListener('input', () => { readArtForm(); pushHistory(); }));
+            byId('art-placement').addEventListener('change', () => { readArtForm(); pushHistory(); });
             byId('canvas-preset').addEventListener('change', changeCanvasPreset);
+            byId('background-fit-mode').addEventListener('change', () => { readTemplateForm(); pushHistory(); });
+            byId('overlay-fit-mode').addEventListener('change', () => { readTemplateForm(); pushHistory(); });
             byId('show-safe-zone').addEventListener('change', renderStage);
             byId('show-bleed-zone').addEventListener('change', renderStage);
+            byId('show-header-footer').addEventListener('change', renderStage);
             byId('overlay-file').addEventListener('change', uploadOverlay);
             byId('background-image-file').addEventListener('change', uploadBackgroundImage);
             byId('artboard-file').addEventListener('change', uploadArtAssets);
             byId('import-file').addEventListener('change', importCatalog);
+            
+            const wrap = byId('stage-wrap');
+            wrap.addEventListener('wheel', e => {
+                e.preventDefault();
+                const rect = wrap.getBoundingClientRect();
+                zoomBy(e.deltaY > 0 ? -0.1 : 0.1, e.clientX - rect.left, e.clientY - rect.top);
+            });
+            wrap.addEventListener('pointerdown', e => {
+                if(e.button === 1 || (e.button === 0 && e.shiftKey && !e.target.closest('.editor-slot') && !e.target.closest('.editor-art'))) {
+                    isPanning = true;
+                    panStartState = { x: e.clientX, y: e.clientY, panX: viewport.panX, panY: viewport.panY };
+                    wrap.classList.add('panning');
+                    wrap.setPointerCapture(e.pointerId);
+                }
+            });
+            wrap.addEventListener('pointermove', e => {
+                if(isPanning) {
+                    viewport.panX = panStartState.panX + (e.clientX - panStartState.x);
+                    viewport.panY = panStartState.panY + (e.clientY - panStartState.y);
+                    applyViewport();
+                }
+            });
+            wrap.addEventListener('pointerup', e => {
+                if(isPanning) { isPanning = false; wrap.classList.remove('panning'); wrap.releasePointerCapture(e.pointerId); }
+            });
+            
+            document.addEventListener('keydown', e => {
+                if(e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+                if((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) { e.preventDefault(); redo(); }
+                if(e.ctrlKey && e.key === '=') { e.preventDefault(); zoomBy(0.1); }
+                if(e.ctrlKey && e.key === '-') { e.preventDefault(); zoomBy(-0.1); }
+                if(e.ctrlKey && e.key === '0') { e.preventDefault(); zoomToFit(); }
+                
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                        if (selectedLayer === 'slots') removeSelectedSlot();
+                        else if (selectedLayer === 'overlay') removeArtboardLayer();
+                    }
+                }
+            });
         });
+        
+        function pushHistory() {
+            if (historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
+            historyStack.push(JSON.parse(JSON.stringify(draft)));
+            if (historyStack.length > 50) historyStack.shift();
+            else historyIndex++;
+            updateHistoryButtons();
+        }
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                draft = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+                writeForms(); renderAll(); updateHistoryButtons();
+            }
+        }
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                draft = JSON.parse(JSON.stringify(historyStack[historyIndex]));
+                writeForms(); renderAll(); updateHistoryButtons();
+            }
+        }
+        function updateHistoryButtons() {
+            const u = byId('undo-btn'); const r = byId('redo-btn');
+            if(u) { 
+                u.disabled = historyIndex <= 0; 
+                u.title = `Undo (${historyIndex > 0 ? historyIndex : 0})`; 
+            }
+            if(r) { 
+                r.disabled = historyIndex >= historyStack.length - 1; 
+                r.title = `Redo (${historyStack.length - 1 - historyIndex})`; 
+            }
+        }
 
+        function zoomBy(delta, cx, cy) {
+            const wrap = byId('stage-wrap');
+            if(!cx) {
+                const rect = wrap.getBoundingClientRect();
+                cx = rect.width / 2; cy = rect.height / 2;
+            }
+            const old = viewport.scale;
+            let next = Math.max(0.25, Math.min(4.0, old + delta));
+            viewport.panX -= (cx - viewport.panX) * (next/old - 1);
+            viewport.panY -= (cy - viewport.panY) * (next/old - 1);
+            viewport.scale = next;
+            applyViewport();
+        }
+        function setZoom(scale) {
+            viewport.scale = scale; viewport.panX = 0; viewport.panY = 0;
+            applyViewport();
+        }
+        function zoomToFit() { setZoom(1); }
+        function applyViewport() {
+            const vp = byId('editor-viewport');
+            if(vp) vp.style.transform = `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.scale})`;
+            const zl = byId('zoom-level');
+            if(zl) zl.textContent = Math.round(viewport.scale * 100) + '%';
+        }
+
+        let templateGroupCollapsedState = {};
+
+        function toggleTemplateGroup(groupKey) {
+            templateGroupCollapsedState[groupKey] = !templateGroupCollapsedState[groupKey];
+            renderTemplateList();
+        }
+
+        function getTemplateGroupKey(t) {
+            if (!t) return '2x6';
+            if (t.type === 'thermal58' || (t.templateId && t.templateId.includes('thermal58')) || (t.name && t.name.includes('Thermal 58mm'))) return 'thermal58';
+            if (t.type === 'thermal80' || (t.templateId && t.templateId.includes('thermal80')) || (t.name && t.name.includes('Thermal 80mm'))) return 'thermal80';
+            if (t.type === 'thermal100' || (t.templateId && t.templateId.includes('thermal100')) || (t.name && t.name.includes('Thermal 100mm'))) return 'thermal100';
+            if (t.type === 'photo5x7' || (t.templateId && t.templateId.includes('photo5x7')) || (t.name && t.name.includes('5x7'))) return 'photo5x7';
+            if (t.type === '4x6') return t.orientation === 'landscape' ? '4x6-landscape' : '4x6-portrait';
+            if (t.type === '2x6') return '2x6';
+            return 'other';
+        }
+
+        // Render Starter Layout Presets only (Left Sidebar)
         function renderTemplateList() {
-            byId('template-list').innerHTML = '';
-            catalog.forEach(template => {
-                const button = document.createElement('button');
-                button.className = template.templateId === draft.templateId ? 'active' : '';
-                button.innerHTML = `<strong class="block">${escapeHtml(template.name)}</strong><small class="text-gray-500">${template.type} · ${template.layoutId} · ${template.slots.length} slots${template.enabled ? '' : ' · disabled'}</small>`;
-                button.onclick = () => selectTemplate(template.templateId);
-                byId('template-list').appendChild(button);
+            const listEl = byId('template-list');
+            listEl.innerHTML = '';
+
+            const presets = TemplateCatalog.loadPresets();
+
+            const groups = [
+                {
+                    key: '2x6',
+                    label: '2×6 Photo Strip',
+                    icon: 'view_agenda',
+                    templates: presets.filter(t => t.type === '2x6')
+                },
+                {
+                    key: '4x6-portrait',
+                    label: '4×6 Portrait',
+                    icon: 'crop_portrait',
+                    templates: presets.filter(t => t.type === '4x6' && t.orientation !== 'landscape')
+                },
+                {
+                    key: '4x6-landscape',
+                    label: '4×6 Landscape',
+                    icon: 'crop_landscape',
+                    templates: presets.filter(t => t.type === '4x6' && t.orientation === 'landscape')
+                },
+                {
+                    key: 'thermal58',
+                    label: 'Thermal 58mm (ใบเสร็จเล็ก)',
+                    icon: 'receipt',
+                    templates: presets.filter(t => getTemplateGroupKey(t) === 'thermal58')
+                },
+                {
+                    key: 'thermal80',
+                    label: 'Thermal 80mm (ใบเสร็จมาตรฐาน)',
+                    icon: 'receipt_long',
+                    templates: presets.filter(t => getTemplateGroupKey(t) === 'thermal80')
+                },
+                {
+                    key: 'thermal100',
+                    label: 'Thermal 100mm (ใบเสร็จกว้าง)',
+                    icon: 'receipt_long',
+                    templates: presets.filter(t => getTemplateGroupKey(t) === 'thermal100')
+                },
+                {
+                    key: 'photo5x7',
+                    label: '5×7 Photo Card',
+                    icon: 'photo_size_select_actual',
+                    templates: presets.filter(t => getTemplateGroupKey(t) === 'photo5x7')
+                }
+            ];
+
+            // Auto-expand group containing current layout if uninitialized
+            if (draft) {
+                const activeKey = getTemplateGroupKey(draft);
+                if (templateGroupCollapsedState[activeKey] === undefined) {
+                    templateGroupCollapsedState[activeKey] = false;
+                }
+            }
+
+            groups.forEach(group => {
+                if (!group.templates.length) return;
+
+                const isCollapsed = templateGroupCollapsedState[group.key] === true;
+
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `template-group ${isCollapsed ? 'collapsed' : ''}`;
+
+                const header = document.createElement('div');
+                header.className = 'template-group-header';
+                header.onclick = () => toggleTemplateGroup(group.key);
+                header.innerHTML = `
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="material-symbols-outlined text-gray-500 text-[16px]">${group.icon}</span>
+                        <span class="truncate">${group.label}</span>
+                        <span class="text-[10px] text-gray-400 font-normal">(${group.templates.length})</span>
+                    </div>
+                    <span class="template-group-caret"><span class="material-symbols-outlined text-sm">expand_more</span></span>
+                `;
+
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'template-group-items';
+
+                group.templates.forEach(preset => {
+                    const button = document.createElement('button');
+                    const isActive = draft && draft.layoutId === preset.layoutId && draft.type === preset.type && (draft.orientation || 'portrait') === (preset.orientation || 'portrait');
+                    button.className = isActive ? 'active' : '';
+                    button.innerHTML = `
+                        <strong class="block text-xs font-bold leading-tight">${escapeHtml(preset.name)}</strong>
+                        <small class="text-gray-500 text-[11px] block mt-0.5">${preset.layoutId} · ${preset.slots.length} ช่อง</small>
+                    `;
+                    button.onclick = () => selectPreset(preset);
+                    itemsDiv.appendChild(button);
+                });
+
+                groupDiv.appendChild(header);
+                groupDiv.appendChild(itemsDiv);
+                listEl.appendChild(groupDiv);
             });
         }
 
-        function selectTemplate(templateId) {
-            draft = engine.clone(catalog.find(item => item.templateId === templateId) || catalog[0]);
+        // When user clicks a Starter Preset, create a fresh theme draft from that preset
+        function selectPreset(preset) {
+            const id = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+            draft = engine.clone(preset);
+            draft.templateId = id;
+            draft.name = `ธีมใหม่ · ${preset.name}`;
+            draft.isCustom = true;
+            draft.enabled = true;
             selectedSlotIndex = draft.slots[0]?.index || 1;
+            
+            const groupKey = getTemplateGroupKey(draft);
+            templateGroupCollapsedState[groupKey] = false;
+            
+            historyStack = []; historyIndex = -1;
+            pushHistory();
             writeForms();
             renderAll();
+            toast(`โหลดโครงร่าง ${preset.name} สำหรับเริ่มออกแบบแล้ว`);
         }
 
         function writeForms() {
             byId('template-name').value = draft.name;
             byId('layout-id').value = draft.layoutId;
-            byId('template-enabled').checked = draft.enabled;
-            byId('canvas-preset').value = draft.type === '4x6' ? (draft.orientation === 'landscape' ? '4x6-landscape' : '4x6-portrait') : '2x6';
+            byId('template-enabled').checked = draft.enabled !== false;
+            
+            const groupKey = getTemplateGroupKey(draft);
+            if (['thermal58', 'thermal80', 'thermal100', 'photo5x7', '2x6', '4x6-portrait', '4x6-landscape'].includes(groupKey)) {
+                byId('canvas-preset').value = groupKey;
+            } else if (draft.type === '4x6') {
+                byId('canvas-preset').value = draft.orientation === 'landscape' ? '4x6-landscape' : '4x6-portrait';
+            } else {
+                byId('canvas-preset').value = '2x6';
+            }
+
             byId('background-color').value = draft.canvas.backgroundColor;
+            if (byId('background-fit-mode')) byId('background-fit-mode').value = draft.canvas.backgroundFitMode || 'cover';
+            if (byId('overlay-fit-mode')) byId('overlay-fit-mode').value = (draft.overlay && draft.overlay.fitMode) || 'cover';
             ['top','right','bottom','left'].forEach(side => byId(`safe-${side}`).value = draft.canvas.safeMargin[side]);
             ['top','right','bottom','left'].forEach(side => byId(`bleed-${side}`).value = draft.canvas.bleedMargin[side]);
             selectedArtId = draft.artboard.length ? draft.artboard[draft.artboard.length - 1].id : null;
+            const parsed = engine.parseLayout ? engine.parseLayout(draft.layoutId) : { ratio: '3x4' };
+            const lSelect = byId('layout-ratio-select');
+            if (lSelect) lSelect.value = parsed.ratio || '3x4';
             writeSlotForm();
             if (selectedArtId) writeArtForm();
         }
@@ -260,6 +1921,24 @@
             byId('slot-width').value = slot.width; byId('slot-height').value = slot.height;
             byId('slot-rotation').value = slot.rotation; byId('slot-z').value = slot.zIndex;
             byId('slot-focus-x').value = slot.focusX; byId('slot-focus-y').value = slot.focusY;
+
+            const ratio = slot.width / slot.height;
+            let ratioName = `${slot.width}×${slot.height}px`;
+            let activeRatioKey = '';
+            if (Math.abs(ratio - 1.0) < 0.04) { ratioName = '1:1 (Square)'; activeRatioKey = '1:1'; }
+            else if (Math.abs(ratio - 3/4) < 0.04) { ratioName = '3:4 (Portrait)'; activeRatioKey = '3:4'; }
+            else if (Math.abs(ratio - 4/3) < 0.04) { ratioName = '4:3 (Landscape)'; activeRatioKey = '4:3'; }
+            else if (Math.abs(ratio - 16/9) < 0.04) { ratioName = '16:9 (Wide)'; activeRatioKey = '16:9'; }
+            else if (Math.abs(ratio - 9/16) < 0.04) { ratioName = '9:16 (Story)'; activeRatioKey = '9:16'; }
+            else if (Math.abs(ratio - 2/3) < 0.04) { ratioName = '2:3 (Film)'; activeRatioKey = '2:3'; }
+            else if (Math.abs(ratio - 3/2) < 0.04) { ratioName = '3:2 (Film)'; activeRatioKey = '3:2'; }
+            
+            const rLabel = byId('current-slot-ratio');
+            if (rLabel) rLabel.textContent = ratioName;
+
+            document.querySelectorAll('.ratio-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.ratio === activeRatioKey);
+            });
         }
 
         function readTemplateForm() {
@@ -267,6 +1946,11 @@
             draft.layoutId = byId('layout-id').value;
             draft.enabled = byId('template-enabled').checked;
             draft.canvas.backgroundColor = byId('background-color').value;
+            if (byId('background-fit-mode')) draft.canvas.backgroundFitMode = byId('background-fit-mode').value;
+            if (byId('overlay-fit-mode')) {
+                if (!draft.overlay) draft.overlay = { url: '', zIndex: 100 };
+                draft.overlay.fitMode = byId('overlay-fit-mode').value;
+            }
             ['top','right','bottom','left'].forEach(side => draft.canvas.safeMargin[side] = Number(byId(`safe-${side}`).value));
             ['top','right','bottom','left'].forEach(side => draft.canvas.bleedMargin[side] = Number(byId(`bleed-${side}`).value));
             draft = engine.normalizeTemplate(draft);
@@ -309,11 +1993,11 @@
                 const label = document.createElement('div');
                 label.innerHTML = `<span class="layer-label">${row.label}</span><span class="layer-sub block">${row.sub}</span>`;
                 const eye = document.createElement('button');
-                eye.className = 'editor-button';
+                eye.className = 'editor-button flex items-center justify-center';
                 eye.title = 'Toggle visibility';
                 eye.style.minHeight = '28px';
                 eye.style.padding = '4px 8px';
-                eye.textContent = row.visible ? '👁' : '🚫';
+                eye.innerHTML = `<span class="material-symbols-outlined text-[16px] text-gray-600">${row.visible ? 'visibility' : 'visibility_off'}</span>`;
                 eye.onclick = event => { event.stopPropagation(); layerVisibility[row.key] = !layerVisibility[row.key]; renderLayerList(); renderStage(); };
                 div.onclick = () => {
                     selectedLayer = row.key;
@@ -330,7 +2014,17 @@
             });
         }
 
+        function toggleAccordion(id) {
+            const el = byId(id);
+            if (!el) return;
+            el.classList.toggle('collapsed');
+        }
+
         function renderSlotList() {
+            const countEl = byId('acc-slots-count');
+            if (countEl && draft && draft.slots) {
+                countEl.textContent = `${draft.slots.length} slot${draft.slots.length > 1 ? 's' : ''}`;
+            }
             byId('slot-list').innerHTML = '';
             draft.slots.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(slot => {
                 const button = document.createElement('button');
@@ -378,6 +2072,10 @@
         }
 
         function renderArtLayerList() {
+            const countEl = byId('acc-art-count');
+            if (countEl && draft && draft.artboard) {
+                countEl.textContent = `${draft.artboard.length} layer${draft.artboard.length > 1 ? 's' : ''}`;
+            }
             const list = byId('artboard-layer-list');
             list.innerHTML = '';
             draft.artboard.slice().sort((a, b) => a.zIndex - b.zIndex).forEach(layer => {
@@ -389,8 +2087,8 @@
                 const label = document.createElement('div');
                 label.innerHTML = `<span class="layer-label">${escapeHtml(layer.name)}</span><span class="layer-sub block">${layer.placement === 'back' ? 'แบ็กกราวด์' : 'กรอบ'} · x${layer.x} y${layer.y} · ${layer.width}×${layer.height} · z${layer.zIndex}${layer.visible === false ? ' · hidden' : ''}</span>`;
                 const eye = document.createElement('button');
-                eye.className = 'editor-button'; eye.style.minHeight = '28px'; eye.style.padding = '4px 8px';
-                eye.textContent = layer.visible === false ? '🚫' : '👁';
+                eye.className = 'editor-button flex items-center justify-center'; eye.style.minHeight = '28px'; eye.style.padding = '4px 8px';
+                eye.innerHTML = `<span class="material-symbols-outlined text-[16px] text-gray-600">${layer.visible === false ? 'visibility_off' : 'visibility'}</span>`;
                 eye.onclick = event => { event.stopPropagation(); layer.visible = layer.visible === false; draft = engine.normalizeTemplate(draft); renderArtLayerList(); renderStage(); };
                 div.onclick = () => selectArtLayer(layer.id);
                 div.appendChild(swatch); div.appendChild(label); div.appendChild(eye);
@@ -444,12 +2142,14 @@
                 draft.artboard.push(layer);
                 draft = engine.normalizeTemplate(draft);
                 selectedArtId = layer.id;
+                pushHistory();
                 writeArtForm(); renderAll();
             };
             probe.onerror = () => {
                 draft.artboard.push(layer);
                 draft = engine.normalizeTemplate(draft);
                 selectedArtId = layer.id;
+                pushHistory();
                 writeArtForm(); renderAll();
             };
             probe.src = url;
@@ -461,6 +2161,7 @@
             draft.artboard = draft.artboard.filter(item => item.id !== layer.id);
             selectedArtId = draft.artboard.length ? draft.artboard[draft.artboard.length - 1].id : null;
             draft = engine.normalizeTemplate(draft);
+            pushHistory();
             if (selectedArtId) writeArtForm(); renderAll();
         }
 
@@ -473,6 +2174,7 @@
             if (action === 'forward') layer.zIndex += 1;
             if (action === 'backward') layer.zIndex -= 1;
             draft = engine.normalizeTemplate(draft);
+            pushHistory();
             writeArtForm(); renderArtLayerList(); renderStage();
         }
 
@@ -485,8 +2187,32 @@
             stage.style.background = draft.canvas.backgroundColor;
             stage.innerHTML = '';
             if (draft.canvas.backgroundImage && layerVisibility.background) {
-                const bg = document.createElement('img'); bg.className = 'editor-bg'; bg.src = draft.canvas.backgroundImage; stage.appendChild(bg);
+                const bg = document.createElement('div');
+                bg.className = 'editor-bg';
+                const fit = draft.canvas.backgroundFitMode || 'cover';
+                let size = fit === 'stretch' ? '100% 100%' : (fit === 'tile' ? 'auto' : fit);
+                let repeat = fit === 'tile' ? 'repeat' : 'no-repeat';
+                bg.style.backgroundImage = `url(${draft.canvas.backgroundImage})`;
+                bg.style.backgroundSize = size;
+                bg.style.backgroundRepeat = repeat;
+                bg.style.backgroundPosition = 'center';
+                stage.appendChild(bg);
             }
+            const addHandles = (element, id, isSlot) => {
+                const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+                handles.forEach(corner => {
+                    const handle = document.createElement('div');
+                    handle.className = `editor-resize-handle ${corner}`;
+                    handle.onpointerdown = event => startArtResize(event, id, corner, scale, isSlot);
+                    element.appendChild(handle);
+                });
+                // rotation handle
+                const line = document.createElement('div'); line.className = 'editor-rotation-line'; element.appendChild(line);
+                const rot = document.createElement('div'); rot.className = 'editor-rotation-handle';
+                rot.onpointerdown = event => startRotation(event, id, scale, isSlot);
+                element.appendChild(rot);
+            };
+
             const renderArtLayer = (layer, baseZ) => {
                 if (layer.visible === false) return;
                 const element = document.createElement('div');
@@ -502,15 +2228,7 @@
                 element.style.zIndex = layer.zIndex + baseZ;
                 element.onpointerdown = event => startArtDrag(event, layer.id, scale);
                 stage.appendChild(element);
-                if (layer.id === selectedArtId) {
-                    [['nw','nwse-resize'],['ne','nesw-resize'],['sw','nesw-resize'],['se','nwse-resize']].forEach(([corner, cursor]) => {
-                        const handle = document.createElement('div');
-                        handle.className = `editor-resize-handle ${corner}`;
-                        handle.style.cursor = cursor;
-                        handle.onpointerdown = event => startArtResize(event, layer.id, corner, scale);
-                        element.appendChild(handle);
-                    });
-                }
+                if (layer.id === selectedArtId) addHandles(element, layer.id, false);
             };
             const backLayers = draft.artboard.filter(layer => layer.placement === 'back');
             const frontLayers = draft.artboard.filter(layer => layer.placement === 'front');
@@ -530,13 +2248,19 @@
                     element.style.zIndex = slot.zIndex + 10;
                     element.onpointerdown = event => startDrag(event, slot.index, scale);
                     stage.appendChild(element);
+                    if (slot.index === selectedSlotIndex) addHandles(element, slot.index, true);
                 });
             }
             if (frontLayers.length) {
                 frontLayers.slice().sort((a,b) => a.zIndex - b.zIndex).forEach(layer => renderArtLayer(layer, 300));
             }
             if (draft.overlay.url && layerVisibility.overlay) {
-                const overlay = document.createElement('img'); overlay.className = 'editor-overlay'; overlay.src = draft.overlay.url; stage.appendChild(overlay);
+                const overlay = document.createElement('img');
+                overlay.className = 'editor-overlay';
+                overlay.src = draft.overlay.url;
+                const ofit = draft.overlay.fitMode || 'cover';
+                overlay.style.objectFit = ofit === 'stretch' ? 'fill' : ofit;
+                stage.appendChild(overlay);
             }
             if (byId('show-bleed-zone').checked) {
                 const bleed = document.createElement('div'); bleed.className = 'editor-bleed';
@@ -548,104 +2272,312 @@
                 safe.style.inset = `${draft.canvas.safeMargin.top / draft.canvas.height * 100}% ${draft.canvas.safeMargin.right / draft.canvas.width * 100}% ${draft.canvas.safeMargin.bottom / draft.canvas.height * 100}% ${draft.canvas.safeMargin.left / draft.canvas.width * 100}%`;
                 stage.appendChild(safe);
             }
+            if (byId('show-header-footer') && byId('show-header-footer').checked && draft.slots.length > 0) {
+                const minY = Math.min(...draft.slots.map(s => s.y));
+                const maxY = Math.max(...draft.slots.map(s => s.y + s.height));
+                if (minY >= 20) {
+                    const hg = document.createElement('div');
+                    hg.className = 'editor-header-guide';
+                    hg.style.height = `${(minY / draft.canvas.height) * 100}%`;
+                    hg.innerHTML = `<span>🏷️ Header · Logo / Title (${minY}px)</span>`;
+                    stage.appendChild(hg);
+                }
+                const footerH = draft.canvas.height - maxY;
+                if (footerH >= 20) {
+                    const fg = document.createElement('div');
+                    fg.className = 'editor-footer-guide';
+                    fg.style.height = `${(footerH / draft.canvas.height) * 100}%`;
+                    fg.innerHTML = `<span>🏷️ Footer · Logo / Brand (${footerH}px)</span>`;
+                    stage.appendChild(fg);
+                }
+            }
             const mmW = engine.pxToMm(draft.canvas.width, draft.canvas.dpi);
             const mmH = engine.pxToMm(draft.canvas.height, draft.canvas.dpi);
             byId('canvas-meta').textContent = `${draft.canvas.width} × ${draft.canvas.height}px · ${mmW} × ${mmH} mm · ${draft.canvas.dpi} DPI · ${draft.type} · ${draft.slots.length} slots`;
         }
+        
+        function getSnapCandidates(skipObj) {
+            const candidates = { x: [draft.canvas.width / 2], y: [draft.canvas.height / 2] };
+            if (draft.slots.length > 0) {
+                const minY = Math.min(...draft.slots.map(s => s.y));
+                const maxY = Math.max(...draft.slots.map(s => s.y + s.height));
+                if (minY >= 20) candidates.y.push(minY, Math.round(minY / 2));
+                if (draft.canvas.height - maxY >= 20) candidates.y.push(maxY, Math.round(maxY + (draft.canvas.height - maxY) / 2));
+            }
+            draft.slots.forEach(s => {
+                if(s !== skipObj) { candidates.x.push(s.x, s.x + s.width/2, s.x + s.width); candidates.y.push(s.y, s.y + s.height/2, s.y + s.height); }
+            });
+            draft.artboard.forEach(a => {
+                if(a !== skipObj) { candidates.x.push(a.x, a.x + a.width/2, a.x + a.width); candidates.y.push(a.y, a.y + a.height/2, a.y + a.height); }
+            });
+            return candidates;
+        }
+        function drawGuides(cx, cy, activeX, activeY) {
+            const g = byId('guide-lines'); g.innerHTML = '';
+            if(activeX) {
+                const line = document.createElement('div'); line.className = 'guide-line vertical'; line.style.left = `${(cx / draft.canvas.width)*100}%`; g.appendChild(line);
+            }
+            if(activeY) {
+                const line = document.createElement('div'); line.className = 'guide-line horizontal'; line.style.top = `${(cy / draft.canvas.height)*100}%`; g.appendChild(line);
+            }
+        }
 
         function startDrag(event, index, scale) {
+            if(event.target.classList.contains('editor-resize-handle') || event.target.classList.contains('editor-rotation-handle')) return;
             selectedSlotIndex = index; selectedLayer = 'slots'; writeSlotForm(); renderSlotList();
             document.querySelectorAll('.editor-slot').forEach(element => element.classList.toggle('active', Number(element.dataset.index) === index));
             const slot = currentSlot();
-            dragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:slot.x, y:slot.y, scale, element:event.currentTarget };
+            dragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:slot.x, y:slot.y, scale, element:event.currentTarget, obj: slot };
             event.currentTarget.setPointerCapture(event.pointerId);
             event.currentTarget.onpointermove = dragSlot;
             event.currentTarget.onpointerup = endDrag;
         }
         function dragSlot(event) {
             if (!dragState || event.pointerId !== dragState.pointerId) return;
-            const slot = currentSlot();
-            slot.x = Math.round(dragState.x + (event.clientX - dragState.startX) / dragState.scale);
-            slot.y = Math.round(dragState.y + (event.clientY - dragState.startY) / dragState.scale);
+            const slot = dragState.obj;
+            let nx = Math.round(dragState.x + (event.clientX - dragState.startX) / (dragState.scale * viewport.scale));
+            let ny = Math.round(dragState.y + (event.clientY - dragState.startY) / (dragState.scale * viewport.scale));
+            
+            let activeX = false, activeY = false;
+            if(byId('snap-enabled').checked) {
+                const cand = getSnapCandidates(slot);
+                const thresh = 5;
+                for(let c of cand.x) { if(Math.abs(nx - c) < thresh) { nx = c; activeX = true; break; } }
+                for(let c of cand.y) { if(Math.abs(ny - c) < thresh) { ny = c; activeY = true; break; } }
+                drawGuides(nx, ny, activeX, activeY);
+            }
+            
+            slot.x = nx; slot.y = ny;
             dragState.element.style.left = `${slot.x / draft.canvas.width * 100}%`;
             dragState.element.style.top = `${slot.y / draft.canvas.height * 100}%`;
             writeSlotForm(); renderValidation();
         }
-        function endDrag(event) { if (dragState && event.pointerId === dragState.pointerId) { dragState = null; renderAll(); } }
+        function endDrag(event) { if (dragState && event.pointerId === dragState.pointerId) { dragState = null; byId('guide-lines').innerHTML=''; pushHistory(); renderAll(); } }
 
         function startArtDrag(event, id, scale) {
+            if(event.target.classList.contains('editor-resize-handle') || event.target.classList.contains('editor-rotation-handle')) return;
             const layer = draft.artboard.find(item => item.id === id);
             if (!layer) return;
             if (selectedArtId !== id) { selectedArtId = id; selectedLayer = 'overlay'; writeArtForm(); renderArtLayerList(); renderLayerList(); }
             event.stopPropagation();
-            artDragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:layer.x, y:layer.y, scale, element:event.currentTarget };
+            artDragState = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:layer.x, y:layer.y, scale, element:event.currentTarget, obj:layer };
             event.currentTarget.setPointerCapture(event.pointerId);
             event.currentTarget.onpointermove = dragArtLayer;
             event.currentTarget.onpointerup = endArtDrag;
         }
         function dragArtLayer(event) {
             if (!artDragState || event.pointerId !== artDragState.pointerId) return;
-            const layer = draft.artboard.find(item => item.id === artDragState.element.dataset.artId);
-            if (!layer) return;
-            layer.x = Math.round(artDragState.x + (event.clientX - artDragState.startX) / artDragState.scale);
-            layer.y = Math.round(artDragState.y + (event.clientY - artDragState.startY) / artDragState.scale);
+            const layer = artDragState.obj;
+            let nx = Math.round(artDragState.x + (event.clientX - artDragState.startX) / (artDragState.scale * viewport.scale));
+            let ny = Math.round(artDragState.y + (event.clientY - artDragState.startY) / (artDragState.scale * viewport.scale));
+            
+            let activeX = false, activeY = false;
+            if(byId('snap-enabled').checked) {
+                const cand = getSnapCandidates(layer);
+                const thresh = 5;
+                for(let c of cand.x) { if(Math.abs(nx - c) < thresh) { nx = c; activeX = true; break; } }
+                for(let c of cand.y) { if(Math.abs(ny - c) < thresh) { ny = c; activeY = true; break; } }
+                drawGuides(nx, ny, activeX, activeY);
+            }
+            layer.x = nx; layer.y = ny;
             artDragState.element.style.left = `${layer.x / draft.canvas.width * 100}%`;
             artDragState.element.style.top = `${layer.y / draft.canvas.height * 100}%`;
             writeArtForm(); renderValidation();
         }
-        function endArtDrag(event) { if (artDragState && event.pointerId === artDragState.pointerId) { artDragState = null; renderAll(); } }
+        function endArtDrag(event) { if (artDragState && event.pointerId === artDragState.pointerId) { artDragState = null; byId('guide-lines').innerHTML=''; pushHistory(); renderAll(); } }
 
-        function startArtResize(event, id, corner, scale) {
-            const layer = draft.artboard.find(item => item.id === id);
-            if (!layer) return;
+        function startArtResize(event, id, corner, scale, isSlot) {
             event.stopPropagation();
-            const rect = event.currentTarget.closest('.editor-art').getBoundingClientRect();
+            const layer = isSlot ? draft.slots.find(item => item.index === id) : draft.artboard.find(item => item.id === id);
+            if (!layer) return;
+            const rect = event.currentTarget.closest(isSlot ? '.editor-slot' : '.editor-art').getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
             const rectW = rect.width / dpr, rectH = rect.height / dpr;
             artResizeState = {
                 pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, corner,
-                element:event.currentTarget.closest('.editor-art'),
-                startW: layer.width, startH: layer.height,
+                element:event.currentTarget.closest(isSlot ? '.editor-slot' : '.editor-art'),
+                startW: layer.width, startH: layer.height, startXPos: layer.x, startYPos: layer.y,
                 widthPerPx: layer.width / rectW, heightPerPx: layer.height / rectH,
-                flipW: corner.includes('w'), flipH: corner.includes('n')
+                flipW: corner.includes('w'), flipH: corner.includes('n'), isSlot, obj: layer
             };
+            
+            const badge = document.createElement('div'); badge.className = 'editor-dimension-badge'; badge.id = 'dim-badge'; badge.textContent = `${layer.width} × ${layer.height}`; artResizeState.element.appendChild(badge);
+            
             event.currentTarget.setPointerCapture(event.pointerId);
             event.currentTarget.onpointermove = resizeArtLayer;
             event.currentTarget.onpointerup = endArtResize;
         }
         function resizeArtLayer(event) {
             if (!artResizeState || event.pointerId !== artResizeState.pointerId) return;
-            const layer = draft.artboard.find(item => item.id === artResizeState.element.dataset.artId);
-            if (!layer) return;
-            const dx = (event.clientX - artResizeState.startX) * artResizeState.widthPerPx * (artResizeState.flipW ? -1 : 1);
-            const dy = (event.clientY - artResizeState.startY) * artResizeState.heightPerPx * (artResizeState.flipH ? -1 : 1);
-            const newW = Math.max(4, Math.round(artResizeState.startW + dx));
-            const newH = Math.max(4, Math.round(artResizeState.startH + dy));
+            const layer = artResizeState.obj;
+            
+            let dx = (event.clientX - artResizeState.startX) / (viewport.scale * artResizeState.scale * (draft.canvas.width / 620)); // Approximate factor
+            let dy = (event.clientY - artResizeState.startY) / (viewport.scale * artResizeState.scale * (draft.canvas.height / 400));
+            // Let's use simple delta
+            dx = (event.clientX - artResizeState.startX) * artResizeState.widthPerPx / viewport.scale * (artResizeState.flipW ? -1 : 1);
+            dy = (event.clientY - artResizeState.startY) * artResizeState.heightPerPx / viewport.scale * (artResizeState.flipH ? -1 : 1);
+            
+            if(!artResizeState.corner.includes('e') && !artResizeState.corner.includes('w')) dx = 0;
+            if(!artResizeState.corner.includes('n') && !artResizeState.corner.includes('s')) dy = 0;
+
+            let newW = Math.max(4, Math.round(artResizeState.startW + dx));
+            let newH = Math.max(4, Math.round(artResizeState.startH + dy));
+            
+            if(event.shiftKey && dx !== 0 && dy !== 0) {
+                const ratio = artResizeState.startW / artResizeState.startH;
+                newH = Math.round(newW / ratio);
+            }
+            
+            layer.width = newW; layer.height = newH;
+            layer.x = artResizeState.startXPos; layer.y = artResizeState.startYPos;
+            
             if (artResizeState.flipW) layer.x += artResizeState.startW - newW;
             if (artResizeState.flipH) layer.y += artResizeState.startH - newH;
-            layer.width = newW; layer.height = newH;
+            
+            if(event.altKey) {
+                layer.x -= (newW - artResizeState.startW) / (artResizeState.flipW ? 1 : 2);
+                layer.y -= (newH - artResizeState.startH) / (artResizeState.flipH ? 1 : 2);
+            }
+
             artResizeState.element.style.left = `${layer.x / draft.canvas.width * 100}%`;
             artResizeState.element.style.top = `${layer.y / draft.canvas.height * 100}%`;
             artResizeState.element.style.width = `${layer.width / draft.canvas.width * 100}%`;
             artResizeState.element.style.height = `${layer.height / draft.canvas.height * 100}%`;
-            writeArtForm(); renderValidation();
+            const b = byId('dim-badge'); if(b) b.textContent = `${layer.width} × ${layer.height}`;
+            if(artResizeState.isSlot) writeSlotForm(); else writeArtForm(); 
+            renderValidation();
         }
-        function endArtResize(event) { if (artResizeState && event.pointerId === artResizeState.pointerId) { artResizeState = null; renderAll(); } }
+        function endArtResize(event) { if (artResizeState && event.pointerId === artResizeState.pointerId) { artResizeState = null; pushHistory(); renderAll(); } }
+
+        let rotationState = null;
+        function startRotation(event, id, scale, isSlot) {
+            event.stopPropagation();
+            const layer = isSlot ? draft.slots.find(item => item.index === id) : draft.artboard.find(item => item.id === id);
+            if (!layer) return;
+            const rect = event.currentTarget.closest(isSlot ? '.editor-slot' : '.editor-art').getBoundingClientRect();
+            rotationState = {
+                pointerId:event.pointerId, cx: rect.left + rect.width/2, cy: rect.top + rect.height/2,
+                element:event.currentTarget.closest(isSlot ? '.editor-slot' : '.editor-art'), obj: layer, isSlot
+            };
+            const badge = document.createElement('div'); badge.className = 'editor-angle-badge'; badge.id = 'angle-badge'; badge.textContent = `${layer.rotation}°`; rotationState.element.appendChild(badge);
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.currentTarget.onpointermove = rotateArtLayer;
+            event.currentTarget.onpointerup = endRotation;
+        }
+        function rotateArtLayer(event) {
+            if (!rotationState || event.pointerId !== rotationState.pointerId) return;
+            const layer = rotationState.obj;
+            let angle = Math.atan2(event.clientY - rotationState.cy, event.clientX - rotationState.cx) * 180 / Math.PI + 90;
+            if(angle > 180) angle -= 360;
+            if(event.shiftKey) angle = Math.round(angle / 15) * 15;
+            layer.rotation = Math.round(angle);
+            rotationState.element.style.transform = `rotate(${layer.rotation}deg)`;
+            const b = byId('angle-badge'); if(b) b.textContent = `${layer.rotation}°`;
+            if(rotationState.isSlot) writeSlotForm(); else writeArtForm();
+        }
+        function endRotation(event) { if (rotationState && event.pointerId === rotationState.pointerId) { rotationState = null; pushHistory(); renderAll(); } }
+
+        function duplicateSelectedSlot() {
+            const slot = currentSlot();
+            if (!slot) return;
+            const newIndex = Math.max(...draft.slots.map(s => s.index)) + 1;
+            draft.slots.push({ ...slot, index: newIndex, x: slot.x + 20, y: slot.y + 20, zIndex: slot.zIndex + 1 });
+            selectedSlotIndex = newIndex;
+            draft = engine.normalizeTemplate(draft);
+            pushHistory();
+            writeForms(); renderAll();
+        }
+
+        function removeSelectedSlot() {
+            const slot = currentSlot();
+            if (!slot || draft.slots.length <= 1) { toast('ต้องมีอย่างน้อย 1 ช่อง'); return; }
+            draft.slots = draft.slots.filter(s => s.index !== slot.index);
+            selectedSlotIndex = draft.slots[0].index;
+            draft = engine.normalizeTemplate(draft);
+            pushHistory();
+            writeForms(); renderAll();
+        }
+
+        function autoBalanceSlots() {
+            const fresh = engine.createTemplate(draft.layoutId, byId('canvas-preset').value, { templateId:draft.templateId, name:draft.name, enabled:draft.enabled });
+            draft.slots = fresh.slots;
+            draft.canvas.height = fresh.canvas.height;
+            draft.canvas.width = fresh.canvas.width;
+            draft.canvas.safeMargin = fresh.canvas.safeMargin;
+            draft.canvas.bleedMargin = fresh.canvas.bleedMargin;
+            draft = engine.normalizeTemplate(draft);
+            pushHistory();
+            writeForms();
+            renderAll();
+            toast('จัดระยะส่วนหัว (Header) และส่วนท้าย (Footer) สำหรับวาง Logo เรียบร้อยแล้ว');
+        }
+
+        function applySlotRatio(ratioStr) {
+            const slot = currentSlot();
+            if (!slot) return;
+            const canvasW = draft.canvas.width;
+            const canvasH = draft.canvas.height;
+            const safe = draft.canvas.safeMargin;
+            const maxW = canvasW - safe.left - safe.right;
+            
+            if (ratioStr === 'fit-width') {
+                slot.x = safe.left;
+                slot.width = maxW;
+            } else {
+                const parts = ratioStr.split(':').map(Number);
+                if (parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+                    const rw = parts[0], rh = parts[1];
+                    let newW = slot.width;
+                    let newH = Math.round(newW * (rh / rw));
+                    
+                    const maxH = canvasH - safe.top - safe.bottom;
+                    if (newH > maxH) {
+                        newH = maxH;
+                        newW = Math.round(newH * (rw / rh));
+                    }
+                    slot.width = Math.min(newW, maxW);
+                    slot.height = newH;
+                    
+                    if (slot.x + slot.width > canvasW - safe.right) {
+                        slot.x = Math.max(safe.left, canvasW - safe.right - slot.width);
+                    }
+                    if (slot.y + slot.height > canvasH - safe.bottom) {
+                        slot.y = Math.max(safe.top, canvasH - safe.bottom - slot.height);
+                    }
+                }
+            }
+            draft = engine.normalizeTemplate(draft);
+            pushHistory();
+            writeSlotForm();
+            renderAll();
+            toast(`ปรับอัตราส่วน Photo ${slot.index} เป็น ${ratioStr}`);
+        }
+
+        function changeLayoutRatioFromSelect() {
+            const r = byId('layout-ratio-select').value;
+            const match = String(draft.layoutId || '').match(/^(\d+)/);
+            const count = match ? match[1] : draft.slots.length;
+            const newLayoutId = `${count}_${r}`;
+            draft.layoutId = newLayoutId;
+            byId('layout-id').value = newLayoutId;
+            autoBalanceSlots();
+        }
 
         function changeCanvasPreset() {
             const fresh = engine.createTemplate(draft.layoutId, byId('canvas-preset').value, { templateId:draft.templateId, name:draft.name, enabled:draft.enabled });
-            draft = fresh; selectedSlotIndex = 1; writeForms(); renderAll();
+            draft = fresh; selectedSlotIndex = 1; 
+            pushHistory(); writeForms(); renderAll();
         }
 
         function createNewTemplate() {
             const id = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
             draft = engine.createTemplate('3_1x1', '2x6', { templateId:id, name:'New event template' });
-            catalog.push(engine.clone(draft)); selectedSlotIndex = 1; writeForms(); renderAll();
+            catalog = TemplateCatalog.upsert(draft);
+            selectTemplate(id); toast('สร้าง Template ใหม่แล้ว');
         }
-        function duplicateSelectedSlot() { draft = engine.duplicateSlot(draft, selectedSlotIndex); selectedSlotIndex = draft.slots.length; writeForms(); renderAll(); }
-        function removeSelectedSlot() { draft = engine.removeSlot(draft, selectedSlotIndex); selectedSlotIndex = Math.min(selectedSlotIndex, draft.slots.length); writeForms(); renderAll(); }
+
         function moveLayer(action) {
-            if (selectedLayer === 'background') { toast('Background layer อยู่ล่างสุดเสมอ'); return; }
+            if (selectedLayer === 'background') { toast('Background ล่างสุดเสมอ'); return; }
             if (selectedLayer === 'overlay') {
                 const values = draft.slots.map(item => item.zIndex);
                 const maxZ = Math.max(...values, 0);
@@ -653,20 +2585,19 @@
                 if (action === 'back') draft.overlay.zIndex = maxZ - 1;
                 if (action === 'forward') draft.overlay.zIndex += 1;
                 if (action === 'backward') draft.overlay.zIndex -= 1;
-                renderLayerList(); renderStage();
-                return;
+                pushHistory(); renderLayerList(); renderStage(); return;
             }
             draft = engine.moveSlotLayer(draft, selectedSlotIndex, action);
             selectedSlotIndex = currentSlot()?.index || draft.slots[0].index;
-            writeSlotForm(); renderAll();
+            pushHistory(); writeSlotForm(); renderAll();
         }
 
         function uploadBackgroundImage(event) {
             const file = event.target.files[0]; if (!file) return;
             if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 3 * 1024 * 1024) { toast('กรุณาใช้ PNG/JPEG/WebP ขนาดไม่เกิน 3 MB'); event.target.value=''; return; }
-            const reader = new FileReader(); reader.onload = () => { draft.canvas.backgroundImage = reader.result; renderAll(); }; reader.readAsDataURL(file);
+            const reader = new FileReader(); reader.onload = () => { draft.canvas.backgroundImage = reader.result; pushHistory(); renderAll(); }; reader.readAsDataURL(file);
         }
-        function clearBackgroundImage() { draft.canvas.backgroundImage = ''; byId('background-image-file').value=''; renderAll(); }
+        function clearBackgroundImage() { draft.canvas.backgroundImage = ''; byId('background-image-file').value=''; pushHistory(); renderAll(); }
 
         function renderValidation() {
             const result = engine.validateTemplate(draft); const box = byId('validation-message');
@@ -678,24 +2609,60 @@
         function saveTemplate() {
             const result = engine.validateTemplate(draft);
             if (!result.valid) { renderValidation(); return; }
+            
+            if (!draft.templateId || draft.templateId.startsWith('tpl_')) {
+                draft.templateId = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+            }
+            draft.isCustom = true;
+            result.template.templateId = draft.templateId;
+            result.template.isCustom = true;
+
             draft = TemplateCatalog.upsert(result.template);
-            catalog = TemplateCatalog.load();
+            updateStockBadge();
             adminAuditLocal('template.saved', { templateId:draft.templateId, layoutId:draft.layoutId, slots:draft.slots.length });
-            selectTemplate(draft.templateId); toast('บันทึก Template แล้ว');
+            toast(`💾 บันทึกธีม "${draft.name}" ลงในคลังจัดการธีมแล้ว!`);
+        }
+
+        function saveAsNewTemplate() {
+            const result = engine.validateTemplate(draft);
+            if (!result.valid) { renderValidation(); return; }
+            
+            const cloned = engine.clone(result.template);
+            cloned.templateId = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
+            cloned.name = `${draft.name} (Copy)`;
+            cloned.isCustom = true;
+
+            draft = TemplateCatalog.upsert(cloned);
+            writeForms();
+            renderAll();
+            updateStockBadge();
+            adminAuditLocal('template.saved', { templateId:draft.templateId, layoutId:draft.layoutId, slots:draft.slots.length });
+            toast(`💾 บันทึกเป็นธีมใหม่ "${draft.name}" เรียบร้อยแล้ว`);
         }
 
         function deleteTemplate() {
-            if (!draft.templateId.startsWith('custom_')) { toast('Template มาตรฐานลบไม่ได้ แต่แก้ไขและบันทึกทับได้'); return; }
-            if (!confirm(`Delete ${draft.name}?`)) return;
-            TemplateCatalog.remove(draft.templateId); catalog = TemplateCatalog.load(); selectTemplate(catalog[0].templateId);
+            if (!draft.templateId || !draft.templateId.startsWith('custom_')) { 
+                toast('โครงร่างมาตรฐานลบไม่ได้ แต่ปรับแต่งและบันทึกเป็นธีมใหม่ได้'); 
+                return; 
+            }
+            if (!confirm(`ต้องการลบธีม "${draft.name}" ออกจากสต็อกหรือไม่?`)) return;
+            TemplateCatalog.remove(draft.templateId);
+            updateStockBadge();
+            const remaining = TemplateCatalog.loadCustom();
+            if (remaining.length > 0) {
+                editTheme(remaining[0].templateId);
+            } else {
+                createNewThemeFromManager();
+            }
+            toast('ลบธีมแล้ว');
         }
 
         function uploadOverlay(event) {
             const file = event.target.files[0]; if (!file) return;
             if (file.type !== 'image/png' || file.size > 2 * 1024 * 1024) { toast('กรุณาใช้ PNG ขนาดไม่เกิน 2 MB'); event.target.value=''; return; }
-            const reader = new FileReader(); reader.onload = () => { draft.overlay.url = reader.result; renderAll(); }; reader.readAsDataURL(file);
+            const reader = new FileReader(); reader.onload = () => { draft.overlay.url = reader.result; pushHistory(); renderAll(); }; reader.readAsDataURL(file);
         }
-        function clearOverlay() { draft.overlay.url = ''; byId('overlay-file').value=''; renderAll(); }
+        function clearOverlay() { draft.overlay.url = ''; byId('overlay-file').value=''; pushHistory(); renderAll(); }
 
         function exportCatalog() {
             const blob = new Blob([JSON.stringify(TemplateCatalog.load(), null, 2)], { type:'application/json' });
@@ -712,6 +2679,266 @@
             } catch (error) { toast(`Import ไม่สำเร็จ: ${error.message}`); }
             event.target.value='';
         }
+        // ==========================================
+        // UNIVERSAL THEME LOGIC
+        // ==========================================
+        let activeUniversalThemeIdForApply = null;
+
+        function renderUniversalThemes() {
+            const store = window.UniversalThemeStore || (typeof UniversalThemeStore !== 'undefined' ? UniversalThemeStore : null);
+            if (!store) return;
+            const uthemes = store.load();
+            const countEl = byId('stat-universal-count');
+            if (countEl) countEl.textContent = `${uthemes.length} ธีม`;
+
+            const list = byId('universal-theme-list');
+            const empty = byId('universal-theme-empty');
+            if (!list || !empty) return;
+
+            if (!uthemes.length) {
+                list.innerHTML = '';
+                list.classList.add('hidden');
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.classList.remove('hidden');
+            list.innerHTML = '';
+
+            uthemes.forEach(ut => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-2xl border border-amber-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-3';
+                
+                const bg = ut.style.backgroundColor || '#FFFFFF';
+                let bgStyle = `background-color: ${bg};`;
+                if (ut.style.backgroundImage) {
+                    const fit = ut.style.backgroundFitMode || 'cover';
+                    let bgSize = fit === 'stretch' ? '100% 100%' : (fit === 'tile' ? 'auto' : fit);
+                    let bgRep = fit === 'tile' ? 'repeat' : 'no-repeat';
+                    bgStyle += ` background-image: url('${ut.style.backgroundImage}'); background-size: ${bgSize}; background-repeat: ${bgRep}; background-position: center;`;
+                }
+
+                const stickersCount = (ut.style.artboard || []).length;
+                const hasOverlay = !!(ut.style.overlay && ut.style.overlay.url);
+
+                card.innerHTML = `
+                    <div class="flex flex-col gap-2.5">
+                        <div class="w-full h-24 rounded-xl border border-gray-200 relative overflow-hidden shadow-inner flex items-center justify-center" style="${bgStyle}">
+                            ${hasOverlay ? `<img src="${ut.style.overlay.url}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:${ut.style.overlay.fitMode === 'stretch' ? 'fill' : (ut.style.overlay.fitMode || 'cover')}; pointer-events:none; opacity:0.85;">` : ''}
+                            <div class="z-10 bg-white/85 backdrop-blur-xs px-2.5 py-1 rounded-full text-[11px] font-bold text-gray-800 shadow-xs border border-white flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs text-amber-600">palette</span> Universal Style
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-900 text-sm line-clamp-1 leading-snug" title="${escapeHtml(ut.name)}">${escapeHtml(ut.name)}</h3>
+                            <div class="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
+                                <span>🎨 ${stickersCount} สติกเกอร์</span>
+                                <span>·</span>
+                                <span>${hasOverlay ? '🖼️ มีกรอบ PNG' : 'ไม่มีกรอบ'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 pt-2 border-t border-gray-100">
+                        <button type="button" onclick="openApplyUniversalModal('${ut.themeId}')" class="editor-button primary flex-1 py-2 px-2 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 border-amber-500 text-white flex items-center justify-center gap-1 shadow-xs transition-all hover:scale-[1.01] active:scale-[0.99]" title="Apply ธีมนี้ไปยัง Layouts อื่นๆ">
+                            <span class="material-symbols-outlined text-[15px]">rocket_launch</span> Apply ทุก Layout
+                        </button>
+                        <button type="button" onclick="editUniversalThemeInEditor('${ut.themeId}')" class="editor-button py-2 px-2.5 rounded-xl text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 flex items-center justify-center gap-1" title="เปิดดีไซน์นี้ใน Editor เพื่อแก้ไข">
+                            <span class="material-symbols-outlined text-sm text-gray-600">edit</span>
+                        </button>
+                        <button type="button" onclick="deleteUniversalTheme('${ut.themeId}')" class="editor-button danger p-2 rounded-xl text-xs" title="ลบ Universal Theme">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                    </div>
+                `;
+
+                list.appendChild(card);
+            });
+        }
+
+        function editUniversalThemeInEditor(themeId) {
+            const store = window.UniversalThemeStore || UniversalThemeStore;
+            const uTheme = store.find(themeId);
+            if (!uTheme) { toast('ไม่พบ Universal Theme ที่ต้องการแก้ไข'); return; }
+            const basePreset = (uTheme.sourceCanvas && uTheme.sourceCanvas.type) || '2x6';
+            const baseTpl = engine.createTemplate('3_1x1', basePreset);
+            draft = engine.applyUniversalTheme(uTheme, baseTpl);
+            draft.name = uTheme.name;
+            switchView('editor');
+            writeForms();
+            renderStage();
+            toast(`✨ โหลด Universal Theme "${uTheme.name}" เข้าสู่ Editor เรียบร้อย`);
+        }
+
+        function saveAsUniversalTheme() {
+            const defaultName = draft.name.replace(/^[^(]+·\s*/, '').replace(/\(.*?\)/g, '').trim() || 'My Universal Theme';
+            const themeName = prompt('ตั้งชื่อ Universal Theme:', defaultName);
+            if (!themeName || !themeName.trim()) return;
+
+            const uTheme = engine.extractUniversalTheme(draft, themeName.trim());
+            UniversalThemeStore.upsert(uTheme);
+            toast(`✨ บันทึก Universal Theme "${uTheme.name}" เรียบร้อยแล้ว!`);
+            updateStockBadge();
+            if (currentView === 'manager') {
+                renderUniversalThemes();
+            }
+        }
+
+        function deleteUniversalTheme(themeId) {
+            const found = UniversalThemeStore.find(themeId);
+            const name = found ? found.name : 'this theme';
+            if (!confirm(`ต้องการลบ Universal Theme "${name}" หรือไม่?`)) return;
+            UniversalThemeStore.remove(themeId);
+            renderUniversalThemes();
+            toast(`ลบ Universal Theme "${name}" แล้ว`);
+        }
+
+        const AVAILABLE_PRESET_LAYOUTS = [
+            {
+                groupName: '2×6 Photo Strip',
+                presetKey: '2x6',
+                icon: 'view_agenda',
+                layouts: [
+                    { layoutId: '3_1x1', label: '3 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '4_1x1', label: '4 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '3_3x4', label: '3 รูป (3:4 แนวตั้ง)' },
+                    { layoutId: '2_1x1', label: '2 รูป (1:1 จัตุรัส)' }
+                ]
+            },
+            {
+                groupName: '4×6 Postcard Portrait (แนวตั้ง)',
+                presetKey: '4x6-portrait',
+                icon: 'crop_portrait',
+                layouts: [
+                    { layoutId: '4_3x4', label: '4 รูป (3:4 แนวตั้ง)' },
+                    { layoutId: '3_3x4', label: '3 รูป (3:4 แนวตั้ง)' },
+                    { layoutId: '2_3x4', label: '2 รูป (3:4 แนวตั้ง)' },
+                    { layoutId: '1_3x4', label: '1 รูปเดี่ยว (3:4)' }
+                ]
+            },
+            {
+                groupName: '4×6 Postcard Landscape (แนวนอน)',
+                presetKey: '4x6-landscape',
+                icon: 'crop_landscape',
+                layouts: [
+                    { layoutId: '2_1x1', label: '2 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '4_1x1', label: '4 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '3_4x3', label: '3 รูป (4:3 แนวนอน)' },
+                    { layoutId: '1_4x3', label: '1 รูปเดี่ยว (4:3 แนวนอน)' }
+                ]
+            },
+            {
+                groupName: 'Thermal Receipt (สลิป 80mm)',
+                presetKey: 'thermal80',
+                icon: 'receipt_long',
+                layouts: [
+                    { layoutId: '2_1x1', label: '2 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '3_1x1', label: '3 รูป (1:1 จัตุรัส)' },
+                    { layoutId: '4_1x1', label: '4 รูป (1:1 จัตุรัส)' }
+                ]
+            },
+            {
+                groupName: '5×7 Photo Card (การ์ดใหญ่)',
+                presetKey: 'photo5x7',
+                icon: 'photo_size_select_actual',
+                layouts: [
+                    { layoutId: '3_3x4', label: '3 รูป (3:4 แนวตั้ง)' },
+                    { layoutId: '4_3x4', label: '4 รูป (3:4 แนวตั้ง)' }
+                ]
+            }
+        ];
+
+        function toggleGroupApplyLayouts(presetKey) {
+            const cbs = Array.from(document.querySelectorAll(`.apply-target-cb[data-preset="${presetKey}"]`));
+            const anyUnchecked = cbs.some(cb => !cb.checked);
+            cbs.forEach(cb => cb.checked = anyUnchecked);
+            updateApplySelectedCount();
+        }
+
+        function openApplyUniversalModal(themeId) {
+            activeUniversalThemeIdForApply = themeId;
+            const uTheme = UniversalThemeStore.find(themeId);
+            if (!uTheme) { toast('ไม่พบธีมที่เลือก'); return; }
+
+            const subtitle = byId('apply-modal-subtitle');
+            if (subtitle) subtitle.textContent = `กำลังจะ Apply ธีม "${uTheme.name}" ไปยัง Layouts ที่เลือก`;
+
+            const container = byId('apply-layout-checkboxes');
+            container.innerHTML = '';
+
+            AVAILABLE_PRESET_LAYOUTS.forEach(group => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'border border-gray-200 rounded-xl p-3 bg-gray-50/70 hover:bg-gray-50 flex flex-col gap-2 transition-all shadow-xs';
+                groupDiv.innerHTML = `
+                    <div class="flex items-center justify-between pb-1.5 border-b border-gray-200/80">
+                        <div class="flex items-center gap-1.5 font-bold text-xs text-gray-800">
+                            <span class="material-symbols-outlined text-[16px] text-amber-600">${group.icon || 'layers'}</span>
+                            <span>${group.groupName}</span>
+                        </div>
+                        <button type="button" onclick="toggleGroupApplyLayouts('${group.presetKey}')" class="text-[11px] text-amber-700 hover:text-amber-900 bg-amber-100/70 hover:bg-amber-100 px-2 py-0.5 rounded-md font-medium transition-colors">
+                            สลับเลือก
+                        </button>
+                    </div>
+                    <div class="flex flex-col gap-1.5 pt-1">
+                        ${group.layouts.map(l => `
+                            <label class="flex items-center gap-2 text-xs text-gray-700 cursor-pointer select-none hover:text-gray-900">
+                                <input type="checkbox" class="apply-target-cb rounded text-amber-600 focus:ring-amber-500" data-layout="${l.layoutId}" data-preset="${group.presetKey}" checked onchange="updateApplySelectedCount()">
+                                <span>${l.label} <code class="text-[10px] text-gray-400 font-mono">(${l.layoutId})</code></span>
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(groupDiv);
+            });
+
+            updateApplySelectedCount();
+            const modal = byId('apply-universal-modal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeApplyUniversalModal() {
+            const modal = byId('apply-universal-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            activeUniversalThemeIdForApply = null;
+        }
+
+        function toggleAllApplyLayouts(checked) {
+            document.querySelectorAll('.apply-target-cb').forEach(cb => cb.checked = checked);
+            updateApplySelectedCount();
+        }
+
+        function updateApplySelectedCount() {
+            const checked = document.querySelectorAll('.apply-target-cb:checked');
+            const countEl = byId('apply-selected-count');
+            if (countEl) countEl.textContent = `เลือก ${checked.length} เลย์เอาต์`;
+            const btn = byId('btn-confirm-apply');
+            if (btn) btn.disabled = checked.length === 0;
+        }
+
+        function confirmApplyUniversalTheme() {
+            if (!activeUniversalThemeIdForApply) return;
+            const checked = Array.from(document.querySelectorAll('.apply-target-cb:checked'));
+            if (!checked.length) { toast('กรุณาเลือกอย่างน้อย 1 เลย์เอาต์'); return; }
+
+            const targetLayouts = checked.map(cb => ({
+                layoutId: cb.dataset.layout,
+                presetKey: cb.dataset.preset
+            }));
+
+            try {
+                const generated = UniversalThemeStore.applyToLayouts(activeUniversalThemeIdForApply, targetLayouts);
+                closeApplyUniversalModal();
+                renderThemeManager();
+                toast(`🚀 สร้างและบันทึกธีมลงคลังสำเร็จ ${generated.length} แบบ!`);
+            } catch (err) {
+                console.error(err);
+                toast('เกิดข้อผิดพลาดในการ Apply ธีม: ' + err.message);
+            }
+        }
+
         function escapeHtml(value) { const div=document.createElement('div'); div.textContent=value; return div.innerHTML; }
         function toast(message) { const box=byId('validation-message'); box.className='editor-message ok mt-4'; box.textContent=message; }
     </script>

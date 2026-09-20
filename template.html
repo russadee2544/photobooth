@@ -106,9 +106,9 @@
             const paperMode = Kiosk.paperMode || 'photo4x6_dual';
             const currentLayoutStr = Session.layout || '3_1x1';
             const currentLayoutSize = await fetchLayoutSizeFor(currentLayoutStr);
-            const schema = TemplateCatalog.current(currentLayoutStr, paperMode);
+            const currentReqShots = window.PhotoTemplateEngine ? PhotoTemplateEngine.parseLayout(currentLayoutStr).count : 3;
 
-            // Load Custom Themes
+            // Load Custom Themes (Legacy Supabase)
             const customThemes = await fetchCustomThemes();
             customThemes.forEach(t => {
                 const icon = t.theme_type === 'png' ? 'image' : 'match_case';
@@ -121,41 +121,120 @@
                         <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex items-center justify-center">
                             <span class="material-symbols-outlined text-accent-mint text-3xl">${icon}</span>
                         </div>
-                        <h3 class="font-semibold text-gray-900">${t.name}</h3>
+                        <h3 class="font-semibold text-gray-900 line-clamp-1">${escapeHtml(t.name)}</h3>
                         <p class="text-[10px] text-gray-500 uppercase tracking-widest">Custom Theme</p>
                 `;
                 gridContainer.appendChild(cardDiv);
             });
 
-            Session.template = Session.template || 'light';
-            
-            async function updatePreview(templateId, isCustom) {
-                container.innerHTML = '<div class="spinner border-gray-300 mx-auto"></div>';
-                let themeObj = null;
-                if (isCustom) {
-                    themeObj = customThemes.find(t => t.id === templateId);
+            // Load Custom Templates from Template Catalog (Created in Template Editor)
+            const catalog = TemplateCatalog.load();
+            const targetType = (typeof Kiosk !== 'undefined' && typeof Kiosk.getTargetTemplateType === 'function')
+                ? Kiosk.getTargetTemplateType(paperMode)
+                : (paperMode === 'photo4x6_postcard' ? '4x6' : (paperMode.startsWith('thermal') ? paperMode : '2x6'));
+
+            const customTemplates = catalog.filter(t => {
+                if (t.enabled === false) return false;
+                
+                // Must match active paper format
+                let typeMatches = false;
+                if (targetType === '2x6') typeMatches = t.type === '2x6';
+                else if (targetType === '4x6') typeMatches = t.type === '4x6';
+                else if (targetType.startsWith('thermal')) typeMatches = (t.type && t.type.startsWith('thermal'));
+                else if (targetType === 'photo5x7') typeMatches = t.type === 'photo5x7';
+                if (!typeMatches) return false;
+
+                // Include custom templates created by user or having custom artboard/overlay
+                const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
+                const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
+                return isCustom && matchesShots;
+            });
+
+            customTemplates.forEach(tpl => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'selection-card p-6 text-center';
+                cardDiv.dataset.schemaId = tpl.templateId;
+                cardDiv.dataset.isSchema = "true";
+                
+                let thumbHtml = '';
+                if (tpl.overlay && tpl.overlay.url) {
+                    thumbHtml = `<img src="${tpl.overlay.url}" class="w-full h-full object-contain p-1" alt="">`;
+                } else if (tpl.artboard && tpl.artboard.length > 0 && tpl.artboard[0].url) {
+                    thumbHtml = `<img src="${tpl.artboard[0].url}" class="w-full h-full object-contain p-1" alt="">`;
+                } else if (tpl.canvas && tpl.canvas.backgroundImage) {
+                    thumbHtml = `<img src="${tpl.canvas.backgroundImage}" class="w-full h-full object-cover" alt="">`;
+                } else {
+                    thumbHtml = `<span class="material-symbols-outlined text-white text-3xl">palette</span>`;
                 }
-                const canvas = await composePhotoByMode(globalPhotos, templateId, 460, themeObj, currentLayoutStr, currentLayoutSize);
+
+                const bgColor = (tpl.canvas && tpl.canvas.backgroundColor) ? tpl.canvas.backgroundColor : '#0A0A0A';
+                
+                cardDiv.innerHTML = `
+                    <div class="w-16 h-16 rounded-full mx-auto mb-4 border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden" style="background-color: ${bgColor};">
+                        ${thumbHtml}
+                    </div>
+                    <h3 class="font-semibold text-gray-900 line-clamp-1">${escapeHtml(tpl.name)}</h3>
+                    <p class="text-[10px] text-accent-blue uppercase tracking-widest font-bold">Custom Template</p>
+                `;
+                gridContainer.appendChild(cardDiv);
+            });
+
+            async function updatePreview(templateId, isCustom, schemaId) {
+                container.innerHTML = '<div class="spinner border-gray-300 mx-auto"></div>';
+                let canvas;
+                if (schemaId) {
+                    const tpl = TemplateCatalog.find(schemaId);
+                    if (tpl) {
+                        canvas = await composeTemplateBySchema(globalPhotos, 'custom_schema', 460, null, tpl, paperMode);
+                    }
+                }
+                if (!canvas) {
+                    let themeObj = null;
+                    if (isCustom) {
+                        themeObj = customThemes.find(t => t.id === templateId);
+                    }
+                    canvas = await composePhotoByMode(globalPhotos, templateId, 460, themeObj, currentLayoutStr, currentLayoutSize);
+                }
                 canvas.className = 'rounded-md shadow-2xl max-w-full max-h-[50vh] lg:max-h-[62vh] object-contain transition-all duration-300';
                 container.innerHTML = '';
                 container.appendChild(canvas);
             }
 
-            // Init
-            updatePreview(Session.template, false);
+            // Init selection state
+            if (Session.templateSchemaId && TemplateCatalog.find(Session.templateSchemaId)) {
+                updatePreview(null, false, Session.templateSchemaId);
+            } else {
+                Session.template = Session.template || 'light';
+                updatePreview(Session.template, false, null);
+            }
 
             // Selectors
             const setupCards = () => {
                 const cards = document.querySelectorAll('.selection-card');
                 cards.forEach(card => {
-                    if (card.dataset.template === Session.template) {
+                    if (Session.templateSchemaId && card.dataset.schemaId === Session.templateSchemaId) {
                         card.classList.add('selected');
+                    } else if (!Session.templateSchemaId && card.dataset.template === Session.template) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
                     }
                     card.addEventListener('click', () => {
                         cards.forEach(c => c.classList.remove('selected'));
                         card.classList.add('selected');
-                        Session.template = card.dataset.template;
-                        updatePreview(card.dataset.template, card.dataset.custom === 'true');
+                        if (card.dataset.isSchema === 'true') {
+                            Session.templateSchemaId = card.dataset.schemaId;
+                            Session.template = 'custom_schema';
+                            SessionAsync.set('templateSchemaId', card.dataset.schemaId);
+                            SessionAsync.set('template', 'custom_schema');
+                            updatePreview(null, false, card.dataset.schemaId);
+                        } else {
+                            Session.templateSchemaId = null;
+                            Session.template = card.dataset.template;
+                            SessionAsync.set('templateSchemaId', null);
+                            SessionAsync.set('template', card.dataset.template);
+                            updatePreview(card.dataset.template, card.dataset.custom === 'true', null);
+                        }
                     });
                 });
             };
@@ -164,14 +243,28 @@
             new IdleTimer(120000, 'home.html').start(); // 2 mins idle
         });
 
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value || '';
+            return div.innerHTML;
+        }
+
         function saveAndContinue() {
+            const nextPage = Kiosk.filterEnabled ? 'filter.html' : 'processing.html';
+            if (!Kiosk.filterEnabled) {
+                Session.filter = 'original';
+            }
             if (globalPhotos && globalPhotos.length > 0) {
                 Session.photos = globalPhotos;
                 SessionAsync.set('raw_photos', globalPhotos).then(() => {
-                    window.location.href = 'filter.html';
+                    if (Session.templateSchemaId) SessionAsync.set('templateSchemaId', Session.templateSchemaId);
+                    if (Session.template) SessionAsync.set('template', Session.template);
+                    window.location.href = nextPage;
                 });
             } else {
-                window.location.href = 'filter.html';
+                if (Session.templateSchemaId) SessionAsync.set('templateSchemaId', Session.templateSchemaId);
+                if (Session.template) SessionAsync.set('template', Session.template);
+                window.location.href = nextPage;
             }
         }
     </script>

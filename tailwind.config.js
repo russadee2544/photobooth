@@ -12,6 +12,7 @@ module.exports = {
         './processing.html',
         './print.html',
         './admin.html',
+        './template-editor.html',
         './public/shared.js'
     ],
     darkMode: 'class',

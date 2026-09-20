@@ -4,6 +4,7 @@ type Engine = {
   GRAPHIC_SPECS: Record<string, { width: number; height: number; dpi?: number }>;
   createTemplate: (layoutId: string, type: string, overrides?: object) => any;
   createDefaultTemplates: () => any[];
+  generateCustomTemplate: (config?: any) => any;
   duplicateSlot: (template: any, photoIndex: number) => any;
   normalizeTemplate: (template: any) => any;
   validateTemplate: (template: any) => { valid: boolean; errors: string[]; warnings: string[]; template: any };
@@ -17,6 +18,8 @@ type Engine = {
     focusX?: number,
     focusY?: number,
   ) => { x: number; y: number; width: number; height: number };
+  extractUniversalTheme: (template: any, name?: string) => any;
+  applyUniversalTheme: (universalTheme: any, targetTemplate: any) => any;
 };
 
 let engine: Engine;
@@ -171,5 +174,102 @@ describe('PhotoTemplateEngine', () => {
     expect(crop.height).toBe(1080);
     expect(crop.width).toBe(1080);
     expect(crop.x).toBe(420);
+  });
+
+  it('generates custom canvas templates with specified paper, photo counts and styles', () => {
+    const custom1 = engine.generateCustomTemplate({
+      paperPreset: '2x6',
+      photoCount: 4,
+      aspectRatio: '1x1',
+      layoutStyle: 'strip',
+      name: 'Custom 4-Grid Strip'
+    });
+    expect(custom1.slots).toHaveLength(4);
+    expect(custom1.canvas.width).toBe(600);
+    expect(custom1.canvas.height).toBe(1800);
+    expect(custom1.printSettings.printTwoPerPage).toBe(true);
+
+    const custom2 = engine.generateCustomTemplate({
+      paperPreset: '4x6-portrait',
+      photoCount: 6,
+      aspectRatio: '3x4',
+      layoutStyle: 'grid2',
+      name: 'Postcard 6 Grid'
+    });
+    expect(custom2.slots).toHaveLength(6);
+    expect(custom2.canvas.width).toBe(1200);
+    expect(custom2.canvas.height).toBe(1800);
+    expect(custom2.printSettings.paperSize).toBe('4x6');
+
+    const custom3 = engine.generateCustomTemplate({
+      paperPreset: 'custom',
+      width: 1500,
+      height: 2000,
+      dpi: 300,
+      photoCount: 3,
+      aspectRatio: '3x4',
+      layoutStyle: 'featured_top'
+    });
+    expect(custom3.slots).toHaveLength(3);
+    expect(custom3.canvas.width).toBe(1500);
+    expect(custom3.canvas.height).toBe(2000);
+    expect(custom3.slots[0].width).toBeGreaterThan(custom3.slots[1].width);
+  });
+
+  it('extracts a UniversalTheme with relative coordinates and style properties', () => {
+    const template = engine.createTemplate('3_1x1', '2x6');
+    template.canvas.backgroundColor = '#FFFAF0';
+    template.canvas.backgroundImage = 'data:image/png;base64,BG123';
+    template.canvas.backgroundFitMode = 'contain';
+    template.overlay = { url: 'data:image/png;base64,OV456', zIndex: 100, fitMode: 'cover' };
+    template.artboard = [
+      { id: 'ab_top', name: 'Logo', url: 'data:image/png;base64,LOGO', placement: 'front', x: 60, y: 18, width: 240, height: 120, rotation: 0, zIndex: 5, opacity: 0.9, visible: true }
+    ];
+
+    const uTheme = engine.extractUniversalTheme(template, 'Vintage Warm');
+    expect(uTheme.themeId).toMatch(/^utheme_/);
+    expect(uTheme.name).toBe('Vintage Warm');
+    expect(uTheme.style.backgroundColor).toBe('#FFFAF0');
+    expect(uTheme.style.backgroundImage).toBe('data:image/png;base64,BG123');
+    expect(uTheme.style.backgroundFitMode).toBe('contain');
+    expect(uTheme.style.overlay.url).toBe('data:image/png;base64,OV456');
+    expect(uTheme.style.artboard).toHaveLength(1);
+    
+    // Relative coordinates should be normalized (x = 60/600 = 0.1, width = 240/600 = 0.4)
+    const relArt = uTheme.style.artboard[0];
+    expect(relArt.relX).toBeCloseTo(0.1, 2);
+    expect(relArt.relWidth).toBeCloseTo(0.4, 2);
+    expect(relArt.aspectRatio).toBeCloseTo(2.0, 2); // 240/120 = 2.0
+  });
+
+  it('applies a UniversalTheme to different canvas formats (2x6 -> 4x6 & thermal)', () => {
+    const sourceTemplate = engine.createTemplate('3_1x1', '2x6');
+    sourceTemplate.canvas.backgroundColor = '#E6F0FA';
+    sourceTemplate.artboard = [
+      { id: 'ab_1', name: 'Sticker', url: 'data:image/png;base64,STICKER', placement: 'front', x: 60, y: 36, width: 300, height: 150, rotation: 10, zIndex: 2, opacity: 1, visible: true }
+    ];
+    const uTheme = engine.extractUniversalTheme(sourceTemplate, 'Soft Blue');
+
+    // Apply to 4x6 Postcard (width = 1200, height = 1800)
+    const targetPostcard = engine.createTemplate('4_3x4', '4x6-portrait');
+    const appliedPostcard = engine.applyUniversalTheme(uTheme, targetPostcard);
+
+    expect(appliedPostcard.canvas.backgroundColor).toBe('#E6F0FA');
+    expect(appliedPostcard.isCustom).toBe(true);
+    expect(appliedPostcard.universalThemeId).toBe(uTheme.themeId);
+    expect(appliedPostcard.artboard).toHaveLength(1);
+    // On 1200w canvas, relWidth = 0.5 -> 600px width, aspect 2.0 -> 300px height
+    expect(appliedPostcard.artboard[0].width).toBe(600);
+    expect(appliedPostcard.artboard[0].height).toBe(300);
+    expect(appliedPostcard.artboard[0].rotation).toBe(10);
+    expect(appliedPostcard.slots).toHaveLength(4); // original slots preserved
+
+    // Apply to Thermal 80mm (width = 576)
+    const targetThermal = engine.createTemplate('2_1x1', 'thermal80');
+    const appliedThermal = engine.applyUniversalTheme(uTheme, targetThermal);
+    expect(appliedThermal.canvas.backgroundColor).toBe('#E6F0FA');
+    expect(appliedThermal.type).toBe('thermal80');
+    expect(appliedThermal.artboard).toHaveLength(1);
+    expect(appliedThermal.artboard[0].width).toBe(Math.round(0.5 * 576));
   });
 });

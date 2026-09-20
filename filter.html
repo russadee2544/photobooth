@@ -199,6 +199,13 @@
         let selectedFilter = 'original';
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // If filter feature is disabled in admin, skip to processing
+            if (!Kiosk.filterEnabled) {
+                Session.filter = 'original';
+                window.location.replace('processing.html');
+                return;
+            }
+
             // Apply language labels
             const lang = getLanguage();
             const L = LABELS[lang] || LABELS.th;
