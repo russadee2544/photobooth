@@ -4,6 +4,7 @@ type Engine = {
   GRAPHIC_SPECS: Record<string, { width: number; height: number; dpi?: number }>;
   createTemplate: (layoutId: string, type: string, overrides?: object) => any;
   createDefaultTemplates: () => any[];
+  isTemplateCompatibleWithPaperMode: (template: any, paperMode: string) => boolean;
   generateCustomTemplate: (config?: any) => any;
   duplicateSlot: (template: any, photoIndex: number) => any;
   normalizeTemplate: (template: any) => any;
@@ -48,6 +49,27 @@ describe('PhotoTemplateEngine', () => {
     expect(engine.GRAPHIC_SPECS.gifLandscape).toMatchObject({ width: 960, height: 720 });
     expect(engine.GRAPHIC_SPECS.videoPortrait).toMatchObject({ width: 1080, height: 1920 });
     expect(engine.GRAPHIC_SPECS.welcomeIpad129).toMatchObject({ width: 2732, height: 2048 });
+  });
+
+  it('keeps receipt and photobooth layouts in separate paper modes', () => {
+    const strip = engine.createTemplate('3_1x1', '2x6');
+    const postcard = engine.createTemplate('4_3x4', '4x6-portrait');
+    const receipt58 = engine.createTemplate('3_1x1', 'thermal58');
+    const receipt80 = engine.createTemplate('3_1x1', 'thermal80');
+
+    expect(engine.isTemplateCompatibleWithPaperMode(strip, 'photo4x6_dual')).toBe(true);
+    expect(engine.isTemplateCompatibleWithPaperMode(strip, 'photo2x6_single')).toBe(true);
+    expect(engine.isTemplateCompatibleWithPaperMode(strip, 'thermal80')).toBe(false);
+    expect(engine.isTemplateCompatibleWithPaperMode(strip, 'photo4x6_postcard')).toBe(false);
+
+    expect(engine.isTemplateCompatibleWithPaperMode(postcard, 'photo4x6_postcard')).toBe(true);
+    expect(engine.isTemplateCompatibleWithPaperMode(postcard, 'photo4x6_dual')).toBe(false);
+    expect(engine.isTemplateCompatibleWithPaperMode(postcard, 'thermal80')).toBe(false);
+
+    expect(engine.isTemplateCompatibleWithPaperMode(receipt58, 'thermal58')).toBe(true);
+    expect(engine.isTemplateCompatibleWithPaperMode(receipt58, 'thermal80')).toBe(false);
+    expect(engine.isTemplateCompatibleWithPaperMode(receipt80, 'thermal80')).toBe(true);
+    expect(engine.isTemplateCompatibleWithPaperMode(receipt80, 'photo4x6_dual')).toBe(false);
   });
 
   it('uses schema slots as the capture requirement', () => {

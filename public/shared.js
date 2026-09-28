@@ -79,6 +79,19 @@ const Kiosk = {
         if (paperMode === 'photo5x7') return 'photo5x7';
         return '2x6';
     },
+    isTemplateCompatible(template, paperMode = this.paperMode) {
+        const engine = typeof window !== 'undefined' ? window.PhotoTemplateEngine : null;
+        if (engine && typeof engine.isTemplateCompatibleWithPaperMode === 'function') {
+            return engine.isTemplateCompatibleWithPaperMode(template, paperMode);
+        }
+
+        const type = String(template && template.type || '');
+        if (paperMode === 'photo4x6_dual' || paperMode === 'photo2x6_single') return type === '2x6';
+        if (paperMode === 'photo4x6_postcard') return type === '4x6';
+        if (paperMode === 'photo5x7') return type === 'photo5x7';
+        if (String(paperMode).startsWith('thermal')) return type === paperMode;
+        return false;
+    },
     getStandardLayoutsForMode(paperMode = this.paperMode) {
         if (paperMode === 'photo4x6_postcard') {
             return [
@@ -95,14 +108,14 @@ const Kiosk = {
             ];
         } else if (paperMode.startsWith('thermal')) {
             return [
-                { layoutId: '1_1x1', name: '1 รูป (1:1 จัตุรัส)', count: 1, ratio: '1:1' },
-                { layoutId: '2_1x1', name: '2 รูป (1:1 Strip)', count: 2, ratio: '1:1' },
-                { layoutId: '2_3x4', name: '2 รูป (3:4 Strip)', count: 2, ratio: '3:4' },
-                { layoutId: '3_1x1', name: '3 รูป (1:1 คลาสสิก)', count: 3, ratio: '1:1' },
-                { layoutId: '3_3x4', name: '3 รูป (3:4 แนวตั้ง)', count: 3, ratio: '3:4' },
-                { layoutId: '3_16x9', name: '3 รูป (16:9 ไวด์)', count: 3, ratio: '16:9' },
-                { layoutId: '4_1x1', name: '4 รูป (1:1 Grid 2:2)', count: 4, ratio: '1:1' },
-                { layoutId: '4_3x4', name: '4 รูป (3:4 Strip)', count: 4, ratio: '3:4' }
+                { layoutId: '1_1x1', name: 'ใบเสร็จ 1 รูป (1:1)', count: 1, ratio: '1:1' },
+                { layoutId: '2_1x1', name: 'ใบเสร็จ 2 รูป (1:1 แนวตั้ง)', count: 2, ratio: '1:1' },
+                { layoutId: '2_3x4', name: 'ใบเสร็จ 2 รูป (3:4 แนวตั้ง)', count: 2, ratio: '3:4' },
+                { layoutId: '3_1x1', name: 'ใบเสร็จ 3 รูป (1:1 แนวตั้ง)', count: 3, ratio: '1:1' },
+                { layoutId: '3_3x4', name: 'ใบเสร็จ 3 รูป (3:4 แนวตั้ง)', count: 3, ratio: '3:4' },
+                { layoutId: '3_16x9', name: 'ใบเสร็จ 3 รูป (16:9)', count: 3, ratio: '16:9' },
+                { layoutId: '4_1x1', name: 'ใบเสร็จ 4 รูป (ตาราง 2×2)', count: 4, ratio: '1:1' },
+                { layoutId: '4_3x4', name: 'ใบเสร็จ 4 รูป (3:4 แนวตั้ง)', count: 4, ratio: '3:4' }
             ];
         } else if (paperMode === 'photo5x7') {
             return [
@@ -225,24 +238,17 @@ const TemplateCatalog = {
         return this.load().find(template => template.templateId === templateId) || null;
     },
     forLayout(layoutId, paperMode = Kiosk.paperMode) {
-        const templates = this.load().filter(template => template.enabled && template.layoutId === layoutId);
+        const templates = this.load().filter(template =>
+            template.enabled &&
+            template.layoutId === layoutId &&
+            Kiosk.isTemplateCompatible(template, paperMode)
+        );
         if (!templates.length) return null;
-        const mode = paperMode || 'photo4x6_dual';
-        let matched = templates.find(template => template.type === mode);
-        if (!matched) {
-            if (mode === 'photo4x6_postcard') {
-                matched = templates.find(template => template.type === '4x6');
-            } else if (mode.startsWith('thermal') || mode === 'photo2x6_single' || mode === 'photo4x6_dual') {
-                matched = templates.find(template => template.type === mode || template.type === '2x6');
-            } else if (mode === 'photo5x7') {
-                matched = templates.find(template => template.type === 'photo5x7' || template.type === '2x6');
-            }
-        }
-        return matched || templates[0];
+        return templates[0];
     },
     current(layoutId = Session.layout, paperMode = Kiosk.paperMode) {
         const selected = Session.templateSchemaId ? this.find(Session.templateSchemaId) : null;
-        if (selected && selected.enabled) return selected;
+        if (selected && selected.enabled && Kiosk.isTemplateCompatible(selected, paperMode)) return selected;
         return this.forLayout(layoutId || '3_1x1', paperMode);
     },
     requiredShots(layoutId = Session.layout) {
@@ -460,8 +466,11 @@ const SessionAsync = {
 // ============================================================
 function isLocalPrototypeDemo() {
     const host = String(location.hostname || '').toLowerCase();
-    return (host === 'localhost' || host === '127.0.0.1') &&
-        new URLSearchParams(location.search).get('demo') === '1';
+    if (host !== 'localhost' && host !== '127.0.0.1') return false;
+    if (new URLSearchParams(location.search).get('demo') === '1') {
+        sessionStorage.setItem('pb_demo_mode', '1');
+    }
+    return sessionStorage.getItem('pb_demo_mode') === '1';
 }
 
 const PB_DEMO_ARCHIVE = (() => {
@@ -762,9 +771,8 @@ if (typeof document !== 'undefined') {
 
 class IdleTimer {
     constructor(timeoutMs, redirectUrl, warningMs = 30000) {
-        // Phase 1 contract: two minutes idle with a warning during the last 30 seconds.
-        this.timeoutMs = Math.max(Number(timeoutMs) || 120000, 120000);
-        this.warningMs = Math.min(Number(warningMs) || 30000, this.timeoutMs);
+        this.timeoutMs = Kiosk.mode === 'redeem' ? 90000 : Math.max(Number(timeoutMs) || 120000, 120000);
+        this.warningMs = Kiosk.mode === 'redeem' ? 15000 : Math.min(Number(warningMs) || 30000, this.timeoutMs);
         this.redirectUrl = redirectUrl;
         this.timer = null;
         this.warningTimer = null;
@@ -780,9 +788,10 @@ class IdleTimer {
         clearTimeout(this.timer);
         clearTimeout(this.warningTimer);
         this.hideWarning();
+        void touchPrintPass().catch(() => {});
         this.warningTimer = setTimeout(() => this.showWarning(), this.timeoutMs - this.warningMs);
         this.timer = setTimeout(async () => {
-            await SessionAsync.clear();
+            await closePrintPassAndClearCustomer();
             window.location.replace(this.redirectUrl);
         }, this.timeoutMs);
     }
@@ -1165,6 +1174,9 @@ async function printViaUSB(paperMode, copies = 1, customDataUrl = null) {
 
 // Unified adapter used by Kiosk print page and Admin.
 async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies = 2 }) {
+    if (Kiosk.mode === 'redeem') {
+        throw new Error('โหมดแพ็กเกจต้องพิมพ์ผ่านงานที่อนุมัติสิทธิ์แล้ว');
+    }
     const copyCount = (typeof copies === 'number' && copies > 0) ? copies : 2;
     if (!dataUrl) throw new Error('Missing printable asset');
 
@@ -2474,6 +2486,213 @@ function checkAndInjectEventBanner() {
 
 // ======================== REDEEM CODE SYSTEM ========================
 
+const PRINT_PASS_CODE = /^(?=.*[0-9])(?=.*[A-Z])[0-9A-HJKMNP-TV-Z]{5}$/;
+
+function printPassMessage(pass = Session.authorization) {
+    if (!pass || !pass.passId) return '';
+    return pass.quotaKind === 'unlimited'
+        ? `Unlimited · ใช้ได้ถึง ${new Date(pass.validUntil).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`
+        : `พิมพ์ได้อีก ${pass.remaining} ครั้ง`;
+}
+
+async function claimPrintPass(rawCode) {
+    const code = String(rawCode || '').trim().toUpperCase();
+    if (!PRINT_PASS_CODE.test(code)) return { success: false, error: 'invalid_format' };
+    const previous = Session.authorization;
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        let row = rows.find(item => item.code === code);
+        if (!row && code === 'K7M2X') {
+            row = { id: crypto.randomUUID(), code, quota_kind: 'limited', print_limit: 5,
+                used_prints: 0, reserved_prints: 0, expires_at: new Date(Date.now() + 30 * 86400000).toISOString() };
+            rows.push(row);
+        }
+        if (!row) return { success: false, error: 'not_found' };
+        if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) return { success: false, error: 'expired' };
+        if (row.quota_kind !== 'unlimited' && row.used_prints >= row.print_limit) {
+            return { success: false, error: 'quota_exhausted' };
+        }
+        if (rows.some(item => item.id !== row.id && item.session_token && item.session_until > Date.now())) {
+            return { success: false, error: 'kiosk_in_use' };
+        }
+        if (row.session_token && row.session_until > Date.now() && previous?.sessionToken !== row.session_token) {
+            return { success: false, error: 'already_in_use' };
+        }
+        if (row.session_token && row.session_until <= Date.now() && row.pending_job?.status === 'reserved') {
+            row.pending_job.status = 'cancelled';
+            row.pending_job = null;
+            row.reserved_prints = Math.max(0, (row.reserved_prints || 0) - 1);
+        }
+        row.session_token = previous?.sessionToken === row.session_token ? row.session_token : crypto.randomUUID();
+        row.session_until = Date.now() + 5 * 60000;
+        if (!row.activated_at) {
+            row.activated_at = new Date().toISOString();
+            if (row.quota_kind === 'unlimited') {
+                const bangkokDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok',
+                    year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                row.valid_until = new Date(Date.parse(`${bangkokDate}T00:00:00+07:00`) + 86400000).toISOString();
+            } else row.valid_until = row.expires_at;
+        }
+        if (Date.parse(row.valid_until) <= Date.now()) return { success: false, error: 'expired' };
+        demoSaveRedeemCodes(rows);
+        const pass = { passId: row.id, sessionToken: row.session_token, quotaKind: row.quota_kind,
+            printLimit: row.print_limit ?? null, usedPrints: row.used_prints,
+            remaining: row.quota_kind === 'unlimited' ? null : row.print_limit - row.used_prints - (row.reserved_prints || 0),
+            copiesPerPrint: 2, validUntil: row.valid_until, demo: true };
+        Session.authorization = pass;
+        return { success: true, pass };
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.claimPrintPass !== 'function') {
+        return { success: false, error: 'device_not_provisioned' };
+    }
+    try {
+        const result = await bridge.claimPrintPass({ code, kioskId: Kiosk.kioskId,
+            previousToken: previous?.passId ? previous.sessionToken : null });
+        if (!result || !result.passId || !result.sessionToken || result.error) {
+            return { success: false, error: result?.error || 'network_error' };
+        }
+        Session.authorization = result;
+        return { success: true, pass: result };
+    } catch (error) {
+        console.error('Print pass claim failed:', error);
+        return { success: false, error: 'network_error' };
+    }
+}
+
+async function reservePrintPass(dataUrl, jobId) {
+    const pass = Session.authorization;
+    if (!pass?.passId) throw new Error('ยังไม่ได้ใช้รหัสแพ็กเกจ');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(dataUrl));
+    const assetSha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const row = rows.find(item => item.id === pass.passId);
+        if (!row || row.session_token !== pass.sessionToken || Date.parse(row.valid_until) <= Date.now()) {
+            throw new Error('สิทธิ์หมดอายุหรือรอบใช้งานปิดแล้ว');
+        }
+        if (row.pending_job && row.pending_job.id !== jobId) throw new Error('มีงานพิมพ์ที่ยังไม่ทราบผล');
+        if (row.pending_job && row.pending_job.assetSha256 !== assetSha256) throw new Error('งานพิมพ์เดิมไม่ตรงกับภาพ');
+        if (!row.pending_job) {
+            const previousJob = row.print_jobs?.[jobId];
+            if (previousJob) {
+                if (previousJob.assetSha256 !== assetSha256) throw new Error('งานพิมพ์เดิมไม่ตรงกับภาพ');
+                return { jobId, copies: 2, status: previousJob.status };
+            }
+            if (row.quota_kind !== 'unlimited' && row.used_prints + (row.reserved_prints || 0) >= row.print_limit) {
+                throw new Error('ใช้สิทธิ์พิมพ์ครบแล้ว');
+            }
+            row.pending_job = { id: jobId, assetSha256, status: 'reserved' };
+            row.print_jobs = row.print_jobs || {};
+            row.print_jobs[jobId] = row.pending_job;
+            row.reserved_prints = (row.reserved_prints || 0) + 1;
+        }
+        demoSaveRedeemCodes(rows);
+        return { jobId, copies: 2, status: row.pending_job.status };
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.reservePrintPass !== 'function') throw new Error('ตู้นี้ยังไม่รองรับแพ็กเกจพิมพ์');
+    const result = await bridge.reservePrintPass({ kioskId: Kiosk.kioskId, passId: pass.passId,
+        sessionToken: pass.sessionToken, jobId, assetSha256 });
+    if (!result || result.error || result.jobId !== jobId || result.status !== 'reserved') {
+        throw new Error(result?.error || 'ไม่สามารถจองสิทธิ์พิมพ์ได้');
+    }
+    return result;
+}
+
+async function printAuthorizedPass({ dataUrl, paperMode, jobId, copies }) {
+    const pass = Session.authorization;
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const row = rows.find(item => item.id === pass?.passId);
+        if (!row?.pending_job || row.pending_job.id !== jobId) throw new Error('ไม่พบงานพิมพ์ที่จองไว้');
+        row.used_prints += 1;
+        row.reserved_prints -= 1;
+        row.pending_job.status = 'completed';
+        row.pending_job = null;
+        demoSaveRedeemCodes(rows);
+        pass.usedPrints = row.used_prints;
+        pass.remaining = row.quota_kind === 'unlimited' ? null : row.print_limit - row.used_prints;
+        Session.authorization = pass;
+        return { status: 'completed', copiesCompleted: copies, transport: 'demo' };
+    }
+    const bridge = window.PhotoboothPrinter;
+    if (!bridge || typeof bridge.printAuthorizedPass !== 'function') {
+        throw new Error('เครื่องพิมพ์ยังไม่ได้เชื่อมต่อกับระบบสิทธิ์');
+    }
+    // This native method must call redeem-pass start immediately before the physical
+    // print, then report its trusted result. Never expose start/report to page JS.
+    const result = await bridge.printAuthorizedPass({ kioskId: Kiosk.kioskId,
+        passId: pass.passId, sessionToken: pass.sessionToken, jobId, dataUrl, paperMode, copies });
+    if (result?.status === 'completed' && pass.quotaKind !== 'unlimited'
+        && typeof result.remaining !== 'number') {
+        throw new Error('ยังยืนยันยอดสิทธิ์หลังพิมพ์ไม่ได้ กรุณาเรียกพนักงาน');
+    }
+    if (result?.status === 'completed' && typeof result.remaining === 'number') {
+        pass.remaining = result.remaining;
+        pass.usedPrints = (pass.usedPrints || 0) + 1;
+        Session.authorization = pass;
+    }
+    return result || { status: 'ambiguous' };
+}
+
+async function pausePrintPass() {
+    const pass = Session.authorization;
+    if (!pass?.passId) return true;
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const row = rows.find(item => item.id === pass.passId);
+        if (row && row.session_token === pass.sessionToken) {
+            if (row.pending_job?.status === 'reserved') {
+                row.pending_job.status = 'cancelled';
+                row.pending_job = null;
+                row.reserved_prints -= 1;
+            }
+            row.session_token = null;
+            row.session_until = null;
+            demoSaveRedeemCodes(rows);
+        }
+        return true;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.pausePrintPass !== 'function') return false;
+    const result = await bridge.pausePrintPass({ kioskId: Kiosk.kioskId,
+        passId: pass.passId, sessionToken: pass.sessionToken });
+    return result?.paused === true;
+}
+
+async function closePrintPassAndClearCustomer() {
+    const authorization = Session.authorization;
+    const paused = await pausePrintPass().catch(() => false);
+    await SessionAsync.clear();
+    // Keep only the opaque token if the network failed, so re-entering the same
+    // code can recover its live lease. All customer photos are still erased.
+    if (!paused && authorization?.passId) Session.authorization = authorization;
+    return paused;
+}
+
+let lastPrintPassTouch = 0;
+async function touchPrintPass() {
+    const pass = Session.authorization;
+    if (/\/(?:home|payment)\.html$/.test(window.location.pathname)) return;
+    if (!pass?.passId || Date.now() - lastPrintPassTouch < 60000) return;
+    lastPrintPassTouch = Date.now();
+    if (isLocalPrototypeDemo()) {
+        const rows = demoLoadRedeemCodes();
+        const row = rows.find(item => item.id === pass.passId);
+        if (row?.session_token === pass.sessionToken && Date.parse(row.valid_until) > Date.now()) {
+            row.session_until = Date.now() + 5 * 60000;
+            demoSaveRedeemCodes(rows);
+        }
+        return;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (bridge && typeof bridge.touchPrintPass === 'function') {
+        await bridge.touchPrintPass({ kioskId: Kiosk.kioskId, passId: pass.passId,
+            sessionToken: pass.sessionToken });
+    }
+}
+
 // Call a Postgres RPC function through the REST API.
 async function rpc(name, args = {}) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
@@ -2576,6 +2795,16 @@ function demoSaveRedeemCodes(codes) {
 }
 
 function demoCreateRedeemCode(existing) {
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    let code;
+    do {
+        const bytes = crypto.getRandomValues(new Uint8Array(5));
+        code = Array.from(bytes, byte => alphabet[byte % alphabet.length]).join('');
+    } while (existing.has(code) || !PRINT_PASS_CODE.test(code));
+    return code;
+}
+
+function demoCreateLegacyRedeemCode(existing) {
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code;
     do {
@@ -2586,9 +2815,10 @@ function demoCreateRedeemCode(existing) {
     return code;
 }
 
-async function generateRedeemCodes(count = 50, expiresDays = 30) {
+async function generateRedeemCodes(count = 50, expiresDays = 30, quotaKind = '2') {
     count = Math.max(1, Math.min(500, Number(count) || 50));
     expiresDays = Math.max(1, Math.min(365, Number(expiresDays) || 30));
+    if (!['2', '5', 'unlimited'].includes(quotaKind)) return { success: false, error: 'invalid_quota_kind' };
     if (isLocalPrototypeDemo()) {
         const rows = demoLoadRedeemCodes();
         const existing = new Set(rows.map(row => row.code));
@@ -2599,24 +2829,27 @@ async function generateRedeemCodes(count = 50, expiresDays = 30) {
             const code = demoCreateRedeemCode(existing);
             existing.add(code);
             const row = {
-                id: crypto.randomUUID(), code, code_hint: `${code.slice(0, 2)}••${code.slice(4)}`,
+                id: crypto.randomUUID(), code, code_hint: `${code.slice(0, 1)}••••`,
                 batch_id: batchId, expires_at: expiresAt, is_used: false,
+                quota_kind: quotaKind === 'unlimited' ? 'unlimited' : 'limited',
+                print_limit: quotaKind === 'unlimited' ? null : Number(quotaKind),
+                used_prints: 0, reserved_prints: 0,
                 printed_at: null, created_at: new Date().toISOString()
             };
             rows.push(row);
             created.push(row);
         }
         demoSaveRedeemCodes(rows);
-        adminAuditLocal('demo_redeem.batch_generated', { batchId, count, expiresAt });
+        adminAuditLocal('demo_redeem.batch_generated', { batchId, count, expiresAt, quotaKind });
         return { success: true, codes: created.map(row => row.code), batchId, expiresAt, demo: true };
     }
     const bridge = window.PhotoboothDevice;
-    if (!bridge || typeof bridge.generateRedeemCodes !== 'function') {
+    if (!bridge || typeof bridge.generatePrintPasses !== 'function') {
         return { success: false, codes: [], batchId: null, error: 'device_not_provisioned' };
     }
     try {
-        return await bridge.generateRedeemCodes({
-            kioskId: Kiosk.kioskId, packageId: Kiosk.packageId, count, expiresDays
+        return await bridge.generatePrintPasses({
+            kioskId: Kiosk.kioskId, packageId: Kiosk.packageId, count, expiresDays, quotaKind
         });
     } catch (e) {
         console.error('Generate codes error:', e);
@@ -2629,18 +2862,20 @@ async function fetchRedeemCodes() {
         const now = Date.now();
         return demoLoadRedeemCodes().map(row => ({
             ...row,
-            isExpired: row.expires_at ? new Date(row.expires_at).getTime() <= now : false
+            isExpired: (row.expires_at && new Date(row.expires_at).getTime() <= now)
+                || (row.valid_until && new Date(row.valid_until).getTime() <= now) || false
         }));
     }
     const bridge = window.PhotoboothDevice;
-    if (!bridge || typeof bridge.listRedeemCodes !== 'function') return [];
+    if (!bridge || typeof bridge.listPrintPasses !== 'function') return [];
     try {
-        const result = await bridge.listRedeemCodes({ kioskId: Kiosk.kioskId });
+        const result = await bridge.listPrintPasses({ kioskId: Kiosk.kioskId });
         const rows = result && Array.isArray(result.codes) ? result.codes : [];
         const now = Date.now();
         return rows.map(row => ({
             ...row,
-            isExpired: row.expiresAt ? new Date(row.expiresAt).getTime() <= now : !!row.isExpired
+            isExpired: [row.expiresAt, row.expires_at, row.validUntil, row.valid_until]
+                .some(value => value && new Date(value).getTime() <= now) || !!row.isExpired
         }));
     } catch (e) {
         console.error('Fetch redeem codes error:', e);
@@ -2654,17 +2889,20 @@ async function printRedeemCodeBatch(count = 10) {
     count = Math.max(1, Math.min(100, Number(count) || 10));
     if (isLocalPrototypeDemo()) {
         const available = demoLoadRedeemCodes().filter(row =>
-            !row.is_used && !row.printed_at && (!row.expires_at || new Date(row.expires_at).getTime() > Date.now())
+            !row.is_used && !row.printed_at
+            && (row.quota_kind === 'unlimited' || row.used_prints < row.print_limit)
+            && (!row.expires_at || new Date(row.expires_at).getTime() > Date.now())
+            && (!row.valid_until || new Date(row.valid_until).getTime() > Date.now())
         ).sort((a, b) => (a.priority === 'replacement' ? -1 : 0) - (b.priority === 'replacement' ? -1 : 0)).slice(0, count);
         if (!available.length) return { status: 'empty', codes: [] };
         pendingDemoRedeemPrint = { jobId: crypto.randomUUID(), ids: available.map(row => row.id) };
         return { status: 'simulator', jobId: pendingDemoRedeemPrint.jobId, codes: available.map(row => row.code) };
     }
     const bridge = window.PhotoboothPrinter;
-    if (!bridge || typeof bridge.printRedeemCodes !== 'function') {
+    if (!bridge || typeof bridge.printPrintPasses !== 'function') {
         return { status: 'unavailable', error: 'printer_bridge_missing', codes: [] };
     }
-    return bridge.printRedeemCodes({ kioskId: Kiosk.kioskId, count });
+    return bridge.printPrintPasses({ kioskId: Kiosk.kioskId, count });
 }
 
 async function resolveRedeemCodePrint(jobId, printed) {
@@ -2683,8 +2921,8 @@ async function resolveRedeemCodePrint(jobId, printed) {
         return true;
     }
     const bridge = window.PhotoboothPrinter;
-    if (!bridge || typeof bridge.resolveRedeemCodePrint !== 'function') return false;
-    const result = await bridge.resolveRedeemCodePrint({
+    if (!bridge || typeof bridge.resolvePrintPassCodes !== 'function') return false;
+    const result = await bridge.resolvePrintPassCodes({
         jobId,
         resolution: printed ? 'confirmed_printed' : 'confirmed_not_printed'
     });
@@ -2707,7 +2945,7 @@ async function issueReplacementEntitlement(originalCode, reason) {
         if (!original.is_used) return { success: false, error: 'replacement_not_allowed' };
         if (original.replaced_by) return { success: false, error: 'replacement_already_issued' };
         const existing = new Set(rows.map(row => row.code));
-        const code = demoCreateRedeemCode(existing);
+        const code = demoCreateLegacyRedeemCode(existing);
         const replacement = {
             id: crypto.randomUUID(),
             code,

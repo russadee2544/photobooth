@@ -90,7 +90,7 @@
     <script src="shared.js?v=2.8"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            await SessionAsync.clear();
+            await closePrintPassAndClearCustomer();
             Session.sessionId = crypto.randomUUID();
             await purgeExpiredFinalAssets();
             new IdleTimer(120000, 'home.html').start();

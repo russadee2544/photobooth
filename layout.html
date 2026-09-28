@@ -58,10 +58,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const paperMode = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
-            const wantedType = (typeof Kiosk !== 'undefined' && typeof Kiosk.getTargetTemplateType === 'function')
-                ? Kiosk.getTargetTemplateType(paperMode)
-                : (paperMode === 'photo4x6_postcard' ? '4x6' : (paperMode.startsWith('thermal') ? paperMode : '2x6'));
-            
             const allowedLayoutsList = (typeof Kiosk !== 'undefined' && typeof Kiosk.getAllowedLayouts === 'function')
                 ? Kiosk.getAllowedLayouts(paperMode)
                 : null;
@@ -73,19 +69,7 @@
             let schemas = allTemplates.filter(schema => {
                 if (!schema.enabled) return false;
                 
-                // Match schema.type with wantedType strictly
-                let typeMatches = false;
-                if (wantedType === '2x6') {
-                    typeMatches = schema.type === '2x6';
-                } else if (wantedType === '4x6') {
-                    typeMatches = schema.type === '4x6';
-                } else if (wantedType.startsWith('thermal')) {
-                    typeMatches = schema.type === wantedType || (schema.type.startsWith('thermal') && isStandardPhotoCanvas(schema));
-                } else if (wantedType === 'photo5x7') {
-                    typeMatches = schema.type === 'photo5x7';
-                }
-                
-                if (!typeMatches) return false;
+                if (!Kiosk.isTemplateCompatible(schema, paperMode)) return false;
 
                 // Check admin-allowed layouts for this mode
                 if (allowedLayoutsSet && !allowedLayoutsSet.has(schema.layoutId)) {
@@ -100,9 +84,10 @@
                 const stdLayouts = (typeof Kiosk !== 'undefined' && typeof Kiosk.getStandardLayoutsForMode === 'function')
                     ? Kiosk.getStandardLayoutsForMode(paperMode)
                     : [];
+                const targetType = Kiosk.getTargetTemplateType(paperMode);
                 schemas = stdLayouts
                     .filter(l => !allowedLayoutsSet || allowedLayoutsSet.has(l.layoutId))
-                    .map(l => PhotoTemplateEngine.createTemplate(l.layoutId, wantedType === '4x6' ? '4x6-portrait' : wantedType));
+                    .map(l => PhotoTemplateEngine.createTemplate(l.layoutId, targetType === '4x6' ? '4x6-portrait' : targetType));
             }
 
             // Deduplicate by layoutId and orientation so customer gets clean unique choices
@@ -127,20 +112,6 @@
 
             new IdleTimer(60000, 'home.html').start();
         });
-
-        function isStandardPhotoCanvas(schema) {
-            if (schema.type === '2x6') return schema.canvas.width === 600 && schema.canvas.height === 1800 && schema.canvas.dpi === 300;
-            if (schema.type === '4x6') {
-                const portrait = schema.canvas.width === 1200 && schema.canvas.height === 1800;
-                const landscape = schema.canvas.width === 1800 && schema.canvas.height === 1200;
-                return (portrait || landscape) && schema.canvas.dpi === 300;
-            }
-            if (schema.type === 'photo5x7') return schema.canvas.width === 1500 && schema.canvas.height === 2100;
-            if (schema.type === 'thermal58') return schema.canvas.width === 384;
-            if (schema.type === 'thermal80') return schema.canvas.width === 576;
-            if (schema.type === 'thermal100') return schema.canvas.width === 832;
-            return true;
-        }
 
         function appendLayoutCard(schema) {
             const card = document.createElement('button');

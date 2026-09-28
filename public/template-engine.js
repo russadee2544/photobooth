@@ -134,6 +134,41 @@
         };
     }
 
+    function isTemplateCompatibleWithPaperMode(template, paperMode) {
+        if (!template || template.enabled === false) return false;
+
+        const mode = String(paperMode || 'photo4x6_dual');
+        const type = String(template.type || '');
+        const canvas = template.canvas || {};
+        const width = Number(canvas.width);
+        const height = Number(canvas.height);
+        const dpi = Number(canvas.dpi);
+
+        // Receipt layouts are tied to the exact printer width. Photo layouts
+        // and receipt layouts must never leak into each other's mode.
+        if (mode === 'thermal58') return type === 'thermal58' && width === 384 && dpi === 203;
+        if (mode === 'thermal80') return type === 'thermal80' && width === 576 && dpi === 203;
+        if (mode === 'thermal100') return type === 'thermal100' && width === 832 && dpi === 203;
+
+        // A 2x6 strip is photobooth-only. Dual mode imposes two identical
+        // strips on one physical 4x6 sheet during composition.
+        if (mode === 'photo4x6_dual' || mode === 'photo2x6_single') {
+            return type === '2x6' && width === 600 && dpi === 300;
+        }
+
+        if (mode === 'photo4x6_postcard') {
+            const isPortrait = width === 1200 && height === 1800;
+            const isLandscape = width === 1800 && height === 1200;
+            return type === '4x6' && dpi === 300 && (isPortrait || isLandscape);
+        }
+
+        if (mode === 'photo5x7') {
+            return type === 'photo5x7' && width === 1500 && height === 2100 && dpi === 300;
+        }
+
+        return false;
+    }
+
     function computeDynamicCanvas(layoutId, presetKey) {
         const parsed = parseLayout(layoutId);
         const count = parsed.count;
@@ -918,6 +953,7 @@
         mmToPx,
         defaultBleed,
         parseLayout,
+        isTemplateCompatibleWithPaperMode,
         createTemplate,
         createDefaultTemplates,
         generateCustomTemplate,

@@ -129,20 +129,9 @@
 
             // Load Custom Templates from Template Catalog (Created in Template Editor)
             const catalog = TemplateCatalog.load();
-            const targetType = (typeof Kiosk !== 'undefined' && typeof Kiosk.getTargetTemplateType === 'function')
-                ? Kiosk.getTargetTemplateType(paperMode)
-                : (paperMode === 'photo4x6_postcard' ? '4x6' : (paperMode.startsWith('thermal') ? paperMode : '2x6'));
-
             const customTemplates = catalog.filter(t => {
                 if (t.enabled === false) return false;
-                
-                // Must match active paper format
-                let typeMatches = false;
-                if (targetType === '2x6') typeMatches = t.type === '2x6';
-                else if (targetType === '4x6') typeMatches = t.type === '4x6';
-                else if (targetType.startsWith('thermal')) typeMatches = (t.type && t.type.startsWith('thermal'));
-                else if (targetType === 'photo5x7') typeMatches = t.type === 'photo5x7';
-                if (!typeMatches) return false;
+                if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
 
                 // Include custom templates created by user or having custom artboard/overlay
                 const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
@@ -201,9 +190,11 @@
             }
 
             // Init selection state
-            if (Session.templateSchemaId && TemplateCatalog.find(Session.templateSchemaId)) {
+            const selectedSchema = Session.templateSchemaId ? TemplateCatalog.find(Session.templateSchemaId) : null;
+            if (selectedSchema && Kiosk.isTemplateCompatible(selectedSchema, paperMode)) {
                 updatePreview(null, false, Session.templateSchemaId);
             } else {
+                Session.templateSchemaId = null;
                 Session.template = Session.template || 'light';
                 updatePreview(Session.template, false, null);
             }

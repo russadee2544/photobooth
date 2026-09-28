@@ -8,9 +8,11 @@ interface AdminRedeemRequest {
   count?: unknown;
   expiresDays?: unknown;
   entitlementIds?: unknown;
+  passIds?: unknown;
   printJobId?: unknown;
   originalCode?: unknown;
   reason?: unknown;
+  quotaKind?: unknown;
 }
 
 interface DeviceRow {
@@ -47,7 +49,7 @@ export default {
 
     const operation = typeof body.operation === 'string' ? body.operation : '';
     const kioskId = typeof body.kioskId === 'string' ? body.kioskId : '';
-    if (!['generate', 'list', 'markPrinted', 'replacement'].includes(operation) || !UUID.test(kioskId)) {
+    if (!['generate', 'generatePass', 'list', 'listPass', 'markPrinted', 'markPassPrinted', 'replacement'].includes(operation) || !UUID.test(kioskId)) {
       return Response.json({ error: 'invalid_request' }, { status: 400 });
     }
 
@@ -58,7 +60,7 @@ export default {
       return Response.json({ error: 'device_unauthorized' }, { status: 401 });
     }
 
-    if (operation === 'generate') {
+    if (operation === 'generate' || operation === 'generatePass') {
       const packageId = typeof body.packageId === 'string' ? body.packageId : '';
       const count = Number(body.count);
       const expiresDays = Number(body.expiresDays);
@@ -66,14 +68,25 @@ export default {
           !Number.isSafeInteger(expiresDays) || expiresDays < 1 || expiresDays > 365) {
         return Response.json({ error: 'invalid_batch_parameters' }, { status: 400 });
       }
-      const { data, error } = await context.supabaseAdmin.rpc('generate_kiosk_redeem_batch', {
-        p_kiosk_id: kioskId,
-        p_package_id: packageId,
-        p_capability_token: adminCapability,
-        p_count: count,
-        p_expires_days: expiresDays,
-      });
+      const quotaKind = typeof body.quotaKind === 'string' ? body.quotaKind : '';
+      if (operation === 'generatePass' && !['2', '5', 'unlimited'].includes(quotaKind)) {
+        return Response.json({ error: 'invalid_quota_kind' }, { status: 400 });
+      }
+      const { data, error } = await context.supabaseAdmin.rpc(
+        operation === 'generatePass' ? 'generate_kiosk_print_passes' : 'generate_kiosk_redeem_batch',
+        operation === 'generatePass'
+          ? { p_kiosk_id: kioskId, p_package_id: packageId, p_capability_token: adminCapability,
+              p_count: count, p_expires_days: expiresDays, p_quota_kind: quotaKind }
+          : { p_kiosk_id: kioskId, p_package_id: packageId, p_capability_token: adminCapability,
+              p_count: count, p_expires_days: expiresDays },
+      );
       if (error) return Response.json({ error: rpcError(error.message) }, { status: 409 });
+      if (operation === 'generatePass') {
+        const passes = (data ?? []) as Array<{ pass_id: string; code: string; code_hint: string; expires_at: string }>;
+        return Response.json({ success: true, quotaKind, expiresAt: passes[0]?.expires_at ?? null,
+          codes: passes.map((row) => ({ passId: row.pass_id, code: row.code, codeHint: row.code_hint })) },
+        { headers: { 'Cache-Control': 'no-store' } });
+      }
       const rows = (data ?? []) as Array<{
         entitlement_id: string;
         batch_id: string;
@@ -102,6 +115,31 @@ export default {
       return Response.json({ success: true, codes: data ?? [] }, {
         headers: { 'Cache-Control': 'no-store' },
       });
+    }
+
+    if (operation === 'listPass') {
+      const { data, error } = await context.supabaseAdmin.rpc('list_kiosk_print_passes', {
+        p_kiosk_id: kioskId, p_capability_token: adminCapability,
+      });
+      if (error) return Response.json({ error: rpcError(error.message) }, { status: 409 });
+      return Response.json({ success: true, codes: data ?? [] },
+        { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    if (operation === 'markPassPrinted') {
+      const passIds = Array.isArray(body.passIds) ? body.passIds : [];
+      const printJobId = typeof body.printJobId === 'string' ? body.printJobId : '';
+      if (!UUID.test(printJobId) || passIds.length < 1 || passIds.length > 100 ||
+          !passIds.every((value) => typeof value === 'string' && UUID.test(value))) {
+        return Response.json({ error: 'invalid_print_batch' }, { status: 400 });
+      }
+      const { data, error } = await context.supabaseAdmin.rpc('mark_kiosk_print_passes_printed', {
+        p_kiosk_id: kioskId, p_capability_token: adminCapability,
+        p_pass_ids: passIds, p_print_job_id: printJobId,
+      });
+      if (error) return Response.json({ error: rpcError(error.message) }, { status: 409 });
+      return Response.json({ success: true, updated: Number(data ?? 0) },
+        { headers: { 'Cache-Control': 'no-store' } });
     }
 
     if (operation === 'replacement') {

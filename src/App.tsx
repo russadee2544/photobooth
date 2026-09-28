@@ -79,6 +79,12 @@ function Header({ config, locale, onLocale }: { config: KioskConfig; locale: Loc
 
 export default function App() {
   const config = useMemo(loadKioskConfig, []);
+  const paidKiosk = config.mode === 'redeem' || localStorage.getItem('kiosk_mode') === 'redeem';
+  useEffect(() => {
+    // The multipage kiosk owns the five-character pass flow. The React preview
+    // still has a one-use voucher and simulated printer, so it must not sell passes.
+    if (paidKiosk) window.location.replace('home.html');
+  }, [paidKiosk]);
   const [locale, setLocale] = useState<Locale>(config.locale);
   const [state, dispatch] = useReducer(kioskReducer, INITIAL_KIOSK_STATE);
   const [redeemCode, setRedeemCode] = useState('');
@@ -94,6 +100,8 @@ export default function App() {
   }, []);
   const idleActive = !['attract', 'printing', 'complete'].includes(state.step);
   const [idleWarning, keepAlive] = useIdleSession(idleActive, config, resetSession);
+
+  if (paidKiosk) return <main className="kiosk-app">กำลังเปิดหน้าตู้…</main>;
 
   const submitRedeem = async (event: FormEvent) => {
     event.preventDefault();

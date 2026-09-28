@@ -45,6 +45,13 @@ function directPrintPlugin() {
           res.statusCode = 405;
           return res.end();
         }
+        // The dev print endpoint has no server-side entitlement context. It must
+        // never be reachable on a paid kiosk without an explicit local opt-in.
+        if (process.env.PHOTOBOOTH_ALLOW_DIRECT_PRINT !== '1') {
+          res.statusCode = 403;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          return res.end(JSON.stringify({ success: false, error: 'direct_print_disabled' }));
+        }
         let body = '';
         req.on('data', chunk => { body += chunk; });
         req.on('end', async () => {

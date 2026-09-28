@@ -600,9 +600,15 @@
                 <span class="material-symbols-outlined text-sm">print</span>
                 <span id="btn-print-text" data-i18n="btn_print">Print Photo</span>
             </button>
-            <button onclick="window.location.href='home.html'" class="btn-modern btn-secondary text-sm px-6 py-3 w-full sm:w-auto text-center" data-i18n="btn_finish">
+            <button onclick="pausePrintPassAndGoHome()" class="btn-modern btn-secondary text-sm px-6 py-3 w-full sm:w-auto text-center" data-i18n="btn_finish">
                 Finish Session
             </button>
+        </div>
+        <div id="pass-after-print" class="hidden mt-5 rounded-2xl bg-white p-5 text-center shadow-sm" aria-live="polite">
+            <p id="pass-remaining" class="text-xl font-bold text-gray-900 mb-3"></p>
+            <button type="button" onclick="continueWithPrintPass()" class="btn-modern btn-primary w-full mb-3">ถ่ายต่อ →</button>
+            <button type="button" onclick="pausePrintPassAndGoHome()" class="btn-modern btn-secondary w-full">พักไว้ใช้ต่อ</button>
+            <p id="pass-auto-pause" class="text-xs text-gray-500 mt-3"></p>
         </div>
     </div>
 
@@ -741,6 +747,10 @@
         let currentSelectedCopies = 1;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            if (Kiosk.mode === 'redeem' && !Session.authorization?.passId) {
+                window.location.replace('payment.html');
+                return;
+            }
             const finalResult = document.getElementById('final-result');
             const printResult = document.getElementById('print-result');
             const uploadStatus = document.getElementById('upload-status');
@@ -1353,6 +1363,10 @@
         }
 
         function handlePrint() {
+            if (Kiosk.mode === 'redeem') {
+                void executeLockedReceiptPrint(Session.authorization?.copiesPerPrint || 2);
+                return;
+            }
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
             const allowChoice = printerConfig.allowCopyChoice === true;
@@ -1673,16 +1687,22 @@
 
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             const defaultCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
-            const copies = (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
+            const copies = Kiosk.mode === 'redeem' ? Session.authorization?.copiesPerPrint || 2
+                : (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
             
             // Check paper, reset for demo if needed
             let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            if (paperCount < copies && Kiosk.mode === 'redeem') {
+                const toast = document.getElementById('toast');
+                if (toast) { toast.textContent = 'กระดาษไม่พอ กรุณาเรียกพนักงาน'; toast.classList.remove('opacity-0'); }
+                return;
+            }
             if (paperCount < copies) {
                 paperCount = 100;
                 localStorage.setItem('kiosk_paper', '100');
             }
 
-            const jobId = crypto.randomUUID();
+            const jobId = Kiosk.mode === 'redeem' && Session.printJobId || crypto.randomUUID();
             Session.printJobId = jobId;
             button.disabled = true;
             button.innerHTML = '<span class="material-symbols-outlined text-sm">progress_activity</span> กำลังพิมพ์...';
@@ -1690,6 +1710,34 @@
 
             // Use the enhanced/sharpened photo adjusted by user!
             const animPhoto = activePrintDataUrl || Session.result || Session.dithered || createDemoReceipt();
+            if (Kiosk.mode === 'redeem') {
+                if (!isLocalPrototypeDemo() && typeof window.PhotoboothPrinter?.printAuthorizedPass !== 'function') {
+                    button.textContent = 'เครื่องพิมพ์ยังไม่รองรับแพ็กเกจ กรุณาเรียกพนักงาน';
+                    return;
+                }
+                try {
+                    const reservation = await reservePrintPass(animPhoto, jobId);
+                    if (reservation.status !== 'reserved' || reservation.copies !== copies) {
+                        throw new Error('งานพิมพ์เดิมกำลังตรวจสอบ กรุณาเรียกพนักงาน');
+                    }
+                    const outcome = await printAuthorizedPass({ dataUrl: animPhoto,
+                        paperMode: Kiosk.paperMode, jobId, copies });
+                    if (outcome.status === 'failed') {
+                        await SessionAsync.remove('printJobId');
+                    }
+                    if (outcome.status !== 'completed') {
+                        throw new Error(outcome.status === 'failed'
+                            ? 'พิมพ์ไม่สำเร็จ กรุณาเรียกพนักงาน' : 'ยังยืนยันผลพิมพ์ไม่ได้ กรุณาเรียกพนักงาน');
+                    }
+                    await completePrintJob(jobId, 'device', outcome, copies);
+                    showPrintPassNextStep();
+                } catch (error) {
+                    button.textContent = error instanceof Error ? error.message : 'ไม่สามารถพิมพ์ได้';
+                    const toast = document.getElementById('toast');
+                    if (toast) { toast.textContent = button.textContent; toast.classList.remove('opacity-0'); }
+                }
+                return;
+            }
 
             // Run realistic printer animation and bridge in parallel!
             const [, outcome] = await Promise.all([
@@ -1712,12 +1760,14 @@
                 })()
             ]);
 
-            // Always show the beautiful completion animation!
-            await showPrintComplete();
-            await hidePrintingAnimation();
-
-            // Complete the print job
-            await completePrintJob(jobId, outcome.status === 'completed' ? 'device' : 'simulator', outcome, copies);
+            if (outcome.status === 'completed') {
+                await showPrintComplete();
+                await hidePrintingAnimation();
+                await completePrintJob(jobId, 'device', outcome, copies);
+            } else {
+                await hidePrintingAnimation();
+                button.textContent = 'ยังยืนยันผลพิมพ์ไม่ได้ กรุณาเรียกพนักงาน';
+            }
 
             // If hardware error / ambiguous, notify admin without blocking user
             if (outcome.status === 'ambiguous') {
@@ -1735,7 +1785,8 @@
                 confirmed_by: confirmedBy,
                 transport: outcome && outcome.transport ? outcome.transport : 'simulator'
             });
-            const retention = await retainCurrentFinalAssets({ printJobId: jobId });
+            const retention = await retainCurrentFinalAssets({ printJobId: jobId })
+                .catch(() => ({ status: 'unavailable', assetId: null }));
             appendPrintAudit('asset.retention_result', jobId, {
                 status: retention.status,
                 asset_id: retention.assetId || null,
@@ -1752,6 +1803,46 @@
             markPrinted(copies);
             pendingPrint = null;
             document.getElementById('print-simulator-modal').classList.add('hidden');
+        }
+
+        let autoPauseTimer = null;
+        function showPrintPassNextStep() {
+            const pass = Session.authorization;
+            const panel = document.getElementById('pass-after-print');
+            const remaining = document.getElementById('pass-remaining');
+            if (!pass?.passId || !panel) return;
+            remaining.textContent = pass.remaining === 0 ? 'ใช้สิทธิ์พิมพ์ครบแล้ว' : printPassMessage(pass);
+            panel.classList.remove('hidden');
+            if (pass.remaining === 0) {
+                panel.querySelector('button').classList.add('hidden');
+            }
+            let seconds = 30;
+            const countdown = document.getElementById('pass-auto-pause');
+            countdown.textContent = `จะกลับหน้าเริ่มใน ${seconds} วินาที`;
+            clearInterval(autoPauseTimer);
+            autoPauseTimer = setInterval(() => {
+                seconds -= 1;
+                countdown.textContent = `จะกลับหน้าเริ่มใน ${seconds} วินาที`;
+                if (seconds <= 0) {
+                    clearInterval(autoPauseTimer);
+                    void pausePrintPassAndGoHome();
+                }
+            }, 1000);
+        }
+
+        async function continueWithPrintPass() {
+            clearInterval(autoPauseTimer);
+            for (const key of ['layout', 'templateSchemaId', 'photos', 'raw_photos',
+                'template', 'result', 'dithered', 'printJobId']) {
+                await SessionAsync.remove(key);
+            }
+            window.location.href = 'layout.html';
+        }
+
+        async function pausePrintPassAndGoHome() {
+            clearInterval(autoPauseTimer);
+            await closePrintPassAndClearCustomer();
+            window.location.href = 'home.html';
         }
 
         async function confirmPendingPrint() {
