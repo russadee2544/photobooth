@@ -1,7 +1,7 @@
 // Files that make up an installed kiosk (everything except node.exe and the launcher).
 // Shared by the installer build and the signed-update publisher so both ship the same thing.
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const root = join(import.meta.dirname, '..');
@@ -62,5 +62,7 @@ export function stageAppFiles(dest, version) {
   writeFileSync(join(dest, 'agent', 'defaults.json'), JSON.stringify(publicSupabaseDefaults(), null, 2));
   cpSync(join(root, 'bridge'), join(dest, 'bridge'), { recursive: true });
   cpSync(join(root, 'dist-next'), join(dest, 'web'), { recursive: true });
+  // The owner dashboard is a website, not part of the kiosk.
+  rmSync(join(dest, 'web', 'dashboard.html'), { force: true });
   writeFileSync(join(dest, 'version.json'), JSON.stringify({ version, builtAt: new Date().toISOString() }, null, 2));
 }

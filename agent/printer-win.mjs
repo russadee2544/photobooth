@@ -85,3 +85,31 @@ export async function printImage({ bytes, ext = 'png', printerName = '', copies 
     unlink(file).catch(() => {});
   }
 }
+
+// ---- printer health for the dashboard -------------------------------------------------
+// Windows only reports what the driver tells it; many USB thermal printers say little.
+export function mapPrinterHealth(raw) {
+  if (!raw) return { state: 'unknown', detail: 'printer_not_found' };
+  const error = Number(raw.DetectedErrorState);
+  const status = Number(raw.PrinterStatus);
+  if (raw.WorkOffline === true || error === 10 || status === 7) return { state: 'offline', detail: 'offline' };
+  const errorNames = { 4: 'no_paper', 6: 'no_toner', 8: 'door_open', 9: 'paper_jam', 11: 'service_requested' };
+  if (errorNames[error]) return { state: 'error', detail: errorNames[error] };
+  if (error === 3) return { state: 'ready', detail: 'low_paper' };
+  if (error === 5) return { state: 'ready', detail: 'low_toner' };
+  if (status === 4 || status === 5) return { state: 'busy', detail: status === 5 ? 'warming_up' : 'printing' };
+  if (status === 1 || status === 2) return { state: 'unknown', detail: 'status_unknown' };
+  return { state: 'ready', detail: '' };
+}
+
+export async function printerHealth(printerName = '') {
+  const { stdout } = await runPowerShell(
+    `$n = $env:PB_PRINTER
+     $p = if ($n) { Get-CimInstance Win32_Printer | Where-Object { $_.Name -eq $n } | Select-Object -First 1 }
+          else { Get-CimInstance Win32_Printer | Where-Object { $_.Default -eq $true } | Select-Object -First 1 }
+     if ($p) { $p | Select-Object Name, PrinterStatus, WorkOffline, DetectedErrorState | ConvertTo-Json -Compress }`,
+    { PB_PRINTER: printerName }, 15_000);
+  let raw = null;
+  try { raw = JSON.parse(stdout.trim() || 'null'); } catch { raw = null; }
+  return { name: raw?.Name || printerName || '', ...mapPrinterHealth(raw) };
+}

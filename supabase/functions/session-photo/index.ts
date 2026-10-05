@@ -116,7 +116,7 @@ async function uploadPhoto(request: Request): Promise<Response> {
 
   if (kind === 'color') {
     const { data: session, error } = await admin.from('kiosk_sessions').insert({
-      kiosk_mode: row.mode, event_name: row.event_name, layout: row.layout, color_url: url,
+      kiosk_id: row.kiosk_id, kiosk_mode: row.mode, event_name: row.event_name, layout: row.layout, color_url: url,
       is_cafe_mode: row.mode !== 'event',
       expires_at: row.mode === 'event' ? null : new Date(Date.now() + 24 * 3600_000).toISOString(),
     }).select('id').single();

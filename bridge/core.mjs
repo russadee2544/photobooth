@@ -111,13 +111,14 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
   const internal = {
     startPrint: (jobId, sessionToken) => callFunction('redeem-pass', { operation: 'start', jobId, sessionToken }),
     reportPrint: (jobId, result) => callFunction('redeem-pass', { operation: 'report', jobId, result }),
+    heartbeat: (payload) => callFunction('kiosk-heartbeat', payload),
   };
 
   return { handlers, internal, isAdmin: () => !!adminValid() };
 }
 
 // Browser-side installer. `groups` maps a window global to its method names.
-export function clientScript({ endpoint, kioskId, packageId, groups, header, statusEndpoint, mode }) {
+export function clientScript({ endpoint, kioskId, packageId, groups, header, statusEndpoint, mode, reportStatus }) {
   return `(() => {
   const cfg = ${JSON.stringify({ kioskId, packageId, mode: mode || '' })};
   try {
@@ -139,6 +140,14 @@ export function clientScript({ endpoint, kioskId, packageId, groups, header, sta
     }
   };
   const groups = ${JSON.stringify(groups)};
+  // Paper counter for the owner dashboard (the count lives in this browser, the agent cannot see it).
+  if (${JSON.stringify(!!reportStatus)}) {
+    const report = () => {
+      try { window.PhotoboothDevice.reportPageStatus({ paper: parseInt(localStorage.getItem('kiosk_paper') || '', 10) }); } catch (_) {}
+    };
+    setTimeout(report, 3000);
+    setInterval(report, 60000);
+  }
   // After a self-update the agent restarts with a new version: reload, but only on the welcome page.
   const statusEndpoint = ${JSON.stringify(statusEndpoint || '')};
   if (statusEndpoint) {

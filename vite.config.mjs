@@ -178,6 +178,7 @@ export default defineConfig({
         processing: resolve(import.meta.dirname, 'processing.html'),
         print: resolve(import.meta.dirname, 'print.html'),
         admin: resolve(import.meta.dirname, 'admin.html'),
+        dashboard: resolve(import.meta.dirname, 'dashboard.html'),
         templateEditor: resolve(import.meta.dirname, 'template-editor.html'),
       },
     },

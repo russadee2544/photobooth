@@ -12,7 +12,8 @@ import { APP_ROOT, CONFIG_FILE, DATA_DIR, JOBS_FILE, WEB_ROOT } from './paths.mj
 import { protect, unprotect } from './dpapi.mjs';
 import { createJournal } from './jobs.mjs';
 import { createPrintService } from './print-pass.mjs';
-import { listPrinters, printImage } from './printer-win.mjs';
+import { listPrinters, printerHealth, printImage } from './printer-win.mjs';
+import { createHeartbeat } from './heartbeat.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -172,13 +173,22 @@ async function runKiosk(config) {
     }
   }
 
+  // ---- what the owner dashboard shows about this kiosk
+  const startedAt = new Date().toISOString();
+  const runtime = { paper: null, lastError: null, lastErrorAt: null };
+  const noteError = (message) => { runtime.lastError = String(message).slice(0, 300); runtime.lastErrorAt = new Date().toISOString(); };
+
   const journal = createJournal(JOBS_FILE);
   await journal.load();
   const printService = createPrintService({ internal, journal, printImage, printerName: config.printerName || '' });
 
   // Only the page-facing PhotoboothPrinter surface; start/report stay internal.
   const printerHandlers = {
-    printAuthorizedPass: (a) => printService.printAuthorizedPass(a),
+    printAuthorizedPass: async (a) => {
+      const result = await printService.printAuthorizedPass(a);
+      if (result && result.status !== 'completed') noteError(`print ${result.status}${result.error ? ': ' + result.error : ''}`);
+      return result;
+    },
     // Admin test page: one copy, PIN session required, no entitlement involved.
     testPrint: async (a) => {
       if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
@@ -189,6 +199,7 @@ async function runKiosk(config) {
           printerName: String(a.printerName || config.printerName || '').slice(0, 200), copies: 1 });
         return { success: true, printer: result.printer };
       } catch (error) {
+        noteError(`test print: ${error instanceof Error ? error.message : 'failed'}`);
         return { success: false, error: error instanceof Error ? error.message : 'print_failed' };
       }
     },
@@ -209,6 +220,11 @@ async function runKiosk(config) {
       }
     },
   };
+  modeHandlers.reportPageStatus = async (a) => {
+    const paper = Number(a.paper);
+    if (Number.isInteger(paper) && paper >= 0 && paper <= 100000) runtime.paper = paper;
+    return { success: true };
+  };
   const handlers = { ...deviceHandlers, ...modeHandlers, ...printerHandlers };
   const groups = {
     PhotoboothDevice: [...Object.keys(deviceHandlers), ...Object.keys(modeHandlers)],
@@ -226,7 +242,7 @@ async function runKiosk(config) {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(clientScript({
         endpoint: '/__bridge/call', kioskId: config.kioskId, packageId: config.packageId, groups, header: 'x-pb-bridge',
-        statusEndpoint: '/__agent/status', mode: config.mode,
+        statusEndpoint: '/__agent/status', mode: config.mode, reportStatus: true,
       }));
     }
 
@@ -238,9 +254,9 @@ async function runKiosk(config) {
     if (pathname === '/__bridge/call') {
       // Loopback host + custom header: other web pages cannot drive the agent.
       if (req.method !== 'POST' || req.headers['x-pb-bridge'] !== '1') return json(res, 403, { error: 'forbidden' });
-      activity.at = Date.now();
       let payload;
       try { payload = JSON.parse(await readBody(req, 30 * 1024 * 1024) || '{}'); } catch { return json(res, 400, { error: 'invalid_json' }); }
+      if (payload.method !== 'reportPageStatus') activity.at = Date.now();
       const handler = Object.hasOwn(handlers, payload.method) ? handlers[payload.method] : null;
       if (!handler) return json(res, 400, { error: 'unknown_method' });
       try { return json(res, 200, await handler(payload.args || {})); } catch { return json(res, 200, { error: 'agent_error' }); }
@@ -260,6 +276,7 @@ async function runKiosk(config) {
           printerName: String(body.printerName || config.printerName || ''), copies });
         return json(res, 200, { success: true, printer: result.printer, copies });
       } catch (error) {
+        noteError(`direct print: ${error instanceof Error ? error.message : 'failed'}`);
         return json(res, 500, { success: false, error: error instanceof Error ? error.message : 'print_failed' });
       }
     }
@@ -287,6 +304,22 @@ async function runKiosk(config) {
   server.listen(port, '127.0.0.1', () => {
     console.log(`Photobooth agent on http://localhost:${port}/home.html (mode: ${config.mode}, kiosk: ${config.kioskId})`);
   });
+
+  createHeartbeat({
+    send: (payload) => internal.heartbeat(payload),
+    log: (line) => console.log(`[heartbeat] ${line}`),
+    snapshot: async () => {
+      const health = await printerHealth(config.printerName || '').catch(() => ({ name: config.printerName || '', state: 'unknown', detail: 'check_failed' }));
+      const updateError = updater ? updater.status().lastError : null;
+      return {
+        kioskId: config.kioskId, version: currentVersion, channel: isValidChannel(config.updateChannel) ? config.updateChannel : 'stable',
+        mode: config.mode, page: activity.page || '', startedAt,
+        printerName: health.name, printerState: health.state, printerDetail: health.detail,
+        paperRemaining: runtime.paper,
+        lastError: runtime.lastError || (updateError ? `update: ${updateError}` : null), lastErrorAt: runtime.lastErrorAt,
+      };
+    },
+  }).start();
 }
 
 const config = await loadConfig();

@@ -1,10 +1,11 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "outputDirectory": "dist-next",
   "framework": "vite",
   "cleanUrls": false,
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/home", "destination": "/home.html" },
     { "source": "/layout", "destination": "/layout.html" },
     { "source": "/capture", "destination": "/capture.html" },

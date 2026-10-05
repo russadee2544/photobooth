@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Photobooth Dashboard</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <style>
+    :root {
+      --bg: #f4f2ec; --surface: #ffffff; --ink: #1a1815; --muted: #6d675c; --line: #e3dfd3;
+      --ok: #1f8a4c; --warn: #b7791f; --bad: #c0392b; --idle: #8a857a; --accent: #1a1815; --accent-ink: #f4f2ec;
+      --bar: #1a1815; --bar-dim: #cfc9ba;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14130f; --surface: #1d1b16; --ink: #f1eee4; --muted: #a29d8e; --line: #34312a;
+        --ok: #4cc17a; --warn: #e0a84a; --bad: #ee6b5b; --idle: #8a857a; --accent: #f1eee4; --accent-ink: #14130f;
+        --bar: #f1eee4; --bar-dim: #4a463c;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); min-height: 100vh;
+           font: 15px/1.5 "Prompt", "Segoe UI", system-ui, -apple-system, sans-serif; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; }
+    header.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: .01em; }
+    .sub { color: var(--muted); font-size: .82rem; }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+             color: var(--ink); padding: 8px 14px; }
+    button:hover { border-color: var(--ink); }
+    button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; }
+    button:disabled { opacity: .55; cursor: wait; }
+    input { font: inherit; width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line);
+            background: transparent; color: var(--ink); }
+    input:focus-visible, button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+    .login { max-width: 380px; margin: 14vh auto 0; background: var(--surface); border: 1px solid var(--line);
+             border-radius: 16px; padding: 28px 24px; }
+    .login h1 { margin-bottom: 4px; }
+    .login label { display: block; font-size: .82rem; color: var(--muted); margin: 16px 0 6px; }
+    .login button { width: 100%; margin-top: 20px; padding: 12px; }
+    .msg { min-height: 1.4em; margin-top: 12px; font-size: .88rem; color: var(--bad); }
+    .notice { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; color: var(--muted); }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+    .tile .label { color: var(--muted); font-size: .78rem; }
+    .tile .value { font-size: 1.7rem; font-weight: 600; line-height: 1.2; margin-top: 2px; }
+    .tile.alert .value { color: var(--bad); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; padding: 3px 10px; border-radius: 999px;
+            border: 1px solid var(--line); white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--idle); display: inline-block; }
+    .ok .dot { background: var(--ok); } .warn .dot { background: var(--warn); } .bad .dot { background: var(--bad); }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+    .meta { color: var(--muted); font-size: .8rem; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+    dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .88rem; }
+    dt { color: var(--muted); } dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; border-top: 1px solid var(--line);
+             border-bottom: 1px solid var(--line); padding: 10px 0; }
+    .stats .n { font-size: 1.25rem; font-weight: 600; } .stats .l { color: var(--muted); font-size: .74rem; }
+    .spark-title { display: flex; justify-content: space-between; color: var(--muted); font-size: .76rem; }
+    svg.spark { width: 100%; height: 56px; display: block; }
+    .issues { display: flex; flex-wrap: wrap; gap: 6px; }
+    .issue { font-size: .8rem; padding: 3px 10px; border-radius: 8px; background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); }
+    .err { font-size: .78rem; color: var(--muted); border-left: 3px solid var(--bad); padding-left: 8px; overflow-wrap: anywhere; }
+
+    section.block { margin-top: 28px; }
+    section.block h3 { margin: 0 0 10px; font-size: .95rem; font-weight: 600; }
+    .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 500; font-size: .76rem; }
+    tr:last-child td { border-bottom: 0; }
+    td.num, th.num { text-align: right; }
+    .empty { padding: 18px; color: var(--muted); text-align: center; }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app" aria-live="polite"></div>
+  <script type="module" src="/src/dashboard.ts"></script>
+</body>
+</html>
