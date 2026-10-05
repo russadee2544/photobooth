@@ -371,6 +371,10 @@
             if (btn) btn.textContent = 'เข้าสู่ระบบ';
             if (ok) {
                 window.location.href = 'admin.html';
+            } else if (adminAuthError === 'pin_not_configured' || adminAuthError === 'pin_setup_required') {
+                // Brand-new kiosk: the first PIN is created on the admin page itself.
+                setPinError('ตู้นี้ยังไม่ได้ตั้ง PIN กำลังพาไปหน้าตั้ง PIN...');
+                setTimeout(() => { window.location.href = 'admin.html'; }, 1200);
             } else {
                 const box = document.getElementById('admin-pin-box');
                 if (box) {
