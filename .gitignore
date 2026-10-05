@@ -10,3 +10,4 @@ supabase/.temp
 .env
 .env.local
 agent/data
+agent/start-kiosk.ps1

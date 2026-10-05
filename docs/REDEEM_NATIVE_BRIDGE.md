@@ -86,3 +86,11 @@ npm run agent          # เปิด http://localhost:8787/home.html (ใช้
 - "completed" หมายถึง Windows รับงานเข้า spooler สำเร็จ (Windows ไม่ยืนยันว่ากระดาษออกจริง)
 - โหมด `event` เท่านั้นที่เปิด `/api/direct-print` และ `/api/printers`; โหมด `redeem` ปิด
 - ยังไม่รองรับ: `printPrintPasses` / `resolvePrintPassCodes` (พิมพ์บัตรรหัส) และ `testPrint`
+
+### ติดตั้งบนเครื่องตู้ด้วย `install.ps1`
+
+```
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+ตรวจ Node 20+ และ Chrome, `npm ci`, build, ถาม provisioning ครั้งแรก, สร้าง `agent\start-kiosk.ps1` (รัน agent แบบรีสตาร์ตเองและเปิด Chrome kiosk) และลงทะเบียน Scheduled Task `PhotoboothKiosk` ตอน logon. อัปเดต: `git pull` แล้ว `.\install.ps1 -SkipSetup`; ถอน: `.\install.ps1 -Uninstall`. log อยู่ที่ `agent\data\agent.log`
