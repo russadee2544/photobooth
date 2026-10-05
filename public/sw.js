@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photobooth-v13';
+const CACHE_NAME = 'photobooth-v14';
 const ASSETS = [
     '/',
     '/index.html',
@@ -25,12 +25,6 @@ const ASSETS = [
     '/icon-512.png',
     '/apple-touch-icon.png',
     '/fonts/Inter-latin.woff2',
-    '/fonts/Fraunces-latin-900.woff2',
-    '/fonts/Fraunces-latin-400-italic.woff2',
-    '/fonts/Trirong-thai-400-italic.woff2',
-    '/fonts/Trirong-latin-400-italic.woff2',
-    '/fonts/Trirong-thai-700.woff2',
-    '/fonts/Trirong-latin-700.woff2',
     '/fonts/Prompt-latin-300.woff2',
     '/fonts/Prompt-thai-300.woff2',
     '/fonts/Prompt-latin-400.woff2',
