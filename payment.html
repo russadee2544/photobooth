@@ -122,6 +122,12 @@
                 <div class="spinner"></div>
                 <span class="text-gray-500 text-sm font-medium">กำลังตรวจสอบรหัส...</span>
             </div>
+
+            <!-- PromptPay purchase (shown only when enabled in admin) -->
+            <a id="buy-link" href="buy.html" class="hidden mt-6 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 underline underline-offset-4">
+                <span class="material-symbols-outlined text-base">qr_code_2</span>
+                ยังไม่มีรหัส? ซื้อแพ็กเกจด้วย PromptPay
+            </a>
         </div>
     </main>
 
@@ -173,7 +179,8 @@
             }
 
             new IdleTimer(60000, 'home.html').start();
-            
+            document.getElementById('buy-link').classList.toggle('hidden', !Kiosk.promptPayEnabled);
+
             const input = document.getElementById('code-input');
             const btn = document.getElementById('redeem-btn');
             

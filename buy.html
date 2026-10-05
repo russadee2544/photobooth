@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PHOTO BOOTH — PromptPay</title>
+    <link rel="stylesheet" href="shared.css">
+    <script src="qrcode.min.js"></script>
+    <style>
+        .offer-card {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            width: 100%; padding: 1.25rem 1.5rem; text-align: left;
+            background: white; border: 2px solid #E3E3E3; border-radius: 20px;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; cursor: pointer;
+        }
+        .offer-card:hover, .offer-card:focus-visible {
+            border-color: #4C65FF; box-shadow: 0 0 0 4px rgba(76, 101, 255, 0.1);
+            transform: translateY(-2px); outline: none;
+        }
+        .offer-card:disabled { opacity: 0.5; cursor: wait; transform: none; }
+        .qr-frame {
+            background: white; border: 2px solid #E3E3E3; border-radius: 20px;
+            padding: 1rem; display: flex; align-items: center; justify-content: center;
+            width: 260px; height: 260px;
+        }
+        .qr-frame img, .qr-frame canvas { max-width: 100%; height: auto; }
+        .qr-frame.paid { border-color: #BAFF66; box-shadow: 0 0 0 4px rgba(186, 255, 102, 0.2); }
+    </style>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MEMORIES">
+    <meta name="theme-color" content="#0A0A0A">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto relative flex flex-col">
+
+    <div class="absolute inset-0 bg-gradient-starter opacity-50 pointer-events-none"></div>
+
+    <header class="kiosk-header">
+        <button id="back-btn" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_cancel">CANCEL</span>
+        </button>
+        <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center relative z-10 px-4 py-20 sm:py-24">
+        <div class="glass-panel w-full max-w-lg p-6 sm:p-10 flex flex-col items-center fade-up-enter">
+
+            <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <span class="material-symbols-outlined text-white text-3xl" id="hero-icon">qr_code_2</span>
+            </div>
+
+            <h1 class="text-2xl font-bold tracking-tight mb-2 text-center" id="title">เลือกแพ็กเกจ</h1>
+            <p class="text-gray-500 text-sm mb-8 text-center" id="desc">จ่ายด้วย PromptPay สแกนแล้วเริ่มถ่ายได้ทันที</p>
+
+            <!-- Step 1: offers -->
+            <section id="offers-view" class="w-full flex flex-col gap-3">
+                <div id="offers-loading" class="flex items-center justify-center gap-3 py-6">
+                    <div class="spinner"></div>
+                    <span class="text-gray-500 text-sm font-medium">กำลังโหลดแพ็กเกจ...</span>
+                </div>
+                <div id="offers-list" class="flex flex-col gap-3"></div>
+                <a href="payment.html" class="text-center text-sm text-gray-500 hover:text-gray-900 mt-3 underline underline-offset-4">มีรหัส Redeem อยู่แล้ว</a>
+            </section>
+
+            <!-- Step 2: QR -->
+            <section id="qr-view" class="hidden w-full flex flex-col items-center">
+                <div id="qr-frame" class="qr-frame mb-5" aria-label="PromptPay QR"></div>
+                <p id="qr-amount" class="text-3xl font-bold tracking-tight mb-1"></p>
+                <p id="qr-offer" class="text-gray-500 text-sm mb-4"></p>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-6" aria-live="polite">
+                    <div class="spinner" style="width:18px;height:18px"></div>
+                    <span id="qr-status">รอการชำระเงิน · หมดเวลาใน <b id="qr-countdown">10:00</b></span>
+                </div>
+                <button id="qr-cancel" class="btn-modern bg-gray-100 text-gray-900 w-full text-base py-4">ยกเลิก</button>
+            </section>
+
+            <!-- Step 3: paid -->
+            <section id="paid-view" class="hidden w-full text-center">
+                <p id="paid-summary" class="text-xl font-bold text-gray-900 mb-4"></p>
+                <button id="start-btn" class="btn-modern btn-primary w-full text-lg py-5">เริ่มถ่าย →</button>
+            </section>
+
+            <div id="error-msg" class="text-accent-coral text-sm font-medium mt-6 min-h-6 flex items-center gap-1 opacity-0 transition-opacity" role="alert">
+                <span class="material-symbols-outlined text-base">error</span>
+                <span id="error-text"></span>
+            </div>
+            <div id="retry-claim-wrap" class="hidden w-full mt-2">
+                <button id="retry-claim" class="btn-modern btn-primary w-full text-base py-4">ลองใหม่</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="flash-overlay" class="flash-overlay"></div>
+
+    <script src="shared.js?v=3.0"></script>
+    <script>
+        const MESSAGES = {
+            device_not_provisioned: 'ตู้นี้ยังไม่พร้อมรับชำระเงิน กรุณาเรียกพนักงาน',
+            payments_not_configured: 'ระบบชำระเงินยังไม่เปิดใช้งาน กรุณาเรียกพนักงาน',
+            offer_unavailable: 'แพ็กเกจนี้ไม่พร้อมใช้งาน กรุณาเลือกใหม่',
+            payment_provider_error: 'สร้าง QR ไม่สำเร็จ กรุณาลองใหม่',
+            network_error: 'เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่',
+            expired: 'QR หมดเวลาแล้ว กรุณาเลือกแพ็กเกจใหม่',
+            failed: 'การชำระเงินไม่สำเร็จ กรุณาลองใหม่',
+            claim_failed: 'ชำระเงินแล้ว แต่เปิดสิทธิ์ไม่สำเร็จ กดลองใหม่ หรือเรียกพนักงาน (ไม่ต้องจ่ายซ้ำ)',
+            kiosk_in_use: 'ตู้นี้กำลังใช้งานบัตรอื่น กรุณารอสักครู่แล้วกดลองใหม่'
+        };
+        const OFFER_NAMES = { '2': 'พิมพ์ 2 ครั้ง', '5': 'พิมพ์ 5 ครั้ง', 'unlimited': 'พิมพ์ไม่จำกัด · ภายในวันนี้' };
+        const POLL_MS = 2000;
+
+        const $ = (id) => document.getElementById(id);
+        let currentOrder = null;
+        let pollTimer = null;
+        let countdownTimer = null;
+        let busy = false;
+        let pendingCode = null;
+        let idleTimer = null;
+
+        function show(view) {
+            ['offers-view', 'qr-view', 'paid-view'].forEach(id => $(id).classList.toggle('hidden', id !== view));
+            $('hero-icon').textContent = view === 'paid-view' ? 'check_circle' : 'qr_code_2';
+        }
+
+        function showError(key) {
+            $('error-text').textContent = MESSAGES[key] || MESSAGES.network_error;
+            $('error-msg').classList.replace('opacity-0', 'opacity-100');
+        }
+        function clearError() {
+            $('error-msg').classList.replace('opacity-100', 'opacity-0');
+            $('retry-claim-wrap').classList.add('hidden');
+        }
+
+        function stopTimers() {
+            clearTimeout(pollTimer); clearInterval(countdownTimer);
+            pollTimer = null; countdownTimer = null;
+        }
+
+        async function leaveOrder() {
+            stopTimers();
+            const order = currentOrder;
+            currentOrder = null;
+            if (order) await cancelPaymentOrder(order.orderId);
+        }
+
+        function renderOffers(offers) {
+            const list = $('offers-list');
+            list.replaceChildren();
+            offers.forEach(offer => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'offer-card';
+                const label = document.createElement('div');
+                const name = document.createElement('div');
+                name.className = 'text-lg font-bold';
+                name.textContent = OFFER_NAMES[offer.quotaKind] || offer.quotaKind;
+                const sub = document.createElement('div');
+                sub.className = 'text-xs text-gray-500';
+                sub.textContent = `${offer.copies} ใบต่อการพิมพ์ 1 ครั้ง`;
+                label.append(name, sub);
+                const price = document.createElement('div');
+                price.className = 'text-2xl font-bold';
+                price.textContent = formatBaht(offer.priceMinor);
+                button.append(label, price);
+                button.addEventListener('click', () => selectOffer(offer, list));
+                list.append(button);
+            });
+        }
+
+        async function loadOffers() {
+            show('offers-view');
+            clearError();
+            $('offers-loading').classList.remove('hidden');
+            $('offers-list').replaceChildren();
+            const result = await listPassOffers();
+            $('offers-loading').classList.add('hidden');
+            if (!result.success) return showError(result.error);
+            if (!result.offers.length) return showError('offer_unavailable');
+            renderOffers(result.offers);
+        }
+
+        async function selectOffer(offer, list) {
+            if (busy) return;
+            busy = true;
+            clearError();
+            list.querySelectorAll('button').forEach(b => { b.disabled = true; });
+            const result = await createPaymentOrder(offer);
+            busy = false;
+            if (!result.success) {
+                list.querySelectorAll('button').forEach(b => { b.disabled = false; });
+                return showError(result.error);
+            }
+            currentOrder = result.order;
+            showQr(offer, result.order);
+        }
+
+        function showQr(offer, order) {
+            const frame = $('qr-frame');
+            frame.classList.remove('paid');
+            frame.replaceChildren();
+            if (order.qr.data && typeof QRCode !== 'undefined') {
+                new QRCode(frame, { text: order.qr.data, width: 228, height: 228,
+                    colorDark: '#0A0A0A', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+            } else if (order.qr.imageUrlPng) {
+                const img = document.createElement('img');
+                img.src = order.qr.imageUrlPng;
+                img.alt = 'PromptPay QR';
+                frame.append(img);
+            }
+            $('qr-amount').textContent = formatBaht(order.amountMinor);
+            $('qr-offer').textContent = OFFER_NAMES[offer.quotaKind] || offer.quotaKind;
+            $('title').textContent = 'สแกนเพื่อชำระเงิน';
+            $('desc').textContent = 'เปิดแอปธนาคาร แล้วสแกน QR PromptPay';
+            show('qr-view');
+
+            const expiresAt = Date.parse(order.expiresAt);
+            const tick = () => {
+                const left = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+                $('qr-countdown').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+                // The customer pays on their phone, so a waiting QR is not idleness.
+                if (left % 30 === 0 && idleTimer) idleTimer.reset();
+            };
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+            schedulePoll();
+        }
+
+        function schedulePoll() {
+            pollTimer = setTimeout(pollOrder, POLL_MS);
+        }
+
+        async function pollOrder() {
+            const order = currentOrder;
+            if (!order) return;
+            const result = await getPaymentOrderStatus(order.orderId);
+            if (currentOrder !== order) return;
+            if (!result.success || result.status === 'pending') return schedulePoll();
+            if (result.status === 'paid' && result.code) {
+                stopTimers();
+                $('qr-frame').classList.add('paid');
+                triggerFlash();
+                return claimPaidCode(result.code);
+            }
+            if (result.status === 'delivered') {
+                stopTimers();
+                return showError('claim_failed');
+            }
+            // expired / cancelled / failed
+            await leaveOrder();
+            $('title').textContent = 'เลือกแพ็กเกจ';
+            $('desc').textContent = 'จ่ายด้วย PromptPay สแกนแล้วเริ่มถ่ายได้ทันที';
+            await loadOffers();
+            showError(result.status === 'failed' ? 'failed' : 'expired');
+        }
+
+        async function claimPaidCode(code) {
+            pendingCode = code;
+            clearError();
+            const claim = await claimPrintPass(code);
+            if (!claim.success) {
+                showError(claim.error === 'kiosk_in_use' ? 'kiosk_in_use' : 'claim_failed');
+                $('retry-claim-wrap').classList.remove('hidden');
+                return;
+            }
+            // Pass is activated: the server no longer re-delivers the code.
+            pendingCode = null;
+            currentOrder = null;
+            $('title').textContent = 'ชำระเงินสำเร็จ';
+            $('desc').textContent = 'ขอบคุณ! พร้อมเริ่มถ่ายภาพแล้ว';
+            $('paid-summary').textContent = printPassMessage(claim.pass);
+            show('paid-view');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (Kiosk.mode === 'event' && !isLocalPrototypeDemo()) {
+                window.location.replace('layout.html');
+                return;
+            }
+            if (!Kiosk.promptPayEnabled) {
+                window.location.replace('payment.html');
+                return;
+            }
+            idleTimer = new IdleTimer(90000, 'home.html');
+            idleTimer.start();
+
+            $('back-btn').addEventListener('click', async () => {
+                await leaveOrder();
+                window.location.href = 'home.html';
+            });
+            $('qr-cancel').addEventListener('click', async () => {
+                await leaveOrder();
+                $('title').textContent = 'เลือกแพ็กเกจ';
+                $('desc').textContent = 'จ่ายด้วย PromptPay สแกนแล้วเริ่มถ่ายได้ทันที';
+                loadOffers();
+            });
+            $('retry-claim').addEventListener('click', () => { if (pendingCode) claimPaidCode(pendingCode); });
+            $('start-btn').addEventListener('click', () => { window.location.href = 'layout.html'; });
+            window.addEventListener('pagehide', () => {
+                // Best effort: free the kiosk's open order if the page is left unpaid.
+                if (currentOrder && !pendingCode) cancelPaymentOrder(currentOrder.orderId);
+            });
+            loadOffers();
+        });
+    </script>
+</body>
+</html>
