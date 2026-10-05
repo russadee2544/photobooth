@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photobooth-v15';
+const CACHE_NAME = 'photobooth-v16';
 const ASSETS = [
     '/',
     '/index.html',
@@ -77,13 +77,23 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             })
-            .catch(() => {
-                return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) return cachedResponse;
-                    if (event.request.headers.get('accept')?.includes('text/html')) {
-                        return caches.match('/home.html') || caches.match('/');
+            .catch(async () => {
+                const isPage = event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html');
+                // The local agent restarts for a few seconds when it updates itself: keep trying
+                // instead of dropping the customer mid-session.
+                if (isPage) {
+                    for (let attempt = 0; attempt < 6; attempt++) {
+                        await new Promise((resolve) => setTimeout(resolve, 1500));
+                        try { return await fetch(event.request); } catch (_) { /* still down */ }
                     }
-                });
+                }
+                const cached = await caches.match(event.request);
+                if (cached) return cached;
+                if (isPage) {
+                    // Same page with another query string (e.g. capture.html?retake=0), then the welcome page.
+                    return (await caches.match(event.request, { ignoreSearch: true })) || (await caches.match('/home.html')) || (await caches.match('/'));
+                }
+                return Response.error();
             })
     );
 });

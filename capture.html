@@ -40,6 +40,11 @@
 
         <!-- Canvas for flash capture -->
         <canvas id="photo-canvas" class="hidden"></canvas>
+
+        <!-- The part of the picture that ends up in the print: everything outside is cropped away -->
+        <div id="crop-guide" class="hidden absolute pointer-events-none z-[5]" aria-hidden="true"
+             style="border: 3px solid rgba(255,255,255,.92); border-radius: 14px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5);"></div>
+        <p id="crop-hint" class="hidden absolute bottom-6 left-0 right-0 text-center text-white text-sm tracking-wide pointer-events-none z-[6] drop-shadow"></p>
     </main>
 
     <!-- UI Overlay -->
@@ -187,6 +192,41 @@
                 useDemo = true;
                 startSequence();
             };
+
+            // ---- framing guide -------------------------------------------------------
+            // The photo is saved as the full camera frame and later cropped (centered) to the
+            // frame's photo slot. Show that crop now so nobody stands where it would cut them off.
+            const guideEl = document.getElementById('crop-guide');
+            const hintEl = document.getElementById('crop-hint');
+            function slotAspect() {
+                try {
+                    const template = TemplateCatalog.current(layoutStr);
+                    const slot = template && template.slots && template.slots[0];
+                    if (slot && slot.width > 0 && slot.height > 0) return slot.width / slot.height;
+                } catch (_) { /* fall back to the layout's own ratio */ }
+                const match = /(\d+)x(\d+)/.exec(ratio);
+                return match ? Number(match[1]) / Number(match[2]) : 3 / 4;
+            }
+            function updateGuide() {
+                const vw = video.videoWidth, vh = video.videoHeight;
+                if (!vw || !vh) { guideEl.classList.add('hidden'); hintEl.classList.add('hidden'); return; }
+                const aspect = slotAspect();
+                // Region of the camera frame that survives the crop, in video pixels...
+                const usedW = Math.min(vw, vh * aspect), usedH = Math.min(vh, vw / aspect);
+                // ...and where that lands on screen (the preview is object-fit: cover).
+                const box = video.getBoundingClientRect();
+                const scale = Math.max(box.width / vw, box.height / vh);
+                const w = Math.min(box.width, usedW * scale), h = Math.min(box.height, usedH * scale);
+                if (w >= box.width * 0.97 && h >= box.height * 0.97) { guideEl.classList.add('hidden'); hintEl.classList.add('hidden'); return; }
+                Object.assign(guideEl.style, { width: w + 'px', height: h + 'px',
+                    left: (box.left + (box.width - w) / 2) + 'px', top: (box.top + (box.height - h) / 2) + 'px' });
+                guideEl.classList.remove('hidden');
+                hintEl.textContent = getLanguage() === 'en' ? 'Stay inside the frame' : 'ยืนให้อยู่ในกรอบ';
+                hintEl.classList.remove('hidden');
+            }
+            video.addEventListener('loadedmetadata', updateGuide);
+            video.addEventListener('resize', updateGuide);
+            window.addEventListener('resize', updateGuide);
 
             const wait = (ms) => new Promise(r => setTimeout(r, ms));
             
