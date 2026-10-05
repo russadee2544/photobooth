@@ -482,6 +482,7 @@
         <div id="qr-container" class="hidden flex flex-nowrap gap-3 md:gap-5 justify-center lg:justify-start">
             <!-- Normal QR -->
             <div id="qr-color-wrapper" class="flex flex-col items-center">
+                <img id="thumb-color" alt="" class="hidden w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 object-cover rounded-xl border border-gray-200 shadow-sm bg-white mb-2">
                 <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
                     <div id="qr-color" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white"></div>
                 </div>
@@ -492,6 +493,7 @@
             </div>
             <!-- Dithered QR -->
             <div id="qr-dithered-wrapper" class="hidden flex flex-col items-center">
+                <img id="thumb-dithered" alt="" class="hidden w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 object-cover rounded-xl border border-gray-200 shadow-sm bg-white mb-2">
                 <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
                     <div id="qr-dithered" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white"></div>
                 </div>
@@ -505,6 +507,7 @@
         <!-- GIF download: independent of the photo QR above, so either can fail alone -->
         <div id="gif-section" class="hidden flex flex-col items-center gap-2 max-w-[8rem] md:max-w-[9rem]" aria-live="polite">
             <div id="gif-qr-wrapper" class="hidden flex flex-col items-center">
+                <img id="thumb-gif" alt="" class="hidden w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 object-cover rounded-xl border border-gray-200 shadow-sm bg-white mb-2">
                 <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
                     <div id="qr-gif" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white overflow-hidden"></div>
                 </div>
@@ -829,6 +832,7 @@
                         if (!colorUrl) throw new Error('Cloud upload returned empty url');
 
                         Session.colorCloudUrl = colorUrl;
+                        showThumb('thumb-color', result);
 
                         // Check if distinct dithered version exists (e.g. thermal receipt)
                         const hasDistinctDither = dithered && dithered !== result && !paperMode.startsWith('photo');
@@ -858,6 +862,7 @@
                         const ditherWrapper = document.getElementById('qr-dithered-wrapper');
                         if (hasDistinctDither && ditherUrl) {
                             if (ditherWrapper) ditherWrapper.classList.remove('hidden');
+                            showThumb('thumb-dithered', dithered);
                             const qrDitherEl = document.getElementById("qr-dithered");
                             if (qrDitherEl) {
                                 qrDitherEl.innerHTML = '';
@@ -901,6 +906,14 @@
 
             new IdleTimer(120000, 'home.html').start();
         });
+
+        // Small preview of the image behind a QR code, so people know what they will download.
+        function showThumb(id, src) {
+            const img = document.getElementById(id);
+            if (!img || !src) return;
+            img.src = src;
+            img.classList.remove('hidden');
+        }
 
         async function initGifDownload() {
             const section = document.getElementById('gif-section');
@@ -964,6 +977,9 @@
                     colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.L
                 });
                 setStatus(null, t('ลิงก์ GIF ใช้ได้ 24 ชั่วโมง', 'GIF link works for 24 hours'));
+                PB_DB.get(GIF_BLOB_KEY).then((blob) => {
+                    if (blob instanceof Blob) showThumb('thumb-gif', URL.createObjectURL(blob));
+                }).catch(() => {});
             }
             wrapper.classList.remove('hidden');
         }
