@@ -477,11 +477,13 @@
             <span data-i18n="uploading">Uploading to Cloud...</span>
         </div>
 
-        <div id="qr-container" class="hidden flex flex-wrap gap-4 md:gap-6 justify-center lg:justify-start mb-6">
+        <!-- All QR codes (photo, retro, GIF) sit side by side in one row -->
+        <div id="qr-row" class="flex flex-nowrap items-start gap-3 md:gap-5 justify-center lg:justify-start mb-6">
+        <div id="qr-container" class="hidden flex flex-nowrap gap-3 md:gap-5 justify-center lg:justify-start">
             <!-- Normal QR -->
             <div id="qr-color-wrapper" class="flex flex-col items-center">
-                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
-                    <div id="qr-color" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white"></div>
+                <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-color" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white"></div>
                 </div>
                 <div class="flex items-center gap-1 text-[11px] font-bold text-gray-800 tracking-wide">
                     <span class="material-symbols-outlined text-xs text-green-600">download</span>
@@ -490,8 +492,8 @@
             </div>
             <!-- Dithered QR -->
             <div id="qr-dithered-wrapper" class="hidden flex flex-col items-center">
-                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
-                    <div id="qr-dithered" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white"></div>
+                <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-dithered" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white"></div>
                 </div>
                 <div class="flex items-center gap-1 text-[11px] font-bold text-gray-500 tracking-wide">
                     <span class="material-symbols-outlined text-xs text-gray-500">grain</span>
@@ -501,17 +503,18 @@
         </div>
 
         <!-- GIF download: independent of the photo QR above, so either can fail alone -->
-        <div id="gif-section" class="hidden flex flex-wrap items-center gap-4 justify-center lg:justify-start mb-6" aria-live="polite">
+        <div id="gif-section" class="hidden flex flex-col items-center gap-2 max-w-[8rem] md:max-w-[9rem]" aria-live="polite">
             <div id="gif-qr-wrapper" class="hidden flex flex-col items-center">
-                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
-                    <div id="qr-gif" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white overflow-hidden"></div>
+                <div class="bg-white p-2 md:p-3 xl:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-gif" class="w-24 h-24 md:w-28 md:h-28 xl:w-32 xl:h-32 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white overflow-hidden"></div>
                 </div>
                 <div class="flex items-center gap-1 text-[11px] font-bold text-gray-800 tracking-wide">
                     <span class="material-symbols-outlined text-xs text-green-600">gif_box</span>
                     <span id="gif-label">GIF ภาพเคลื่อนไหว</span>
                 </div>
             </div>
-            <div id="gif-status" class="flex items-center gap-2 text-xs text-gray-500"></div>
+            <div id="gif-status" class="flex items-center justify-center gap-2 text-xs text-gray-500 text-center"></div>
+        </div>
         </div>
 
         <!-- Photo Enhancement & Clarity Settings Panel (hidden from customers, controlled by admin) -->
@@ -941,8 +944,8 @@
                 console.warn('GIF upload failed:', result.error);
                 return setStatus('wifi_off', result.error === 'too_large'
                     ? t('GIF มีขนาดเกิน 20 MB จึงดาวน์โหลดไม่ได้', 'GIF is over 20 MB and cannot be downloaded.')
-                    : t('ดาวน์โหลด GIF ไม่สำเร็จ (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)',
-                        'GIF download is unavailable (printing and photo download still work).'));
+                    : t(`ดาวน์โหลด GIF ไม่สำเร็จ [${result.error}] (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)`,
+                        `GIF download is unavailable [${result.error}] (printing and photo download still work).`));
             }
 
             qrEl.replaceChildren();

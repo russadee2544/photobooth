@@ -167,7 +167,7 @@ const Kiosk = {
     }
 };
 
-['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics', 'gifEnabled', 'gifTicket', 'gifStatus'].forEach(key => {
+['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics', 'gifEnabled', 'gifTicket', 'gifStatus', 'gifResult'].forEach(key => {
     Object.defineProperty(Session, key, {
         get: function() { return this.get(key); },
         set: function(v) { this.set(key, v); }
@@ -2362,6 +2362,7 @@ function snapshotGifSetting() {
     Session.gifEnabled = !!(Kiosk.gifEnabled && Kiosk.qrEnabled);
     Session.gifStatus = Session.gifEnabled ? 'pending' : 'disabled';
     Session.gifTicket = null;
+    Session.gifResult = null;
 }
 
 async function ensureGifUploadTicket() {
@@ -2424,21 +2425,36 @@ async function uploadSessionGif() {
     if (!(blob instanceof Blob)) return { success: false, error: 'missing_gif' };
     if (blob.size > GIF_MAX_BYTES) return { success: false, error: 'too_large' };
     if (isLocalPrototypeDemo()) return { success: true, demoBlob: blob };
-    if (!Session.gifTicket?.ticket) await ensureGifUploadTicket();
-    const ticket = Session.gifTicket?.ticket;
-    if (!ticket) return { success: false, error: 'ticket_unavailable' };
-    try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/session-gif`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'image/gif', 'x-gif-ticket': ticket },
-            body: blob
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok || !body.downloadUrl) return { success: false, error: body.error || `http_${res.status}` };
-        return { success: true, downloadUrl: body.downloadUrl, expiresAt: body.expiresAt };
-    } catch (e) {
-        return { success: false, error: 'network_error' };
+    // Already uploaded for this session (page reloaded / revisited): reuse the same link.
+    const cached = Session.gifResult;
+    if (cached && cached.downloadUrl && Date.parse(cached.expiresAt) > Date.now()) return { success: true, ...cached };
+    for (let attempt = 0; attempt < 2; attempt++) {
+        if (!Session.gifTicket?.ticket) await ensureGifUploadTicket();
+        const ticket = Session.gifTicket?.ticket;
+        if (!ticket) return { success: false, error: 'ticket_unavailable' };
+        try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/session-gif`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'image/gif', 'x-gif-ticket': ticket },
+                body: blob
+            });
+            const body = await res.json().catch(() => ({}));
+            if (res.ok && body.downloadUrl) {
+                const result = { downloadUrl: body.downloadUrl, expiresAt: body.expiresAt };
+                Session.gifResult = result;
+                return { success: true, ...result };
+            }
+            // A spent or expired ticket: ask the agent for a fresh one and try once more.
+            if (attempt === 0 && (res.status === 401 || res.status === 409)) {
+                Session.gifTicket = null;
+                continue;
+            }
+            return { success: false, error: body.error || `http_${res.status}` };
+        } catch (e) {
+            return { success: false, error: 'network_error' };
+        }
     }
+    return { success: false, error: 'ticket_unavailable' };
 }
 
 // ======================== SUPABASE UPLOAD ========================
