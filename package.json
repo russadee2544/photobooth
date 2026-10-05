@@ -10,7 +10,8 @@
     "test:run": "vitest run",
     "check": "npm run typecheck && npm run test:run && npm run build",
     "agent": "node agent/server.mjs",
-    "agent:setup": "node agent/setup.mjs"
+    "agent:setup": "node agent/setup.mjs",
+    "installer": "node installer/build.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.3",

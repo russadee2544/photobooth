@@ -11,3 +11,5 @@ supabase/.temp
 .env.local
 agent/data
 agent/start-kiosk.ps1
+installer/stage
+dist-installer

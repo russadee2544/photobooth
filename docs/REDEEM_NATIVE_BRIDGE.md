@@ -94,3 +94,14 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ตรวจ Node 20+ และ Chrome, `npm ci`, build, ถาม provisioning ครั้งแรก, สร้าง `agent\start-kiosk.ps1` (รัน agent แบบรีสตาร์ตเองและเปิด Chrome kiosk) และลงทะเบียน Scheduled Task `PhotoboothKiosk` ตอน logon. อัปเดต: `git pull` แล้ว `.\install.ps1 -SkipSetup`; ถอน: `.\install.ps1 -Uninstall`. log อยู่ที่ `agent\data\agent.log`
+
+### ตัวติดตั้ง `PhotoboothSetup.exe`
+
+สร้างบนเครื่องพัฒนา (ต้องมี Inno Setup 6: `winget install JRSoftware.InnoSetup`): `npm run installer` → `dist-installer\PhotoboothSetup.exe`
+
+- ติดตั้งแบบรายผู้ใช้ (ไม่ต้องสิทธิ์ผู้ดูแล) ที่ `%LOCALAPPDATA%\Programs\Photobooth` พร้อม Node.js แบบพกพา ไม่ต้องติดตั้ง Node/Git บนเครื่องตู้ ต้องมี Google Chrome
+- ครั้งแรกที่เปิด จะแสดงหน้า "ตั้งค่าตู้" ให้กรอก Kiosk ID + Device credential (จาก \`node scripts/create-kiosk.mjs --name "Booth 1"\`) ระบบตรวจ credential กับเซิร์ฟเวอร์ก่อน แล้วเข้ารหัสด้วย Windows DPAPI เก็บที่ `%LOCALAPPDATA%\Photobooth\data`
+- ตัวสร้างใส่ Supabase URL และ publishable key (คีย์สาธารณะ) ให้อัตโนมัติ ผ่าน \`agent/defaults.json\`
+- เปิดอัตโนมัติเมื่อเข้า Windows (เลือกได้ตอนติดตั้ง), ถอนการติดตั้งไม่ลบ config/ประวัติงานพิมพ์ใน `data`
+- ติดตั้งทับเพื่ออัปเดตเวอร์ชันได้ (ตั้งค่าตู้เดิมคงอยู่)
+- ไฟล์ยังไม่เซ็นลายเซ็นดิจิทัล Windows SmartScreen อาจเตือนตอนรันครั้งแรก
