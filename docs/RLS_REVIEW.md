@@ -33,3 +33,8 @@ where table_schema = 'public' and grantee in ('anon','authenticated') group by 1
 -- policies on storage objects
 select policyname, cmd, roles, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects';
 ```
+
+## Photo retention (2026-10-05)
+- Café/redeem photos in `photobooth` are deleted daily (04:00 Bangkok) by `photo-retention` once `kiosk_sessions.expires_at` (upload + 24h) passes; unreferenced files older than 48h are deleted too. Expired GIFs are purged by the same cron job.
+- Event photos (`kiosk_mode = 'event'`) are never auto-deleted. Drive export / manual delete for events is not built yet.
+- The job reads the Vault secret `purge_secret` (same value as function secrets `PHOTO_PURGE_SECRET` and `GIF_PURGE_SECRET`). `photo-retention` accepts `{"dryRun":true}` to count without deleting.

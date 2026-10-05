@@ -47,3 +47,8 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/session-gif/deno.json"
 entrypoint = "./functions/session-gif/index.ts"
+
+[functions.photo-retention]
+enabled = true
+verify_jwt = false
+import_map = "./functions/photo-retention/deno.json"
