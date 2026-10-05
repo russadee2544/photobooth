@@ -41,45 +41,8 @@
 
             <div class="grid grid-cols-2 gap-3 lg:gap-4 pb-8 items-start">
                 
-                <div class="selection-card selected p-6 text-center" data-template="light">
-                    <div class="w-16 h-16 rounded-full border border-gray-200 mx-auto mb-4 bg-white shadow-sm flex items-center justify-center">
-                        <div class="w-8 h-8 border border-gray-900 bg-white"></div>
-                    </div>
-                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_light">Classic Y2K</h3>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_light_sub">Minimalist Monochrome</p>
-                </div>
-
-                <div class="selection-card p-6 text-center" data-template="dark">
-                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex flex-col items-center justify-center gap-1">
-                        <!-- Retro ticket lines -->
-                        <div class="w-8 border-b-2 border-white border-dashed"></div>
-                        <div class="text-white text-[8px] tracking-widest font-bold">TICKET</div>
-                    </div>
-                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_dark">Retro Ticket</h3>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_dark_sub">Receipt Style</p>
-                </div>
-
-                <div class="selection-card p-6 text-center" data-template="mint">
-                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-100 border border-gray-200 flex flex-col items-center justify-center">
-                        <!-- Mac OS dots -->
-                        <div class="flex gap-1 mb-2 bg-gray-200 w-10 px-1 py-1 rounded-full">
-                            <div class="w-2 h-2 rounded-full bg-red-400"></div>
-                            <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
-                            <div class="w-2 h-2 rounded-full bg-green-400"></div>
-                        </div>
-                    </div>
-                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_mint">Web Browser</h3>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_mint_sub">Mac OS Window</p>
-                </div>
-
-                <div class="selection-card p-6 text-center" data-template="blue">
-                    <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex items-center justify-center">
-                        <!-- Play button -->
-                        <span class="material-symbols-outlined text-white text-3xl">play_circle</span>
-                    </div>
-                    <h3 class="font-semibold text-gray-900" data-i18n="tpl_blue">Music Player</h3>
-                    <p class="text-[10px] text-gray-500 uppercase tracking-widest" data-i18n="tpl_blue_sub">Retro MP3</p>
-                </div>
+                <!-- Frames are only the ones created in the admin theme/template editors. -->
+                <p id="no-frames" class="hidden col-span-2 text-center text-sm text-gray-500 py-10">ยังไม่มีกรอบรูป กรุณาเรียกพนักงาน</p>
             </div>
         </div>
     </main>
@@ -189,14 +152,30 @@
                 container.appendChild(canvas);
             }
 
-            // Init selection state
-            const selectedSchema = Session.templateSchemaId ? TemplateCatalog.find(Session.templateSchemaId) : null;
-            if (selectedSchema && Kiosk.isTemplateCompatible(selectedSchema, paperMode)) {
-                updatePreview(null, false, Session.templateSchemaId);
+            // Init selection state: keep the previous pick if it is still offered,
+            // otherwise default to the first custom frame (there are no presets).
+            const firstCard = gridContainer.querySelector('.selection-card');
+            const pickedSchemaCard = Session.templateSchemaId
+                ? gridContainer.querySelector('.selection-card[data-schema-id="' + CSS.escape(Session.templateSchemaId) + '"]') : null;
+            const pickedThemeCard = !Session.templateSchemaId && Session.template
+                ? gridContainer.querySelector('.selection-card[data-custom="true"][data-template="' + CSS.escape(Session.template) + '"]') : null;
+            const startCard = pickedSchemaCard || pickedThemeCard || firstCard;
+            document.getElementById('no-frames').classList.toggle('hidden', !!firstCard);
+            if (startCard && startCard.dataset.isSchema === 'true') {
+                Session.templateSchemaId = startCard.dataset.schemaId;
+                Session.template = 'custom_schema';
+                SessionAsync.set('templateSchemaId', startCard.dataset.schemaId);
+                SessionAsync.set('template', 'custom_schema');
+                updatePreview(null, false, startCard.dataset.schemaId);
+            } else if (startCard) {
+                Session.templateSchemaId = null;
+                Session.template = startCard.dataset.template;
+                SessionAsync.set('templateSchemaId', null);
+                SessionAsync.set('template', startCard.dataset.template);
+                updatePreview(startCard.dataset.template, true, null);
             } else {
                 Session.templateSchemaId = null;
-                Session.template = Session.template || 'light';
-                updatePreview(Session.template, false, null);
+                container.innerHTML = '';
             }
 
             // Selectors

@@ -2,6 +2,11 @@
    RETRO_SNAP — Shared JavaScript
    ============================================================ */
 
+// Demo/prototype code paths (localhost ?demo=1, demo admin PIN, fake camera) are
+// disabled in production builds: vite.config.mjs flips this to false unless
+// PB_ALLOW_DEMO=1 is set at build time.
+const PB_DEMO_BUILD = true;
+
 const SUPABASE_URL = 'https://zualrdvvlcoexqrbedhl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1YWxyZHZ2bGNvZXhxcmJlZGhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MTYwMjMsImV4cCI6MjEwMDA5MjAyM30.1JgXhpQccIOxgFgvx_G7cBlnCkSiWQhEihUAd8xCyV8';
 const SUPABASE_BUCKET = 'photobooth';
@@ -65,6 +70,12 @@ const Kiosk = {
     set filterEnabled(v) { localStorage.setItem('kiosk_filter_enabled', v ? 'true' : 'false'); },
     get qrEnabled() { return localStorage.getItem('kiosk_qr_enabled') !== 'false'; },
     set qrEnabled(v) { localStorage.setItem('kiosk_qr_enabled', v ? 'true' : 'false'); },
+    // Redeem mode: offer PromptPay purchase alongside code entry (default on).
+    get promptPayEnabled() { return localStorage.getItem('kiosk_promptpay_enabled') !== 'false'; },
+    set promptPayEnabled(v) { localStorage.setItem('kiosk_promptpay_enabled', v ? 'true' : 'false'); },
+    // GIF download (default on). Effective only while download QR is on too.
+    get gifEnabled() { return localStorage.getItem('kiosk_gif_enabled') !== 'false'; },
+    set gifEnabled(v) { localStorage.setItem('kiosk_gif_enabled', v ? 'true' : 'false'); },
     get kioskId() { return localStorage.getItem('kiosk_id') || ''; },
     set kioskId(v) { localStorage.setItem('kiosk_id', String(v || '').trim()); },
     get packageId() { return localStorage.getItem('kiosk_package_id') || ''; },
@@ -156,7 +167,7 @@ const Kiosk = {
     }
 };
 
-['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics'].forEach(key => {
+['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics', 'gifEnabled', 'gifTicket', 'gifStatus'].forEach(key => {
     Object.defineProperty(Session, key, {
         get: function() { return this.get(key); },
         set: function(v) { this.set(key, v); }
@@ -465,8 +476,12 @@ const SessionAsync = {
 // Browser IndexedDB retention exists only behind localhost ?demo=1.
 // ============================================================
 function isLocalPrototypeDemo() {
+    if (!PB_DEMO_BUILD) return false;
     const host = String(location.hostname || '').toLowerCase();
     if (host !== 'localhost' && host !== '127.0.0.1') return false;
+    // Bare localhost has no device bridge, so nothing real can run: use the
+    // local demo (matches the local admin PIN). With a bridge, opt in via ?demo=1.
+    if (!window.PhotoboothDevice) return true;
     if (new URLSearchParams(location.search).get('demo') === '1') {
         sessionStorage.setItem('pb_demo_mode', '1');
     }
@@ -770,12 +785,12 @@ if (typeof document !== 'undefined') {
 
 
 class IdleTimer {
-    constructor(timeoutMs, redirectUrl, warningMs = 30000) {
+    // Silent reset: after the idle time the customer's photos are cleared and the
+    // kiosk returns to the start screen. There is no on-screen warning.
+    constructor(timeoutMs, redirectUrl) {
         this.timeoutMs = Kiosk.mode === 'redeem' ? 90000 : Math.max(Number(timeoutMs) || 120000, 120000);
-        this.warningMs = Kiosk.mode === 'redeem' ? 15000 : Math.min(Number(warningMs) || 30000, this.timeoutMs);
         this.redirectUrl = redirectUrl;
         this.timer = null;
-        this.warningTimer = null;
         this._onActivity = this.reset.bind(this);
     }
     start() {
@@ -786,45 +801,14 @@ class IdleTimer {
     }
     reset() {
         clearTimeout(this.timer);
-        clearTimeout(this.warningTimer);
-        this.hideWarning();
         void touchPrintPass().catch(() => {});
-        this.warningTimer = setTimeout(() => this.showWarning(), this.timeoutMs - this.warningMs);
         this.timer = setTimeout(async () => {
             await closePrintPassAndClearCustomer();
             window.location.replace(this.redirectUrl);
         }, this.timeoutMs);
     }
-    showWarning() {
-        let overlay = document.getElementById('pb-idle-warning');
-        if (!overlay) {
-            overlay = document.createElement('button');
-            overlay.type = 'button';
-            overlay.id = 'pb-idle-warning';
-            overlay.className = 'pb-idle-warning';
-            overlay.innerHTML = `
-                <span class="pb-idle-warning__card">
-                    <strong data-idle-title>ยังใช้งานอยู่ไหม?</strong>
-                    <small data-idle-message>แตะหน้าจอเพื่อใช้งานต่อ ระบบจะล้างรูปเมื่อหมดเวลา</small>
-                </span>`;
-            overlay.addEventListener('click', this._onActivity);
-            document.body.appendChild(overlay);
-        }
-        const isEnglish = getLanguage() === 'en';
-        overlay.querySelector('[data-idle-title]').textContent = isEnglish ? 'Are you still there?' : 'ยังใช้งานอยู่ไหม?';
-        overlay.querySelector('[data-idle-message]').textContent = isEnglish
-            ? 'Tap the screen to continue. Session photos will be cleared when time runs out.'
-            : 'แตะหน้าจอเพื่อใช้งานต่อ ระบบจะล้างรูปเมื่อหมดเวลา';
-        overlay.classList.add('is-visible');
-    }
-    hideWarning() {
-        const overlay = document.getElementById('pb-idle-warning');
-        if (overlay) overlay.classList.remove('is-visible');
-    }
     stop() {
         clearTimeout(this.timer);
-        clearTimeout(this.warningTimer);
-        this.hideWarning();
         ['pointerdown', 'mousemove', 'keydown'].forEach(evt => {
             document.removeEventListener(evt, this._onActivity);
         });
@@ -1528,7 +1512,6 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                     if (templateName === 'light') {
                         // Classic Y2K text
                         ctx.font = `800 ${18*scale}px "Inter", "Prompt", sans-serif`;
-                        ctx.fillText('MEMORIES', outputWidth / 2, totalHeight - pb / 2);
                         const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.');
                         ctx.font = `500 ${10*scale}px "Inter", "Prompt", sans-serif`;
                         ctx.fillStyle = '#666666';
@@ -1547,7 +1530,6 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                         ctx.fillRect(px, 20*scale, availableWidth, 44*scale);
                         ctx.fillStyle = '#FFFFFF';
                         ctx.font = `800 ${22*scale}px "Inter", "Prompt", sans-serif`;
-                        ctx.fillText('MEMORIES', outputWidth / 2, 20*scale + 30*scale);
                         
                         // Date above photos
                         ctx.fillStyle = '#000000';
@@ -1615,7 +1597,6 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                         ctx.fillStyle = '#000000';
                         ctx.font = `600 ${10*scale}px "Inter", "Prompt", sans-serif`;
                         ctx.textAlign = 'center';
-                        ctx.fillText('memories.com', outputWidth / 2, 28*scale);
                         
                         // Footer text
                         ctx.font = `500 ${12*scale}px "Inter", "Prompt", sans-serif`;
@@ -1641,10 +1622,8 @@ function composeStrip(photos, templateName, outputWidth = 600, customThemeObj = 
                         // Title
                         ctx.font = `800 ${18*scale}px "Inter", "Prompt", sans-serif`;
                         ctx.textAlign = 'left';
-                        ctx.fillText('Memories', px, footerY + 16*scale);
                         ctx.font = `400 ${12*scale}px "Inter", "Prompt", sans-serif`;
                         ctx.fillStyle = '#666666';
-                        ctx.fillText('You', px, footerY + 32*scale);
                         
                         // Heart icon (manual draw for perfect scaling)
                         ctx.fillStyle = '#000000';
@@ -1997,7 +1976,6 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
 
                             if (templateName === 'light') {
                                 ctx.font = `800 ${16*scale}px "Inter", "Prompt", sans-serif`;
-                                ctx.fillText('MEMORIES', stripOffsetX + stripWidth / 2, canvasHeight - pb / 2);
                                 const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.');
                                 ctx.font = `500 ${9*scale}px "Inter", "Prompt", sans-serif`;
                                 ctx.fillStyle = '#666666';
@@ -2007,10 +1985,8 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
                                 ctx.fillRect(stripOffsetX + px, 12*scale, availW, 36*scale);
                                 ctx.fillStyle = '#FFFFFF';
                                 ctx.font = `800 ${18*scale}px "Inter", "Prompt", sans-serif`;
-                                ctx.fillText('MEMORIES', stripOffsetX + stripWidth / 2, 12*scale + 25*scale);
                             } else if (templateName === 'mint') {
                                 ctx.font = `600 ${12*scale}px "Inter", "Prompt", sans-serif`;
-                                ctx.fillText('memories.com', stripOffsetX + stripWidth / 2, 32*scale);
                                 ctx.font = `500 ${10*scale}px "Inter", "Prompt", sans-serif`;
                                 ctx.fillText('captured moments.', stripOffsetX + stripWidth / 2, canvasHeight - 15*scale);
                             } else if (templateName === 'blue') {
@@ -2018,7 +1994,6 @@ function composeDualStrip4x6(photos, templateName, outputWidth = 1200, customThe
                                 ctx.font = `600 ${12*scale}px "Inter", "Prompt", sans-serif`;
                                 ctx.fillText('NOW PLAYING', stripOffsetX + stripWidth / 2, 32*scale);
                                 ctx.font = `700 ${14*scale}px "Inter", "Prompt", sans-serif`;
-                                ctx.fillText('Memories', stripOffsetX + stripWidth / 2, canvasHeight - 18*scale);
                             }
                         };
 
@@ -2081,7 +2056,6 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
         ctx.fillRect(28 * scale, 18 * scale, width - 56 * scale, 38 * scale);
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `800 ${Math.max(11, 16 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('MEMORIES · TICKET', width / 2, 42 * scale);
 
         // Dashed lines
         ctx.strokeStyle = '#0A0A0A';
@@ -2125,7 +2099,6 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
 
         ctx.fillStyle = '#374151';
         ctx.font = `600 ${Math.max(9, 11 * scale)}px "Inter", sans-serif`;
-        ctx.fillText('memories.com', width / 2, dotY + 4 * scale);
 
         // Footer
         ctx.fillStyle = '#6B7280';
@@ -2148,7 +2121,6 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
         // Footer
         ctx.fillStyle = '#0A0A0A';
         ctx.font = `800 ${Math.max(12, 16 * scale)}px "Inter", sans-serif`;
-        ctx.fillText('MEMORIES · TRACK 01', width / 2, height - 38 * scale);
         ctx.font = `500 ${Math.max(9, 11 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = '#6B7280';
         ctx.fillText('02:45 / 03:30 · STEREO HD', width / 2, height - 20 * scale);
@@ -2156,7 +2128,6 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
         // Classic Y2K / Minimalist
         ctx.fillStyle = '#0A0A0A';
         ctx.font = `900 ${Math.max(13, 20 * scale)}px "Inter", "Prompt", sans-serif`;
-        ctx.fillText('MEMORIES', width / 2, height - 48 * scale);
         ctx.font = `500 ${Math.max(9, 12 * scale)}px "Inter", monospace`;
         ctx.fillStyle = '#6B7280';
         ctx.fillText(new Date().toLocaleDateString('en-CA').replace(/-/g, '.'), width / 2, height - 26 * scale);
@@ -2378,6 +2349,98 @@ async function fetchLayoutSizeFor(layoutStr) {
     return null;
 }
 
+// ======================== SESSION GIF ========================
+// One frame per confirmed (filtered) photo, built in gif-worker.js, kept in
+// IndexedDB until the session ends, uploaded with a per-session ticket from the
+// native agent. Every failure here is GIF-only: printing and photo QR go on.
+const GIF_BLOB_KEY = 'gif_blob';
+const GIF_MAX_BYTES = 20 * 1024 * 1024;
+const GIF_BUILD_TIMEOUT_MS = 20000;
+
+// Called once when a session starts so a mid-session admin change cannot flip it.
+function snapshotGifSetting() {
+    Session.gifEnabled = !!(Kiosk.gifEnabled && Kiosk.qrEnabled);
+    Session.gifStatus = Session.gifEnabled ? 'pending' : 'disabled';
+    Session.gifTicket = null;
+}
+
+async function ensureGifUploadTicket() {
+    if (!Session.gifEnabled || Session.gifTicket?.ticket) return;
+    if (isLocalPrototypeDemo()) {
+        Session.gifTicket = { ticket: 'demo', expiresAt: new Date(Date.now() + 3 * 3600000).toISOString() };
+        return;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.issueGifUploadTicket !== 'function' || !Session.sessionId) return;
+    const pass = Session.authorization;
+    try {
+        const result = await bridge.issueGifUploadTicket({
+            kioskId: Kiosk.kioskId,
+            sessionId: Session.sessionId,
+            mode: Kiosk.mode === 'redeem' ? 'redeem' : 'event',
+            passId: pass?.passId || null,
+            sessionToken: pass?.sessionToken || null,
+            packageId: Kiosk.packageId || null
+        });
+        if (result?.ticket) Session.gifTicket = { ticket: result.ticket, expiresAt: result.expiresAt };
+        else console.warn('GIF ticket unavailable:', result?.error);
+    } catch (e) {
+        console.warn('GIF ticket request failed:', e);
+    }
+}
+
+// Resolves to 'ready' | 'skipped' | 'failed' | 'too_large'. Never throws.
+async function buildSessionGif(photos) {
+    await PB_DB.del(GIF_BLOB_KEY).catch(() => {});
+    if (!Session.gifEnabled) return (Session.gifStatus = 'disabled');
+    if (!Array.isArray(photos) || photos.length < 2) return (Session.gifStatus = 'skipped');
+    let worker;
+    try {
+        worker = new Worker('/gif-worker.js', { type: 'module' });
+        const reply = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('timeout')), GIF_BUILD_TIMEOUT_MS);
+            worker.onmessage = (e) => { clearTimeout(timer); resolve(e.data); };
+            worker.onerror = (e) => { clearTimeout(timer); reject(new Error(e.message || 'worker_error')); };
+            worker.postMessage({ photos });
+        });
+        if (!reply?.ok) {
+            return (Session.gifStatus = reply?.error === 'too_large' ? 'too_large' : 'failed');
+        }
+        if (reply.blob.size > GIF_MAX_BYTES) return (Session.gifStatus = 'too_large');
+        await PB_DB.set(GIF_BLOB_KEY, reply.blob);
+        return (Session.gifStatus = 'ready');
+    } catch (e) {
+        console.warn('GIF build failed:', e);
+        return (Session.gifStatus = 'failed');
+    } finally {
+        if (worker) worker.terminate();
+    }
+}
+
+// Resolves { success, downloadUrl?, expiresAt?, demoBlob?, error? }.
+async function uploadSessionGif() {
+    let blob;
+    try { blob = await PB_DB.get(GIF_BLOB_KEY); } catch (_) {}
+    if (!(blob instanceof Blob)) return { success: false, error: 'missing_gif' };
+    if (blob.size > GIF_MAX_BYTES) return { success: false, error: 'too_large' };
+    if (isLocalPrototypeDemo()) return { success: true, demoBlob: blob };
+    if (!Session.gifTicket?.ticket) await ensureGifUploadTicket();
+    const ticket = Session.gifTicket?.ticket;
+    if (!ticket) return { success: false, error: 'ticket_unavailable' };
+    try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/session-gif`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'image/gif', 'x-gif-ticket': ticket },
+            body: blob
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.downloadUrl) return { success: false, error: body.error || `http_${res.status}` };
+        return { success: true, downloadUrl: body.downloadUrl, expiresAt: body.expiresAt };
+    } catch (e) {
+        return { success: false, error: 'network_error' };
+    }
+}
+
 // ======================== SUPABASE UPLOAD ========================
 async function uploadToCloud(dataUrl, filename) {
     if (!dataUrl) return null;
@@ -2487,6 +2550,108 @@ function checkAndInjectEventBanner() {
 // ======================== REDEEM CODE SYSTEM ========================
 
 const PRINT_PASS_CODE = /^(?=.*[0-9])(?=.*[A-Z])[0-9A-HJKMNP-TV-Z]{5}$/;
+
+// ======================== PROMPTPAY CHECKOUT (Stripe) ========================
+// The native bridge holds the device credential and calls the payment-order
+// Edge Function; Stripe secrets never reach the browser. A paid order yields a
+// normal 5-character pass code that is then claimed with claimPrintPass().
+const DEMO_PASS_OFFERS = [
+    { packageId: 'demo-receipt', quotaKind: '2', priceMinor: 1900, currency: 'THB', copies: 2 },
+    { packageId: 'demo-receipt', quotaKind: '5', priceMinor: 3500, currency: 'THB', copies: 2 },
+    { packageId: 'demo-receipt', quotaKind: 'unlimited', priceMinor: 14900, currency: 'THB', copies: 2 }
+];
+
+function paymentBridge(method) {
+    const bridge = window.PhotoboothDevice;
+    return bridge && typeof bridge[method] === 'function' ? bridge : null;
+}
+
+async function listPassOffers() {
+    if (isLocalPrototypeDemo()) return { success: true, offers: DEMO_PASS_OFFERS };
+    const bridge = paymentBridge('listPassOffers');
+    if (!bridge) return { success: false, error: 'device_not_provisioned' };
+    try {
+        const result = await bridge.listPassOffers({ kioskId: Kiosk.kioskId });
+        if (!result || result.error || !Array.isArray(result.offers)) {
+            return { success: false, error: result?.error || 'network_error' };
+        }
+        return { success: true, offers: result.offers };
+    } catch (e) {
+        console.error('List offers failed:', e);
+        return { success: false, error: 'network_error' };
+    }
+}
+
+async function createPaymentOrder(offer) {
+    if (isLocalPrototypeDemo()) {
+        const order = { orderId: crypto.randomUUID(), amountMinor: offer.priceMinor, currency: offer.currency,
+            expiresAt: new Date(Date.now() + 10 * 60000).toISOString(),
+            qr: { data: 'DEMO-PROMPTPAY-NOT-A-REAL-PAYMENT' }, demoPaidAt: Date.now() + 6000 };
+        sessionStorage.setItem('pb_demo_payment_order', JSON.stringify({ ...order, quotaKind: offer.quotaKind }));
+        return { success: true, order };
+    }
+    const bridge = paymentBridge('createPaymentOrder');
+    if (!bridge) return { success: false, error: 'device_not_provisioned' };
+    try {
+        const result = await bridge.createPaymentOrder({
+            kioskId: Kiosk.kioskId, packageId: offer.packageId, quotaKind: offer.quotaKind });
+        if (!result || result.error || !result.orderId || !result.qr) {
+            return { success: false, error: result?.error || 'network_error' };
+        }
+        return { success: true, order: result };
+    } catch (e) {
+        console.error('Create payment order failed:', e);
+        return { success: false, error: 'network_error' };
+    }
+}
+
+// Resolves { status: 'pending'|'paid'|'expired'|'cancelled'|'failed'|'delivered', code? }.
+async function getPaymentOrderStatus(orderId) {
+    if (isLocalPrototypeDemo()) {
+        let order = null;
+        try { order = JSON.parse(sessionStorage.getItem('pb_demo_payment_order') || 'null'); } catch (_) {}
+        if (!order || order.orderId !== orderId) return { success: false, error: 'order_not_found' };
+        if (Date.now() < order.demoPaidAt) return { success: true, status: 'pending' };
+        if (!order.demoCode) {
+            const rows = demoLoadRedeemCodes();
+            const code = demoCreateRedeemCode(new Set(rows.map(row => row.code)));
+            rows.push({ id: crypto.randomUUID(), code, code_hint: `${code.slice(0, 1)}••••`,
+                expires_at: new Date(Date.now() + 86400000).toISOString(), is_used: false,
+                quota_kind: order.quotaKind === 'unlimited' ? 'unlimited' : 'limited',
+                print_limit: order.quotaKind === 'unlimited' ? null : Number(order.quotaKind),
+                used_prints: 0, reserved_prints: 0, printed_at: new Date().toISOString(),
+                created_at: new Date().toISOString() });
+            demoSaveRedeemCodes(rows);
+            order.demoCode = code;
+            sessionStorage.setItem('pb_demo_payment_order', JSON.stringify(order));
+        }
+        return { success: true, status: 'paid', code: order.demoCode };
+    }
+    const bridge = paymentBridge('getPaymentOrder');
+    if (!bridge) return { success: false, error: 'device_not_provisioned' };
+    try {
+        const result = await bridge.getPaymentOrder({ kioskId: Kiosk.kioskId, orderId });
+        if (!result || result.error || !result.status) {
+            return { success: false, error: result?.error || 'network_error' };
+        }
+        return { success: true, status: result.status, code: result.code };
+    } catch (e) {
+        return { success: false, error: 'network_error' };
+    }
+}
+
+async function cancelPaymentOrder(orderId) {
+    if (!orderId) return;
+    if (isLocalPrototypeDemo()) { sessionStorage.removeItem('pb_demo_payment_order'); return; }
+    const bridge = paymentBridge('cancelPaymentOrder');
+    if (!bridge) return;
+    try { await bridge.cancelPaymentOrder({ kioskId: Kiosk.kioskId, orderId }); } catch (_) {}
+}
+
+function formatBaht(priceMinor) {
+    const baht = priceMinor / 100;
+    return '฿' + baht.toLocaleString('th-TH', { minimumFractionDigits: Number.isInteger(baht) ? 0 : 2 });
+}
 
 function printPassMessage(pass = Session.authorization) {
     if (!pass || !pass.passId) return '';
@@ -2722,7 +2887,7 @@ async function claimRedeemCode(code) {
     }
 
     const params = new URLSearchParams(window.location.search);
-    const isLocalDemo = ['localhost', '127.0.0.1'].includes(window.location.hostname) && params.get('demo') === '1';
+    const isLocalDemo = PB_DEMO_BUILD && ['localhost', '127.0.0.1'].includes(window.location.hostname) && params.get('demo') === '1';
     if (isLocalDemo) {
         const demoCodes = demoLoadRedeemCodes();
         let matched = demoCodes.find(row => row.code === code);
@@ -3002,6 +3167,9 @@ let demoAdminFailedCount = 0;
 let demoAdminLockedUntil = 0;
 
 function isLocalAdminDemo() {
+    if (!PB_DEMO_BUILD) return false;
+    // A device bridge (native agent or the dev simulator) owns the real PIN.
+    if (window.PhotoboothDevice && typeof window.PhotoboothDevice.adminVerifyPin === 'function') return false;
     const host = String(location.hostname || '').toLowerCase();
     return host === 'localhost' || host === '127.0.0.1';
 }

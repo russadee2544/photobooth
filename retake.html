@@ -32,7 +32,8 @@
         </div>
 
         <!-- Grid of photos -->
-        <div id="photo-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 w-full">
+        <!-- Centered both ways in the space between the title and the Continue bar -->
+        <div id="photo-grid" class="flex-grow flex flex-wrap justify-center content-center items-center gap-3 sm:gap-4 w-full">
             <!-- Injected by JS -->
         </div>
     </main>
@@ -69,38 +70,43 @@
         function renderGrid() {
             const grid = document.getElementById('photo-grid');
             grid.innerHTML = '';
+            const retakeLabel = getLanguage() === 'en' ? 'Retake' : 'ถ่ายใหม่';
 
             rawPhotos.forEach((src, idx) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden group shadow-sm transition-transform hover:scale-[1.02]';
+                // One column per photo: the picture, then an always-visible Retake button.
+                const item = document.createElement('div');
+                item.className = 'shrink-0 w-36 sm:w-44 md:w-48 lg:w-52 xl:w-60 flex flex-col gap-3';
+
+                const frame = document.createElement('div');
+                frame.className = 'relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden shadow-sm';
 
                 const img = document.createElement('img');
                 img.src = src;
-                img.className = 'w-full h-full object-cover transition-opacity';
+                img.className = 'w-full h-full object-cover';
                 img.id = `img-${idx}`;
-                
-                // Retake button overlay
-                const retakeOverlay = document.createElement('div');
-                retakeOverlay.className = 'absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px] cursor-pointer';
-                retakeOverlay.onclick = () => {
-                    window.location.href = `capture.html?retake=${idx}`;
-                };
-
-                const retakeBtn = document.createElement('div');
-                retakeBtn.className = 'bg-white text-gray-900 rounded-full px-4 py-2 flex items-center gap-2 font-medium text-sm shadow-xl transform scale-95 group-hover:scale-100 transition-transform';
-                retakeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px]">autorenew</span> Retake';
-                
-                retakeOverlay.appendChild(retakeBtn);
+                img.alt = '';
 
                 // Number badge
                 const badge = document.createElement('div');
-                badge.className = 'absolute top-4 left-4 w-8 h-8 rounded-full bg-black/60 text-white font-bold flex items-center justify-center text-sm shadow-md backdrop-blur-md';
+                badge.className = 'absolute top-3 left-3 w-8 h-8 rounded-full bg-black/60 text-white font-bold flex items-center justify-center text-sm shadow-md backdrop-blur-md';
                 badge.innerText = idx + 1;
 
-                wrapper.appendChild(img);
-                wrapper.appendChild(retakeOverlay);
-                wrapper.appendChild(badge);
-                grid.appendChild(wrapper);
+                frame.appendChild(img);
+                frame.appendChild(badge);
+
+                const retakeBtn = document.createElement('button');
+                retakeBtn.type = 'button';
+                retakeBtn.className = 'btn-modern bg-white text-gray-900 border-2 border-gray-900 w-full py-3 text-base font-bold flex items-center justify-center gap-2 shadow-md hover:bg-gray-900 hover:text-white active:scale-95 transition-all';
+                retakeBtn.innerHTML = '<span class="material-symbols-outlined text-xl">autorenew</span><span></span>';
+                retakeBtn.lastElementChild.textContent = retakeLabel + ' ' + (idx + 1);
+                retakeBtn.setAttribute('aria-label', retakeLabel + ' ' + (idx + 1));
+                retakeBtn.onclick = () => {
+                    window.location.href = `capture.html?retake=${idx}`;
+                };
+
+                item.appendChild(frame);
+                item.appendChild(retakeBtn);
+                grid.appendChild(item);
             });
         }
 

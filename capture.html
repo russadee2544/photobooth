@@ -58,7 +58,7 @@
         <button id="req-cam-btn" class="bg-white text-gray-900 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors w-full mt-1">
             Request Permission / Retry
         </button>
-        <button id="force-demo-btn" class="bg-transparent border border-gray-600 text-gray-300 px-4 py-2 rounded-md hover:bg-gray-800 transition-colors w-full mt-1 text-xs">
+        <button id="force-demo-btn" hidden class="bg-transparent border border-gray-600 text-gray-300 px-4 py-2 rounded-md hover:bg-gray-800 transition-colors w-full mt-1 text-xs">
             Continue without Camera (Demo Mode)
         </button>
     </div>
@@ -135,7 +135,7 @@
                     return true;
                 } catch (err) {
                     console.error("Camera access failed:", err);
-                    useDemo = true;
+                    useDemo = PB_DEMO_BUILD;
                     demoBanner.classList.remove('hidden');
                     return false;
                 }
@@ -181,6 +181,7 @@
                 loadCameraList();
                 if (success) startSequence();
             };
+            if (PB_DEMO_BUILD) forceDemoBtn.hidden = false;
             forceDemoBtn.onclick = () => {
                 demoBanner.classList.add('hidden');
                 useDemo = true;

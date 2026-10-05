@@ -500,6 +500,20 @@
             </div>
         </div>
 
+        <!-- GIF download: independent of the photo QR above, so either can fail alone -->
+        <div id="gif-section" class="hidden flex flex-wrap items-center gap-4 justify-center lg:justify-start mb-6" aria-live="polite">
+            <div id="gif-qr-wrapper" class="hidden flex flex-col items-center">
+                <div class="bg-white p-3 md:p-4 rounded-2xl shadow-md border border-gray-200 mb-2 transition hover:shadow-lg">
+                    <div id="qr-gif" class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center bg-white overflow-hidden"></div>
+                </div>
+                <div class="flex items-center gap-1 text-[11px] font-bold text-gray-800 tracking-wide">
+                    <span class="material-symbols-outlined text-xs text-green-600">gif_box</span>
+                    <span id="gif-label">GIF ภาพเคลื่อนไหว</span>
+                </div>
+            </div>
+            <div id="gif-status" class="flex items-center gap-2 text-xs text-gray-500"></div>
+        </div>
+
         <!-- Photo Enhancement & Clarity Settings Panel (hidden from customers, controlled by admin) -->
         <div class="bg-white/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-sm mb-5 hidden">
             <div class="flex items-center justify-between mb-3">
@@ -762,8 +776,7 @@
             // Load composed results from IndexedDB (primary) / localStorage (legacy)
             let result = (await SessionAsync.get('result')) || Session.result;
             let dithered = (await SessionAsync.get('dithered')) || Session.dithered;
-            const localDemo = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(window.location.hostname)
-                && new URLSearchParams(window.location.search).get('demo') === '1';
+            const localDemo = isLocalPrototypeDemo();
             if (!result && localDemo) {
                 result = createDemoReceipt();
                 dithered = result;
@@ -793,8 +806,15 @@
                 printBtn.innerHTML = '<span class="material-symbols-outlined text-sm">error</span> Out of Paper';
             }
 
-            // Handle QR Code & Cloud Upload
-            if (typeof Kiosk !== 'undefined' && Kiosk.qrEnabled) {
+            // GIF runs on its own track; it never touches printing or the photo QR.
+            void initGifDownload();
+
+            // Handle QR Code & Cloud Upload (never upload local demo/test images)
+            if (localDemo && Kiosk.qrEnabled) {
+                uploadStatus.classList.remove('hidden');
+                uploadStatus.innerHTML = '<span class="material-symbols-outlined text-gray-400 text-sm">science</span><span class="text-xs text-gray-500">โหมดเดโม · ไม่อัปโหลดรูปขึ้นคลาวด์ (QR รูปภาพใช้ได้เฉพาะเครื่องจริง)</span>';
+                qrContainer.classList.add('hidden');
+            } else if (typeof Kiosk !== 'undefined' && Kiosk.qrEnabled) {
                 uploadStatus.classList.remove('hidden');
                 uploadStatus.innerHTML = '<div class="spinner border-gray-300 w-5 h-5 border-2"></div><span class="text-xs sm:text-sm text-gray-500 font-medium">กำลังเตรียม QR Code สำหรับดาวน์โหลดภาพ...</span>';
 
@@ -882,6 +902,72 @@
 
             new IdleTimer(120000, 'home.html').start();
         });
+
+        async function initGifDownload() {
+            const section = document.getElementById('gif-section');
+            const wrapper = document.getElementById('gif-qr-wrapper');
+            const qrEl = document.getElementById('qr-gif');
+            const statusEl = document.getElementById('gif-status');
+            const isThai = (localStorage.getItem('pb_lang') || 'th') === 'th';
+            const t = (th, en) => (isThai ? th : en);
+            const setStatus = (icon, text, spinning = false) => {
+                statusEl.replaceChildren();
+                if (spinning) {
+                    const spinner = document.createElement('div');
+                    spinner.className = 'spinner border-gray-300 w-4 h-4 border-2';
+                    statusEl.append(spinner);
+                } else if (icon) {
+                    const glyph = document.createElement('span');
+                    glyph.className = 'material-symbols-outlined text-sm text-amber-500';
+                    glyph.textContent = icon;
+                    statusEl.append(glyph);
+                }
+                const label = document.createElement('span');
+                label.textContent = text;
+                statusEl.append(label);
+            };
+
+            const status = Session.gifStatus;
+            if (!Session.gifEnabled || !['ready', 'failed', 'too_large'].includes(status)) return;
+            section.classList.remove('hidden');
+            if (status === 'too_large') {
+                return setStatus('block', t('GIF มีขนาดเกิน 20 MB จึงดาวน์โหลดไม่ได้ (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)',
+                    'GIF is over 20 MB and cannot be downloaded (printing and photo download still work).'));
+            }
+            if (status === 'failed') {
+                return setStatus('error', t('สร้าง GIF ไม่สำเร็จ (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)',
+                    'Could not create the GIF (printing and photo download still work).'));
+            }
+
+            setStatus(null, t('กำลังเตรียม GIF สำหรับดาวน์โหลด...', 'Preparing your GIF download...'), true);
+            const result = await uploadSessionGif();
+            if (!result.success) {
+                console.warn('GIF upload failed:', result.error);
+                return setStatus('wifi_off', result.error === 'too_large'
+                    ? t('GIF มีขนาดเกิน 20 MB จึงดาวน์โหลดไม่ได้', 'GIF is over 20 MB and cannot be downloaded.')
+                    : t('ดาวน์โหลด GIF ไม่สำเร็จ (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)',
+                        'GIF download is unavailable (printing and photo download still work).'));
+            }
+
+            qrEl.replaceChildren();
+            if (result.demoBlob) {
+                // Local demo has no upload: show the GIF itself instead of a QR.
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(result.demoBlob);
+                img.alt = 'GIF preview';
+                img.className = 'w-full h-full object-contain';
+                qrEl.append(img);
+                document.getElementById('gif-label').textContent = t('GIF (เดโม ไม่ได้อัปโหลด)', 'GIF (demo, not uploaded)');
+                statusEl.replaceChildren();
+            } else {
+                new QRCode(qrEl, {
+                    text: result.downloadUrl, width: 128, height: 128,
+                    colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.L
+                });
+                setStatus(null, t('ลิงก์ GIF ใช้ได้ 24 ชั่วโมง', 'GIF link works for 24 hours'));
+            }
+            wrapper.classList.remove('hidden');
+        }
 
         function createDemoReceipt() {
             const canvas = document.createElement('canvas');

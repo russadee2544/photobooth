@@ -65,7 +65,11 @@
                     await wait(40);
                     photos = await applyPhotosFilter(photos, selectedFilter);
                 }
-                
+
+                // GIF from the confirmed, filtered photos (no layout/frame), built
+                // in a worker alongside composition. It never fails the session.
+                const gifBuild = buildSessionGif(photos);
+
                 // 1. Compose full res (1200px width for printing)
                 statusText.innerText = "Composing layout...";
                 await wait(40); // let the status update paint before CPU work
@@ -97,6 +101,10 @@
                 } else {
                     await SessionAsync.remove('dithered');
                 }
+
+                // The GIF blob must be in IndexedDB before raw frames are erased.
+                if (Session.gifEnabled) statusText.innerText = "Preparing GIF...";
+                await gifBuild;
 
                 // Raw captures are transient composition inputs only. Keep the
                 // final color and dithered assets, then remove every raw frame.

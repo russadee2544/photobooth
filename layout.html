@@ -57,6 +57,9 @@
     <script src="shared.js?v=2.9"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // First page of every session (event and redeem): get the GIF upload
+            // ticket now, in the background, so it never delays the customer.
+            void ensureGifUploadTicket();
             const paperMode = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
             const allowedLayoutsList = (typeof Kiosk !== 'undefined' && typeof Kiosk.getAllowedLayouts === 'function')
                 ? Kiosk.getAllowedLayouts(paperMode)
