@@ -3,6 +3,7 @@
 # %LOCALAPPDATA%\Photobooth\data so upgrades never touch it.
 $ErrorActionPreference = 'Continue'
 $App = $PSScriptRoot
+Set-Location $env:LOCALAPPDATA  # never hold the install folder as the working directory
 $Node = Join-Path $App 'runtime\node.exe'
 $Data = Join-Path $env:LOCALAPPDATA 'Photobooth\data'
 New-Item -ItemType Directory -Force -Path $Data | Out-Null
@@ -44,7 +45,6 @@ Start-Job -ArgumentList $chrome, $port, $Data -ScriptBlock {
 } | Out-Null
 
 while ($true) {
-  Set-Location $App
-  & $Node 'agent\server.mjs' *>> (Join-Path $Data 'agent.log')
+  & $Node (Join-Path $App 'agent\server.mjs') *>> (Join-Path $Data 'agent.log')
   Start-Sleep -Seconds 3
 }

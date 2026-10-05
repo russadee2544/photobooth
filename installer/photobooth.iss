@@ -40,18 +40,18 @@ Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdir
 [Icons]
 Name: "{userprograms}\Photobooth"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \
-  WorkingDir: "{app}"; IconFilename: "{app}\runtime\node.exe"
+  WorkingDir: "{userdocs}"; IconFilename: "{app}\runtime\node.exe"
 Name: "{userstartup}\Photobooth"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \
-  WorkingDir: "{app}"; IconFilename: "{app}\runtime\node.exe"; Tasks: autostart
+  WorkingDir: "{userdocs}"; IconFilename: "{app}\runtime\node.exe"; Tasks: autostart
 Name: "{userdesktop}\Photobooth"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \
-  WorkingDir: "{app}"; IconFilename: "{app}\runtime\node.exe"; Tasks: desktopicon
+  WorkingDir: "{userdocs}"; IconFilename: "{app}\runtime\node.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \
-  WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Description: "เริ่ม Photobooth ตอนนี้"
+  WorkingDir: "{userdocs}"; Flags: nowait postinstall skipifsilent; Description: "เริ่ม Photobooth ตอนนี้"
 
 [Code]
 function ChromeInstalled(): Boolean;
@@ -82,9 +82,9 @@ begin
   Script :=
     'param([string]$App)' + #13#10 +
     '$self = $PID' + #13#10 +
-    'Get-CimInstance Win32_Process -Filter "Name=''powershell.exe''" | Where-Object { $_.ProcessId -ne $self -and $_.CommandLine -and $_.CommandLine.Contains(''launcher.ps1'') -and $_.CommandLine.IndexOf($App, [StringComparison]::OrdinalIgnoreCase) -ge 0 } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }' + #13#10 +
+    'Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $self -and $_.CommandLine -and (($_.Name -eq ''powershell.exe'' -and $_.CommandLine.Contains(''launcher.ps1'') -and $_.CommandLine.IndexOf($App, [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($_.Name -eq ''chrome.exe'' -and $_.CommandLine.Contains(''Photobooth'') -and $_.CommandLine.Contains(''chrome-profile''))) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }' + #13#10 +
     'for ($i = 0; $i -lt 20; $i++) {' + #13#10 +
-    '  $p = Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($App, [StringComparison]::OrdinalIgnoreCase) }' + #13#10 +
+    '  $p = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $self -and $_.Path -and $_.Path.StartsWith($App, [StringComparison]::OrdinalIgnoreCase) }' + #13#10 +
     '  if (-not $p) { break }' + #13#10 +
     '  $p | Stop-Process -Force -ErrorAction SilentlyContinue' + #13#10 +
     '  Start-Sleep -Milliseconds 500' + #13#10 +
