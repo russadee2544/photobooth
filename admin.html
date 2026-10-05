@@ -772,6 +772,8 @@
             <p id="event-drive-status" class="text-xs text-gray-400 mt-4 min-h-4" aria-live="polite"></p>
         </div>
 
+        <p id="agent-version" class="text-xs text-gray-500 mt-6 text-center" aria-live="polite"></p>
+
     </main>
 
     <!-- Toast -->
@@ -852,6 +854,7 @@
             initPrinterConfig();
             loadRetentionStatus();
             loadEventPhotos();
+            loadAgentVersion();
             initFilterToggle();
             initQrToggle();
         }
@@ -1075,6 +1078,18 @@
             }
             setDriveStatus(`ลบแล้ว ${deleted} รายการ`);
             await loadEventPhotos();
+        }
+
+        // Which program version this kiosk runs, and whether an update is waiting (installed kiosks only).
+        async function loadAgentVersion() {
+            const el = document.getElementById('agent-version');
+            try {
+                const info = await (await fetch('/__agent/status', { cache: 'no-store' })).json();
+                if (!info.version) return;
+                const channel = info.channel === 'canary' ? 'เครื่องหลัก (ทดลองก่อน)' : 'ทั่วไป';
+                el.textContent = 'เวอร์ชันโปรแกรม ' + info.version + ' · ช่องอัปเดต: ' + channel
+                    + (info.pending ? ' · มีเวอร์ชันใหม่ ' + info.pending + ' จะติดตั้งเมื่อตู้ว่าง' : '');
+            } catch (_) { /* not running under the kiosk agent */ }
         }
 
         async function loadRetentionStatus() {

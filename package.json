@@ -11,7 +11,9 @@
     "check": "npm run typecheck && npm run test:run && npm run build",
     "agent": "node agent/server.mjs",
     "agent:setup": "node agent/setup.mjs",
-    "installer": "node installer/build.mjs"
+    "installer": "node installer/build.mjs",
+    "publish:update": "node scripts/publish-update.mjs",
+    "promote:update": "node scripts/publish-update.mjs --promote"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.3",

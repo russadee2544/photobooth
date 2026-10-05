@@ -4,14 +4,16 @@
 // window.PhotoboothPrinter. The device credential never leaves this process.
 // With no config yet it serves a first-run setup page instead (see runSetup).
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile, stat, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize, sep } from 'node:path';
 import { createDeviceBridge, clientScript } from '../bridge/core.mjs';
-import { CONFIG_FILE, JOBS_FILE, WEB_ROOT } from './paths.mjs';
+import { APP_ROOT, CONFIG_FILE, DATA_DIR, JOBS_FILE, WEB_ROOT } from './paths.mjs';
 import { protect, unprotect } from './dpapi.mjs';
 import { createJournal } from './jobs.mjs';
 import { createPrintService } from './print-pass.mjs';
 import { listPrinters, printImage } from './printer-win.mjs';
+import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const DEFAULT_PORT = 8787;
@@ -99,6 +101,7 @@ async function runSetup() {
       const credential = String(input.credential || '').trim();
       const packageId = String(input.packageId || '').trim();
       const mode = input.mode === 'event' ? 'event' : 'redeem';
+      const updateChannel = input.updateChannel === 'canary' ? 'canary' : 'stable';
       if (!UUID.test(kioskId) || credential.length < 20 || (packageId && !UUID.test(packageId))) {
         return json(res, 400, { error: 'invalid_input' });
       }
@@ -115,7 +118,7 @@ async function runSetup() {
 
       await mkdir(dirname(CONFIG_FILE), { recursive: true });
       await writeFile(CONFIG_FILE, JSON.stringify({
-        ...builtIn, kioskId, packageId, mode, printerName: String(input.printerName || '').slice(0, 200),
+        ...builtIn, kioskId, packageId, mode, updateChannel, printerName: String(input.printerName || '').slice(0, 200),
         port: DEFAULT_PORT, credentialDpapi: await protect(credential),
       }, null, 2));
       json(res, 200, { ok: true });
@@ -139,6 +142,35 @@ async function runKiosk(config) {
     supabaseUrl: config.supabaseUrl, publishableKey: config.publishableKey, credential,
     kioskId: config.kioskId, packageId: config.packageId,
   });
+
+  // ---- self-update (installed copies only; a dev checkout never updates itself)
+  const activity = { at: Date.now(), page: '' };
+  const installed = existsSync(join(APP_ROOT, 'runtime', 'node.exe')) || process.env.PB_AGENT_UPDATES === '1';
+  const currentVersion = await readInstalledVersion(APP_ROOT);
+  let updater = null;
+  if (installed) {
+    try {
+      updater = createUpdater({
+        appRoot: APP_ROOT, dataDir: DATA_DIR, currentVersion,
+        baseUrl: `${config.supabaseUrl}/storage/v1/object/public/updates`,
+        channel: isValidChannel(config.updateChannel) ? config.updateChannel : 'stable',
+        publicKeyPem: await readFile(join(import.meta.dirname, 'update-public-key.pem'), 'utf8'),
+        // At the welcome screen nobody has started yet, so a restart costs nothing; mid-flow wait for 10 quiet minutes.
+        isIdle: () => {
+          const quiet = Date.now() - activity.at;
+          return activity.page === '/home.html' || activity.page === '' ? quiet > 20_000 : quiet > 10 * 60_000;
+        },
+        log: (line) => console.log(`[update] ${line}`),
+      });
+      updater.restartWhenIdle();
+      const poll = () => updater.check().catch(() => {});
+      setTimeout(poll, 30_000).unref?.();
+      setInterval(poll, 5 * 60_000).unref?.();
+      setTimeout(() => updater.confirmHealthy().catch(() => {}), 60_000).unref?.();
+    } catch (error) {
+      console.error('[update] disabled:', error instanceof Error ? error.message : error);
+    }
+  }
 
   const journal = createJournal(JOBS_FILE);
   await journal.load();
@@ -166,12 +198,19 @@ async function runKiosk(config) {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(clientScript({
         endpoint: '/__bridge/call', kioskId: config.kioskId, packageId: config.packageId, groups, header: 'x-pb-bridge',
+        statusEndpoint: '/__agent/status',
       }));
+    }
+
+    if (pathname === '/__agent/status') {
+      return json(res, 200, { version: currentVersion, channel: config.updateChannel || 'stable', mode: config.mode,
+        ...(updater ? updater.status() : { pending: null, lastError: null }) });
     }
 
     if (pathname === '/__bridge/call') {
       // Loopback host + custom header: other web pages cannot drive the agent.
       if (req.method !== 'POST' || req.headers['x-pb-bridge'] !== '1') return json(res, 403, { error: 'forbidden' });
+      activity.at = Date.now();
       let payload;
       try { payload = JSON.parse(await readBody(req, 30 * 1024 * 1024) || '{}'); } catch { return json(res, 400, { error: 'invalid_json' }); }
       const handler = Object.hasOwn(handlers, payload.method) ? handlers[payload.method] : null;
@@ -200,6 +239,8 @@ async function runKiosk(config) {
 
     if (req.method !== 'GET') return json(res, 405, { error: 'method_not_allowed' });
     if (pathname.endsWith('.html')) {
+      activity.at = Date.now();
+      activity.page = pathname;
       // Inject the bridge before any page script runs.
       try {
         const file = join(WEB_ROOT, normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, ''));

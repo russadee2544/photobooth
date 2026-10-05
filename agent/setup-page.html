@@ -46,6 +46,13 @@
     <label for="printer">เครื่องพิมพ์</label>
     <select id="printer"><option value="">เครื่องพิมพ์เริ่มต้นของ Windows</option></select>
 
+    <label for="updateChannel">ช่องอัปเดตโปรแกรม
+      <small>เครื่องหลักเลือก "ทดลอง" จะได้เวอร์ชันใหม่ก่อน เครื่องอื่นเลือก "ปกติ" รอจนกว่าเจ้าของกดเผยแพร่</small></label>
+    <select id="updateChannel">
+      <option value="stable">ปกติ (เครื่องทั่วไป)</option>
+      <option value="canary">ทดลอง (เครื่องหลัก)</option>
+    </select>
+
     <label for="packageId">Package ID <small>ไม่บังคับ</small></label>
     <input id="packageId" spellcheck="false">
 
@@ -82,7 +89,7 @@
         headers: { 'content-type': 'application/json', 'x-pb-setup': '1' },
         body: JSON.stringify({
           kioskId: $('kioskId').value, credential: $('credential').value, mode: $('mode').value,
-          printerName: $('printer').value, packageId: $('packageId').value
+          printerName: $('printer').value, packageId: $('packageId').value, updateChannel: $('updateChannel').value
         })
       });
       const body = await res.json().catch(() => ({}));

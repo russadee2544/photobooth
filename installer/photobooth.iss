@@ -48,6 +48,9 @@ Name: "{userdesktop}\Photobooth"; Filename: "{sys}\WindowsPowerShell\v1.0\powers
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \
   WorkingDir: "{userdocs}"; IconFilename: "{app}\runtime\node.exe"; Tasks: desktopicon
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
 [Run]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\launcher.ps1"""; \

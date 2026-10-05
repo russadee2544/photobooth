@@ -44,7 +44,16 @@ Start-Job -ArgumentList $chrome, $port, $Data -ScriptBlock {
     --disable-pinch "http://localhost:$port/home.html"
 } | Out-Null
 
+# Self-update: swap in a staged update (or roll back a failing one) BEFORE each start, while no agent is running.
+. (Join-Path $App 'apply-update.ps1')
+
 while ($true) {
+  try {
+    $applied = Invoke-PendingUpdate $App $Data
+    if ($applied -ne 'none') { Add-Content (Join-Path $Data 'agent.log') "$(Get-Date -Format s) update: $applied" }
+  } catch {
+    Add-Content (Join-Path $Data 'agent.log') "$(Get-Date -Format s) update error: $($_.Exception.Message)"
+  }
   & $Node (Join-Path $App 'agent\server.mjs') *>> (Join-Path $Data 'agent.log')
   Start-Sleep -Seconds 3
 }

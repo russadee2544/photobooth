@@ -117,7 +117,7 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
 }
 
 // Browser-side installer. `groups` maps a window global to its method names.
-export function clientScript({ endpoint, kioskId, packageId, groups, header }) {
+export function clientScript({ endpoint, kioskId, packageId, groups, header, statusEndpoint }) {
   return `(() => {
   const cfg = ${JSON.stringify({ kioskId, packageId })};
   try {
@@ -137,6 +137,19 @@ export function clientScript({ endpoint, kioskId, packageId, groups, header }) {
     }
   };
   const groups = ${JSON.stringify(groups)};
+  // After a self-update the agent restarts with a new version: reload, but only on the welcome page.
+  const statusEndpoint = ${JSON.stringify(statusEndpoint || '')};
+  if (statusEndpoint) {
+    let known = null;
+    setInterval(async () => {
+      try {
+        const info = await (await fetch(statusEndpoint, { cache: 'no-store' })).json();
+        if (!info.version) return;
+        if (known && info.version !== known && /\\/(home\\.html)?$/.test(location.pathname)) location.reload();
+        known = info.version;
+      } catch (_) { /* agent restarting */ }
+    }, 30000);
+  }
   for (const [name, methods] of Object.entries(groups)) {
     const bridge = {};
     for (const m of methods) bridge[m] = (args) => call(m, args);
