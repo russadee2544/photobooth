@@ -5,3 +5,7 @@ dist-next
 *.local
 
 .vercel
+
+supabase/.temp
+.env
+.env.local

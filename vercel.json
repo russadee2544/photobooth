@@ -11,6 +11,7 @@
     { "source": "/retake", "destination": "/retake.html" },
     { "source": "/template", "destination": "/template.html" },
     { "source": "/payment", "destination": "/payment.html" },
+    { "source": "/buy", "destination": "/buy.html" },
     { "source": "/processing", "destination": "/processing.html" },
     { "source": "/print", "destination": "/print.html" }
   ],

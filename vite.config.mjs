@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+import { devBridgePlugin } from './dev-bridge.mjs';
 import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
@@ -142,8 +143,24 @@ Write-Output "PRINT_SUCCESS:$targetPrinter"
   };
 }
 
+// public/shared.js is copied verbatim, so flip its demo switch after the copy.
+function stripDemoPlugin() {
+  return {
+    name: 'strip-demo-code',
+    apply: 'build',
+    closeBundle() {
+      if (process.env.PB_ALLOW_DEMO === '1') return;
+      const file = path.join(import.meta.dirname, 'dist-next', 'shared.js');
+      const src = fs.readFileSync(file, 'utf8');
+      const marker = 'const PB_DEMO_BUILD = true;';
+      if (!src.includes(marker)) throw new Error('strip-demo-code: PB_DEMO_BUILD marker not found in shared.js');
+      fs.writeFileSync(file, src.replace(marker, 'const PB_DEMO_BUILD = false;'));
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), directPrintPlugin()],
+  plugins: [react(), directPrintPlugin(), devBridgePlugin(), stripDemoPlugin()],
   build: {
     outDir: 'dist-next',
     rollupOptions: {
@@ -156,6 +173,7 @@ export default defineConfig({
         retake: resolve(import.meta.dirname, 'retake.html'),
         template: resolve(import.meta.dirname, 'template.html'),
         payment: resolve(import.meta.dirname, 'payment.html'),
+        buy: resolve(import.meta.dirname, 'buy.html'),
         filter: resolve(import.meta.dirname, 'filter.html'),
         processing: resolve(import.meta.dirname, 'processing.html'),
         print: resolve(import.meta.dirname, 'print.html'),
