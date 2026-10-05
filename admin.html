@@ -749,6 +749,29 @@
             <p id="retention-note" class="text-xs text-gray-500 mt-4">ระบบจะเชื่อม Google Drive หรือบริการอื่นเมื่อกำหนดปลายทางและสิทธิ์เข้าถึงแล้ว</p>
         </div>
 
+        <div id="event-drive-card" class="bg-gray-800 rounded-2xl p-6 border border-gray-700 mt-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-blue">cloud_upload</span>
+                        รูปอีเวนต์ → Google Drive
+                    </h2>
+                    <p class="text-gray-400 text-xs mt-1">รูปอีเวนต์ไม่ถูกลบอัตโนมัติ อัปโหลดขึ้น Drive สำเร็จแล้วระบบจะลบจากคลาวด์ให้</p>
+                </div>
+                <button onclick="loadEventPhotos()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold">Refresh</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <label class="block text-xs text-gray-400">Google OAuth Client ID
+                    <input id="drive-client-id" type="text" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg text-gray-100 p-2 text-sm" placeholder="xxxx.apps.googleusercontent.com" onchange="saveDriveSettings()">
+                </label>
+                <label class="block text-xs text-gray-400">บัญชี Google ที่อนุญาต
+                    <input id="drive-account" type="email" class="mt-1 w-full bg-gray-900 border border-gray-700 rounded-lg text-gray-100 p-2 text-sm" onchange="saveDriveSettings()">
+                </label>
+            </div>
+            <div id="event-photo-list" class="flex flex-col gap-3"><p class="text-sm text-gray-500">กดปุ่ม Refresh เพื่อโหลดรายการ</p></div>
+            <p id="event-drive-status" class="text-xs text-gray-400 mt-4 min-h-4" aria-live="polite"></p>
+        </div>
+
     </main>
 
     <!-- Toast -->
@@ -828,8 +851,230 @@
             loadRedeemData();
             initPrinterConfig();
             loadRetentionStatus();
+            loadEventPhotos();
             initFilterToggle();
             initQrToggle();
+        }
+
+        // ======================== EVENT PHOTOS → GOOGLE DRIVE ========================
+        const DRIVE_DEFAULT_ACCOUNT = 'mr.rusdee2544@gmail.com';
+        const DRIVE_ROOT_FOLDER = 'Photobooth Events';
+        let driveToken = null;
+        let eventSessions = [];
+
+        function driveSettings() {
+            try { return JSON.parse(localStorage.getItem('kiosk_drive_settings') || '{}'); } catch (_) { return {}; }
+        }
+        function saveDriveSettings() {
+            const clientId = document.getElementById('drive-client-id').value.trim();
+            const account = document.getElementById('drive-account').value.trim().toLowerCase();
+            localStorage.setItem('kiosk_drive_settings', JSON.stringify({ clientId, account }));
+            driveToken = null;
+        }
+        function setDriveStatus(text) { document.getElementById('event-drive-status').textContent = text; }
+
+        function loadGoogleIdentity() {
+            if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('โหลด Google Sign-In ไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ต)'));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureDriveToken() {
+            const settings = driveSettings();
+            if (!settings.clientId) throw new Error('ใส่ Google OAuth Client ID ก่อน');
+            if (driveToken && driveToken.expiresAt > Date.now() + 60000) return driveToken.value;
+            await loadGoogleIdentity();
+            const account = settings.account || DRIVE_DEFAULT_ACCOUNT;
+            const token = await new Promise((resolve, reject) => {
+                const client = google.accounts.oauth2.initTokenClient({
+                    client_id: settings.clientId,
+                    scope: 'https://www.googleapis.com/auth/drive.file',
+                    login_hint: account,
+                    callback: (response) => (response.access_token
+                        ? resolve(response)
+                        : reject(new Error(response.error_description || response.error || 'ไม่ได้รับอนุญาตจาก Google'))),
+                    error_callback: (err) => reject(new Error(err && err.type ? err.type : 'ยกเลิกการเข้าสู่ระบบ Google'))
+                });
+                client.requestAccessToken({ prompt: '' });
+            });
+            const about = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+                headers: { Authorization: `Bearer ${token.access_token}` }
+            }).then(r => r.json());
+            const signedIn = String(about && about.user && about.user.emailAddress || '').toLowerCase();
+            if (signedIn !== account.toLowerCase()) {
+                google.accounts.oauth2.revoke(token.access_token);
+                throw new Error(`ต้องใช้บัญชี ${account} (ตอนนี้ล็อกอินเป็น ${signedIn || 'ไม่ทราบ'})`);
+            }
+            driveToken = { value: token.access_token, expiresAt: Date.now() + (Number(token.expires_in) || 3000) * 1000 };
+            return driveToken.value;
+        }
+
+        async function driveRequest(token, url, options = {}) {
+            const res = await fetch(url, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+            if (!res.ok) throw new Error(`Drive ${res.status}`);
+            return res.json();
+        }
+
+        async function ensureDriveFolder(token, name, parentId) {
+            const escaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const parentClause = parentId ? ` and '${parentId}' in parents` : '';
+            const found = await driveRequest(token, 'https://www.googleapis.com/drive/v3/files?fields=files(id)&q=' + encodeURIComponent(
+                `mimeType='application/vnd.google-apps.folder' and name='${escaped}' and trashed=false${parentClause}`));
+            if (found.files && found.files.length) return found.files[0].id;
+            const created = await driveRequest(token, 'https://www.googleapis.com/drive/v3/files?fields=id', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parentId ? { parents: [parentId] } : {}) })
+            });
+            return created.id;
+        }
+
+        async function uploadBlobToDrive(token, folderId, name, blob) {
+            const boundary = 'pb' + Math.random().toString(36).slice(2);
+            const metadata = JSON.stringify({ name, parents: [folderId] });
+            const body = new Blob([
+                `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+                `--${boundary}\r\nContent-Type: ${blob.type || 'image/jpeg'}\r\n\r\n`, blob, `\r\n--${boundary}--`
+            ]);
+            const result = await driveRequest(token, 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,size', {
+                method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body
+            });
+            if (!result.id) throw new Error('Drive ไม่ตอบ id ของไฟล์');
+            return result;
+        }
+
+        function eventGroups() {
+            const groups = new Map();
+            for (const session of eventSessions) {
+                const key = (session.eventName || '').trim() || 'ไม่ระบุชื่ออีเวนต์';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(session);
+            }
+            return [...groups.entries()];
+        }
+
+        function renderEventPhotos() {
+            const list = document.getElementById('event-photo-list');
+            list.replaceChildren();
+            const groups = eventGroups();
+            if (!groups.length) {
+                const empty = document.createElement('p');
+                empty.className = 'text-sm text-gray-500';
+                empty.textContent = 'ไม่มีรูปอีเวนต์ค้างบนคลาวด์';
+                list.append(empty);
+                return;
+            }
+            groups.forEach(([name, sessions], index) => {
+                const row = document.createElement('div');
+                row.className = 'bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                const label = document.createElement('div');
+                const title = document.createElement('strong');
+                title.className = 'block';
+                title.textContent = name;
+                const meta = document.createElement('span');
+                meta.className = 'text-xs text-gray-400';
+                meta.textContent = `${sessions.length} รายการ · ${new Date(sessions[0].createdAt).toLocaleDateString('th-TH')}`;
+                label.append(title, meta);
+                const buttons = document.createElement('div');
+                buttons.className = 'flex gap-2';
+                const upload = document.createElement('button');
+                upload.className = 'bg-accent-blue text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90';
+                upload.textContent = 'อัปโหลดขึ้น Drive แล้วลบ';
+                upload.onclick = () => uploadEventToDrive(index, upload);
+                const remove = document.createElement('button');
+                remove.className = 'bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold';
+                remove.textContent = 'ลบอย่างเดียว';
+                remove.onclick = () => deleteEventWithoutDrive(index);
+                buttons.append(upload, remove);
+                row.append(label, buttons);
+                list.append(row);
+            });
+        }
+
+        async function loadEventPhotos() {
+            const settings = driveSettings();
+            document.getElementById('drive-client-id').value = settings.clientId || '';
+            document.getElementById('drive-account').value = settings.account || DRIVE_DEFAULT_ACCOUNT;
+            const bridge = window.PhotoboothDevice;
+            if (!bridge || typeof bridge.listEventPhotos !== 'function') {
+                setDriveStatus('ใช้ได้เมื่อรันผ่านโปรแกรมตัวกลางของตู้เท่านั้น');
+                return;
+            }
+            setDriveStatus('กำลังโหลด...');
+            const result = await bridge.listEventPhotos({ kioskId: Kiosk.kioskId });
+            if (!result || !result.success) {
+                setDriveStatus(result && result.error === 'admin_capability_required'
+                    ? 'ต้องยืนยัน PIN แอดมินก่อน' : 'โหลดรายการไม่สำเร็จ');
+                return;
+            }
+            eventSessions = result.sessions;
+            renderEventPhotos();
+            setDriveStatus(`รูปอีเวนต์บนคลาวด์ ${eventSessions.length} รายการ`);
+        }
+
+        async function uploadEventToDrive(groupIndex, button) {
+            const [name, sessions] = eventGroups()[groupIndex];
+            button.disabled = true;
+            try {
+                const token = await ensureDriveToken();
+                setDriveStatus('กำลังเตรียมโฟลเดอร์ใน Drive...');
+                const root = await ensureDriveFolder(token, DRIVE_ROOT_FOLDER, null);
+                const folder = await ensureDriveFolder(token, name, root);
+                const doneIds = [];
+                for (let i = 0; i < sessions.length; i++) {
+                    const session = sessions[i];
+                    setDriveStatus(`${name}: กำลังอัปโหลด ${i + 1}/${sessions.length}`);
+                    const stamp = session.createdAt.replace(/[:.]/g, '-');
+                    try {
+                        for (const [kind, url] of [['color', session.colorUrl], ['print', session.ditheredUrl]]) {
+                            if (!url) continue;
+                            const response = await fetch(url);
+                            if (!response.ok) throw new Error(`โหลดรูปไม่ได้ (${response.status})`);
+                            const blob = await response.blob();
+                            const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+                            const uploaded = await uploadBlobToDrive(token, folder, `${stamp}_${session.id.slice(0, 8)}_${kind}.${ext}`, blob);
+                            if (Number(uploaded.size) !== blob.size) throw new Error('ขนาดไฟล์ใน Drive ไม่ตรง');
+                        }
+                        doneIds.push(session.id);
+                    } catch (e) {
+                        console.warn('Drive upload failed for', session.id, e);
+                    }
+                }
+                // Delete from the cloud only what is verified to be in Drive.
+                let deleted = 0;
+                for (let i = 0; i < doneIds.length; i += 100) {
+                    const result = await window.PhotoboothDevice.deleteEventPhotos({
+                        kioskId: Kiosk.kioskId, ids: doneIds.slice(i, i + 100), reason: 'drive_uploaded' });
+                    if (result && result.success) deleted += result.deleted;
+                }
+                const failed = sessions.length - doneIds.length;
+                setDriveStatus(`${name}: อัปโหลด ${doneIds.length} รายการเรียบร้อย ลบจากคลาวด์ ${deleted}` +
+                    (failed ? ` · ไม่สำเร็จ ${failed} (ยังเก็บไว้ กดอีกครั้งเพื่อลองใหม่)` : ''));
+            } catch (e) {
+                setDriveStatus('ผิดพลาด: ' + (e && e.message ? e.message : 'อัปโหลดไม่สำเร็จ') + ' · ยังไม่ได้ลบอะไร');
+                button.disabled = false;
+                return;
+            }
+            button.disabled = false;
+            await loadEventPhotos();
+        }
+
+        async function deleteEventWithoutDrive(groupIndex) {
+            const [name, sessions] = eventGroups()[groupIndex];
+            if (!confirm(`ลบรูปอีเวนต์ "${name}" ${sessions.length} รายการ โดยไม่เก็บสำรองใน Drive?\nลบแล้วกู้คืนไม่ได้`)) return;
+            let deleted = 0;
+            for (let i = 0; i < sessions.length; i += 100) {
+                const result = await window.PhotoboothDevice.deleteEventPhotos({
+                    kioskId: Kiosk.kioskId, ids: sessions.slice(i, i + 100).map(s => s.id), reason: 'manual' });
+                if (result && result.success) deleted += result.deleted;
+            }
+            setDriveStatus(`ลบแล้ว ${deleted} รายการ`);
+            await loadEventPhotos();
         }
 
         async function loadRetentionStatus() {

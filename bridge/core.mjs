@@ -82,6 +82,13 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
       for (const row of result.codes ?? []) rawCodes.set(row.passId, row.code);
       return { success: true, codes: (result.codes ?? []).map((row) => row.code), batchId: null, expiresAt: result.expiresAt };
     },
+    // Event photos: admin only (device credential + PIN capability, both held here).
+    listEventPhotos: () => (adminValid()
+      ? callFunction('event-photos', { operation: 'list' }, { 'x-admin-capability': admin.token })
+      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    deleteEventPhotos: (a) => (adminValid()
+      ? callFunction('event-photos', { operation: 'delete', ids: a.ids, reason: a.reason }, { 'x-admin-capability': admin.token })
+      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
     listPrintPasses: async () => {
       const result = await withAdmin({ operation: 'listPass' });
       if (!result.success) return { success: false, codes: [], error: result.error };

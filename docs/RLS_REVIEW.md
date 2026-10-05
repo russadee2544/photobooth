@@ -38,3 +38,7 @@ select policyname, cmd, roles, qual, with_check from pg_policies where schemanam
 - Café/redeem photos in `photobooth` are deleted daily (04:00 Bangkok) by `photo-retention` once `kiosk_sessions.expires_at` (upload + 24h) passes; unreferenced files older than 48h are deleted too. Expired GIFs are purged by the same cron job.
 - Event photos (`kiosk_mode = 'event'`) are never auto-deleted. Drive export / manual delete for events is not built yet.
 - The job reads the Vault secret `purge_secret` (same value as function secrets `PHOTO_PURGE_SECRET` and `GIF_PURGE_SECRET`). `photo-retention` accepts `{"dryRun":true}` to count without deleting.
+
+## Event photos → Google Drive (admin page)
+Admin page card "รูปอีเวนต์ → Google Drive": lists event sessions (via `event-photos`, device credential + PIN capability held by the agent), uploads each photo to `Photobooth Events/<event name>/` in the allowed Google account (scope `drive.file`, browser-side, token never stored), checks the size in Drive, and only then deletes those sessions' files and rows from the cloud. "ลบอย่างเดียว" deletes without a Drive copy after a confirmation.
+Setup: Google Cloud Console → OAuth client ID (Web application), Authorized JavaScript origins `http://localhost:8787` (the agent port), then paste the Client ID in the card.
