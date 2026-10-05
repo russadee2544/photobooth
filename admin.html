@@ -1290,8 +1290,17 @@
             }
         }
 
-        function setMode(mode) {
+        async function setMode(mode) {
             if (typeof Kiosk !== 'undefined') {
+                // With the kiosk agent the mode must be saved there too (needs the admin PIN session).
+                const device = window.PhotoboothDevice;
+                if (device && typeof device.setKioskMode === 'function') {
+                    const result = await device.setKioskMode({ mode });
+                    if (!result || !result.success) {
+                        showToast('เปลี่ยนโหมดไม่สำเร็จ: ' + ((result && result.error) || 'ไม่ทราบสาเหตุ'));
+                        return;
+                    }
+                }
                 Kiosk.mode = mode;
                 updateUI();
                 adminAuditLocal('kiosk.mode_changed', { mode });
@@ -1900,11 +1909,14 @@
 
             if (window.PhotoboothPrinter && typeof window.PhotoboothPrinter.testPrint === 'function') {
                 try {
+                    const agentCanvas = (typeof createTestPrintCanvas === 'function') ? createTestPrintCanvas(Kiosk.paperMode) : null;
                     const result = await window.PhotoboothPrinter.testPrint({
                         paperMode: Kiosk.paperMode,
-                        connection: conn
+                        connection: conn,
+                        dataUrl: agentCanvas ? agentCanvas.toDataURL('image/png') : '',
+                        printerName: cfg.systemPrinterName || ''
                     });
-                    showToast(result && result.success ? 'ทดสอบเครื่องพิมพ์สำเร็จ ✓' : 'เครื่องพิมพ์ยังไม่ยืนยันผล');
+                    showToast(result && result.success ? 'ทดสอบเครื่องพิมพ์สำเร็จ ✓' : 'ทดสอบไม่สำเร็จ: ' + ((result && result.error) || 'เครื่องพิมพ์ยังไม่ยืนยันผล'));
                     return;
                 } catch (error) {
                     showToast('ทดสอบเครื่องพิมพ์ไม่สำเร็จ: ' + error.message);

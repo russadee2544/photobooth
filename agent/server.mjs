@@ -138,7 +138,7 @@ async function runSetup() {
 // ------------------------------------------------------------------- normal mode
 async function runKiosk(config) {
   const credential = await unprotect(config.credentialDpapi);
-  const { handlers: deviceHandlers, internal } = createDeviceBridge({
+  const { handlers: deviceHandlers, internal, isAdmin } = createDeviceBridge({
     supabaseUrl: config.supabaseUrl, publishableKey: config.publishableKey, credential,
     kioskId: config.kioskId, packageId: config.packageId,
   });
@@ -179,11 +179,39 @@ async function runKiosk(config) {
   // Only the page-facing PhotoboothPrinter surface; start/report stay internal.
   const printerHandlers = {
     printAuthorizedPass: (a) => printService.printAuthorizedPass(a),
-    testPrint: async () => ({ success: false, error: 'use_admin_test_page' }),
+    // Admin test page: one copy, PIN session required, no entitlement involved.
+    testPrint: async (a) => {
+      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+      const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(a.dataUrl || '');
+      if (!match) return { success: false, error: 'invalid_image' };
+      try {
+        const result = await printImage({ bytes: Buffer.from(match[2], 'base64'), ext: match[1] === 'jpeg' ? 'jpg' : 'png',
+          printerName: String(a.printerName || config.printerName || '').slice(0, 200), copies: 1 });
+        return { success: true, printer: result.printer };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'print_failed' };
+      }
+    },
   };
-  const handlers = { ...deviceHandlers, ...printerHandlers };
+  // Switching the kiosk mode needs the admin PIN session; the agent persists it so the
+  // silent-print rules (free event printing vs. paid redeem printing) match what the page shows.
+  const modeHandlers = {
+    setKioskMode: async (a) => {
+      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+      if (a.mode !== 'event' && a.mode !== 'redeem') return { success: false, error: 'invalid_mode' };
+      try {
+        const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
+        await writeFile(CONFIG_FILE, JSON.stringify({ ...saved, mode: a.mode }, null, 2));
+        config.mode = a.mode;
+        return { success: true, mode: a.mode };
+      } catch {
+        return { success: false, error: 'config_write_failed' };
+      }
+    },
+  };
+  const handlers = { ...deviceHandlers, ...modeHandlers, ...printerHandlers };
   const groups = {
-    PhotoboothDevice: Object.keys(deviceHandlers),
+    PhotoboothDevice: [...Object.keys(deviceHandlers), ...Object.keys(modeHandlers)],
     PhotoboothPrinter: Object.keys(printerHandlers),
   };
 
@@ -198,7 +226,7 @@ async function runKiosk(config) {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(clientScript({
         endpoint: '/__bridge/call', kioskId: config.kioskId, packageId: config.packageId, groups, header: 'x-pb-bridge',
-        statusEndpoint: '/__agent/status',
+        statusEndpoint: '/__agent/status', mode: config.mode,
       }));
     }
 
@@ -219,7 +247,7 @@ async function runKiosk(config) {
     }
 
     // Free-event mode only: silent print without an entitlement. Never in redeem mode.
-    if (config.mode === 'event' && pathname === '/api/printers' && req.method === 'GET') {
+    if (pathname === '/api/printers' && req.method === 'GET') {
       return json(res, 200, await listPrinters());
     }
     if (config.mode === 'event' && pathname === '/api/direct-print' && req.method === 'POST') {

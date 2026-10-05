@@ -1207,6 +1207,12 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies
         return nativeResult;
     }
 
+    // With the kiosk agent installed, printing is silent or it fails: never open the Windows
+    // print dialog in front of a customer (the agent already tried the chosen printer above).
+    if (window.PhotoboothPrinter && typeof window.PhotoboothPrinter.printAuthorizedPass === 'function') {
+        return { status: 'failed', copiesCompleted: 0, transport: 'agent', error: 'agent_direct_print_failed' };
+    }
+
     // 3. Direct WebUSB for thermal printers
     if (conn === 'usb' && paperMode.startsWith('thermal')) {
         try {
@@ -2795,8 +2801,9 @@ async function printAuthorizedPass({ dataUrl, paperMode, jobId, copies }) {
     }
     // This native method must call redeem-pass start immediately before the physical
     // print, then report its trusted result. Never expose start/report to page JS.
+    const printerName = (JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}').systemPrinterName) || '';
     const result = await bridge.printAuthorizedPass({ kioskId: Kiosk.kioskId,
-        passId: pass.passId, sessionToken: pass.sessionToken, jobId, dataUrl, paperMode, copies });
+        passId: pass.passId, sessionToken: pass.sessionToken, jobId, dataUrl, paperMode, copies, printerName });
     if (result?.status === 'completed' && pass.quotaKind !== 'unlimited'
         && typeof result.remaining !== 'number') {
         throw new Error('ยังยืนยันยอดสิทธิ์หลังพิมพ์ไม่ได้ กรุณาเรียกพนักงาน');

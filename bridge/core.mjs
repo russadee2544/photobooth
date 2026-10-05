@@ -113,15 +113,17 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     reportPrint: (jobId, result) => callFunction('redeem-pass', { operation: 'report', jobId, result }),
   };
 
-  return { handlers, internal };
+  return { handlers, internal, isAdmin: () => !!adminValid() };
 }
 
 // Browser-side installer. `groups` maps a window global to its method names.
-export function clientScript({ endpoint, kioskId, packageId, groups, header, statusEndpoint }) {
+export function clientScript({ endpoint, kioskId, packageId, groups, header, statusEndpoint, mode }) {
   return `(() => {
-  const cfg = ${JSON.stringify({ kioskId, packageId })};
+  const cfg = ${JSON.stringify({ kioskId, packageId, mode: mode || '' })};
   try {
     if (localStorage.getItem('kiosk_id') !== cfg.kioskId) localStorage.setItem('kiosk_id', cfg.kioskId);
+    // The agent owns the kiosk mode, so the page and the printer rules can never disagree.
+    if (cfg.mode && localStorage.getItem('kiosk_mode') !== cfg.mode) localStorage.setItem('kiosk_mode', cfg.mode);
     if (cfg.packageId && !localStorage.getItem('kiosk_package_id')) localStorage.setItem('kiosk_package_id', cfg.packageId);
   } catch (_) {}
   const call = async (method, args) => {
