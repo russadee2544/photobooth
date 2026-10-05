@@ -15,3 +15,35 @@ entrypoint = "./functions/redeem-pass/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/redeem-claim/*.html" ]
+
+[functions.payment-order]
+enabled = true
+verify_jwt = false
+import_map = "./functions/payment-order/deno.json"
+entrypoint = "./functions/payment-order/index.ts"
+
+# Stripe calls this directly; authenticity comes from the webhook signature.
+[functions.payment-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/payment-webhook/deno.json"
+entrypoint = "./functions/payment-webhook/index.ts"
+
+[functions.admin-pin]
+enabled = true
+verify_jwt = false
+import_map = "./functions/admin-pin/deno.json"
+entrypoint = "./functions/admin-pin/index.ts"
+
+[functions.admin-redeem]
+enabled = true
+verify_jwt = false
+import_map = "./functions/admin-redeem/deno.json"
+entrypoint = "./functions/admin-redeem/index.ts"
+
+# Ticket-authenticated GIF upload; tickets come from the device-authenticated path.
+[functions.session-gif]
+enabled = true
+verify_jwt = false
+import_map = "./functions/session-gif/deno.json"
+entrypoint = "./functions/session-gif/index.ts"

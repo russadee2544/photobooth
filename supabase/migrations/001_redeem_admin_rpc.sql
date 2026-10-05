@@ -10,7 +10,7 @@
 -- All functions are SECURITY DEFINER + RLS blocks direct table access.
 -- ============================================================
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ======================== TABLES ========================
 
@@ -47,7 +47,7 @@ create or replace function public.admin_key_ok(p_key text)
 returns boolean
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
     select exists (
         select 1 from public.admin_pins
@@ -61,7 +61,7 @@ create or replace function public.admin_verify(p_pin text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
     v_valid boolean;
@@ -83,7 +83,7 @@ create or replace function public.redeem_validate(p_code text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
     v_row public.redeem_codes%rowtype;
@@ -108,7 +108,7 @@ create or replace function public.redeem_use(p_code text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
     v_updated int;
@@ -131,7 +131,7 @@ create or replace function public.redeem_generate(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
     v_batch uuid := gen_random_uuid();
@@ -174,7 +174,7 @@ create or replace function public.redeem_list(p_admin_key text default '')
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
     if not public.admin_key_ok(p_admin_key) then
