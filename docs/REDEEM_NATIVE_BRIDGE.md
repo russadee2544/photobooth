@@ -63,3 +63,26 @@ Migration: `supabase/migrations/20261004120000_session_gif_assets.sql`; Edge Fun
 หน้าเว็บอัปโหลด GIF เองด้วย ticket (ไม่มี credential): `POST /functions/v1/session-gif` header `Content-Type: image/gif`, `x-gif-ticket` → `{assetId,downloadUrl,expiresAt}` ticket ใช้ได้ครั้งเดียว อายุ 3 ชั่วโมง `downloadUrl` เป็นลิงก์สั้น `?a=<assetId>` ที่ redirect ไป signed URL อายุ 5 นาที และใช้ไม่ได้ (410) หลัง 24 ชั่วโมง
 
 ลบไฟล์หมดอายุ: ทำอัตโนมัติทุกครั้งที่ออก ticket และเรียกตามรอบได้ด้วย `POST {operation:'purge'}` + header `x-purge-secret` (ตั้ง secret `GIF_PURGE_SECRET` ก่อน)
+
+## นโยบายอายุบัตรและการผูกตู้ (migration `20261005090000_pass_validity_from_activation.sql`)
+
+- อายุบัตรนับจาก **วันเริ่มใช้** (ครั้งแรกที่กรอกรหัสที่ตู้): แบบจำกัดครั้ง ใช้ได้ 30 วัน, แบบ Unlimited ใช้ได้ถึงเที่ยงคืน (เวลาไทย) ของวันที่เริ่มใช้
+- `code_expires_at` ใช้กำหนดเฉพาะ "รหัสที่ยังไม่เคยใช้ต้องเริ่มใช้ภายในเมื่อไร" หลังเริ่มใช้แล้วไม่ตัดสิทธิ์
+- บัตรผูกกับตู้ที่ออกบัตร (`kiosk_id`) ใช้ได้ตู้เดียว
+
+## โปรแกรมตัวกลาง Windows (`agent/`)
+
+เริ่มต้นใช้งานผ่าน Windows; แอป Android ในอนาคตใช้สัญญา (bridge contract) ชุดเดียวกัน หน้าเว็บไม่ต้องแก้
+
+```
+npm run build          # ได้ dist-next
+npm run agent:setup    # ใส่ค่าจาก scripts/create-kiosk.mjs (เข้ารหัส credential ด้วย Windows DPAPI)
+npm run agent          # เปิด http://localhost:8787/home.html (ใช้เปิดแบบ kiosk fullscreen)
+```
+
+- ฟัง `127.0.0.1` เท่านั้น ปฏิเสธ Host ที่ไม่ใช่ localhost และต้องมี header `x-pb-bridge` ที่หน้าเว็บของตัวเองเท่านั้น
+- credential เก็บใน `agent/data/config.json` แบบเข้ารหัส DPAPI (ผูกกับผู้ใช้ Windows) ไม่ถึงเบราว์เซอร์
+- `PhotoboothPrinter.printAuthorizedPass`: ตรวจ hash ภาพและจำนวนใบจาก `start` ของ server, บันทึก `agent/data/jobs.json` ก่อนสั่งพิมพ์, ไม่ส่ง jobId เดิมซ้ำ, ผลไม่แน่ชัด → `ambiguous`, ผลที่ส่งรายงานไม่สำเร็จจะ retry ทุก 30 วินาที
+- "completed" หมายถึง Windows รับงานเข้า spooler สำเร็จ (Windows ไม่ยืนยันว่ากระดาษออกจริง)
+- โหมด `event` เท่านั้นที่เปิด `/api/direct-print` และ `/api/printers`; โหมด `redeem` ปิด
+- ยังไม่รองรับ: `printPrintPasses` / `resolvePrintPassCodes` (พิมพ์บัตรรหัส) และ `testPrint`

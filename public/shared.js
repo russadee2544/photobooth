@@ -2696,7 +2696,7 @@ async function claimPrintPass(rawCode) {
                 const bangkokDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Bangkok',
                     year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
                 row.valid_until = new Date(Date.parse(`${bangkokDate}T00:00:00+07:00`) + 86400000).toISOString();
-            } else row.valid_until = row.expires_at;
+            } else row.valid_until = new Date(Date.now() + 30 * 86400000).toISOString(); // 30 days from first use
         }
         if (Date.parse(row.valid_until) <= Date.now()) return { success: false, error: 'expired' };
         demoSaveRedeemCodes(rows);

@@ -9,3 +9,4 @@ dist-next
 supabase/.temp
 .env
 .env.local
+agent/data
