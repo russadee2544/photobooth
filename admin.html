@@ -1175,19 +1175,26 @@
 
         async function fetchAnalytics() {
             try {
-                const res = await fetch(`${SUPABASE_URL}/rest/v1/kiosk_sessions?select=kiosk_mode`, {
+                // Counts only: clients can no longer read kiosk_sessions rows (photo URLs).
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/kiosk_session_counts`, {
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'apikey': SUPABASE_ANON_KEY
-                    }
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: '{}'
                 });
 
                 if (!res.ok) throw new Error('Fetch failed');
-                const data = await res.json();
-                
-                let total = data.length;
-                let event = data.filter(d => d.kiosk_mode === 'event').length;
-                let normal = data.filter(d => d.kiosk_mode === 'normal').length;
+                const rows = await res.json();
+                const countOf = (...modes) => rows
+                    .filter(r => modes.includes(r.kiosk_mode))
+                    .reduce((sum, r) => sum + Number(r.total || 0), 0);
+
+                let total = rows.reduce((sum, r) => sum + Number(r.total || 0), 0);
+                let event = countOf('event');
+                let normal = countOf('normal', 'redeem');
 
                 document.getElementById('stat-total').innerText = total;
                 document.getElementById('stat-event').innerText = event;
