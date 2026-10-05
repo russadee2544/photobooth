@@ -90,7 +90,8 @@ export function createUpdater({
   let lastError = null;
 
   async function fetchManifest() {
-    const res = await fetchImpl(`${baseUrl}/${channel}/manifest.json`, { cache: 'no-store' });
+    // The storage CDN can keep serving an older manifest at the plain URL; a unique query string always reaches the origin.
+    const res = await fetchImpl(`${baseUrl}/${channel}/manifest.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`manifest_http_${res.status}`);
     return res.json();
   }

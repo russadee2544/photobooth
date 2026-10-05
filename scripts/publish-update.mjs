@@ -42,7 +42,8 @@ async function upload(key, path, body, contentType) {
   if (!res.ok) throw new Error(`upload ${path} failed: ${res.status} ${await res.text()}`);
 }
 
-const publicUrl = (path) => `${baseUrl()}/object/public/updates/${path}`;
+// Unique query string: the CDN may otherwise return a stale manifest (and --promote would copy the wrong one).
+const publicUrl = (path) => `${baseUrl()}/object/public/updates/${path}?t=${Date.now()}`;
 
 async function readPublic(path) {
   const res = await fetch(publicUrl(path), { cache: 'no-store' });

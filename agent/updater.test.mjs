@@ -40,7 +40,7 @@ function makeManifest(version, bytes, privateKey = keys.privateKey, overrides = 
 }
 
 const fakeFetch = (manifest, bundle) => vi.fn(async (url) => {
-  const body = String(url).endsWith('manifest.json') ? Buffer.from(JSON.stringify(manifest)) : bundle;
+  const body = String(url).includes('/manifest.json') ? Buffer.from(JSON.stringify(manifest)) : bundle;
   return { ok: !!body, status: body ? 200 : 404, json: async () => JSON.parse(body.toString()), arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) };
 });
 
