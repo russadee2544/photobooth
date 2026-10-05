@@ -43,7 +43,7 @@
 
         /* Title: letters rise in one by one, then a slow wave keeps passing through them */
         .film-title { font-family: 'Cantarell', 'Prompt', 'Inter', sans-serif; font-weight: 700; line-height: 1;
-            letter-spacing: -0.03em; font-size: clamp(3.5rem, 9vw, 9rem); margin: 1rem 0 1rem; white-space: nowrap; }
+            letter-spacing: .02em; text-transform: uppercase; font-size: clamp(3rem, 8vw, 8rem); margin: 1rem 0 1rem; white-space: nowrap; }
         .film-title .ch { display: inline-block; opacity: 0; transform: translateY(.3em);
             animation: letterIn .9s cubic-bezier(.2,.7,.2,1) forwards, letterWave 7s ease-in-out infinite;
             animation-delay: calc(var(--i) * 70ms + 200ms), calc(var(--i) * 130ms + 2.8s); }
