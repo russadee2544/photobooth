@@ -13,11 +13,15 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
     <style>
+        @font-face { font-family: 'Cantarell'; font-style: normal; font-weight: 400; font-display: swap;
+            src: url('/fonts/Cantarell-latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+2190-2193; }
+        @font-face { font-family: 'Cantarell'; font-style: normal; font-weight: 700; font-display: swap;
+            src: url('/fonts/Cantarell-latin-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+2190-2193; }
         /* ===== Welcome: minimal type-led home (Prompt for Thai + Latin) ===== */
         :root { --paper: #F3EEE4; --ink: #141210; --film-red: #D7362B; --sepia: #B98E62; }
-        body.home-film { background: var(--paper); color: var(--ink); font-family: 'Prompt', 'Inter', system-ui, sans-serif; }
-        body.home-film .kiosk-brand { color: var(--ink); font-weight: 400; letter-spacing: .32em; font-size: .8rem; }
-        body.home-film .lang-btn, body.home-film .kiosk-header button { font-family: 'Prompt', sans-serif; font-weight: 400; }
+        body.home-film { background: var(--paper); color: var(--ink); font-family: 'Cantarell', 'Prompt', 'Inter', system-ui, sans-serif; }
+        body.home-film .kiosk-brand { color: var(--ink); font-weight: 700; letter-spacing: .32em; font-size: .8rem; }
+        body.home-film .lang-btn, body.home-film .kiosk-header button { font-family: 'Cantarell', 'Prompt', sans-serif; font-weight: 400; }
 
         .film-stage { position: relative; isolation: isolate; cursor: pointer; }
         /* Static paper grain (no movement, so nothing flickers) */
@@ -32,14 +36,14 @@
             .film-layout { grid-template-columns: 1.15fr .85fr; justify-items: start; text-align: left; }
         }
 
-        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 400 .74rem/1 'Prompt', sans-serif;
+        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .74rem/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .34em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
         .film-kicker .dot { width: .4rem; height: .4rem; border-radius: 9999px; background: var(--film-red); }
         .film-kicker .rule { width: 2.5rem; height: 1px; background: var(--ink); opacity: .45; }
 
         /* Title: letters rise in one by one, then a slow wave keeps passing through them */
-        .film-title { font-family: 'Prompt', 'Inter', sans-serif; font-weight: 300; line-height: 1;
-            letter-spacing: -0.045em; font-size: clamp(3.5rem, 9vw, 9rem); margin: 1rem 0 1rem; white-space: nowrap; }
+        .film-title { font-family: 'Cantarell', 'Prompt', 'Inter', sans-serif; font-weight: 700; line-height: 1;
+            letter-spacing: -0.03em; font-size: clamp(3.5rem, 9vw, 9rem); margin: 1rem 0 1rem; white-space: nowrap; }
         .film-title .ch { display: inline-block; opacity: 0; transform: translateY(.3em);
             animation: letterIn .9s cubic-bezier(.2,.7,.2,1) forwards, letterWave 7s ease-in-out infinite;
             animation-delay: calc(var(--i) * 70ms + 200ms), calc(var(--i) * 130ms + 2.8s); }
@@ -49,15 +53,15 @@
             9% { transform: translateY(-.07em); color: var(--film-red); }
         }
 
-        .film-tagline { font-weight: 300; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.6;
+        .film-tagline { font-weight: 400; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.6;
             letter-spacing: .02em; opacity: .75; max-width: 32ch; }
 
-        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: 1.6rem; font: 400 .74rem/1 'Prompt', sans-serif;
+        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: 1.6rem; font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .24em; text-transform: uppercase; opacity: .6; justify-content: inherit; }
         @media (min-width: 900px) and (min-aspect-ratio: 1/1) { .film-meta { justify-content: flex-start; } }
 
         .film-cta { margin-top: 2.2rem; display: inline-flex; align-items: center; gap: 1rem; padding: 1.15rem 2.4rem;
-            background: var(--ink); color: var(--paper); border-radius: 9999px; font: 500 clamp(1rem, 1.5vw, 1.2rem)/1 'Prompt', sans-serif;
+            background: var(--ink); color: var(--paper); border-radius: 9999px; font: 400 clamp(1rem, 1.5vw, 1.2rem)/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .08em; text-transform: uppercase; transition: transform .2s ease, background .2s ease; }
         .film-cta:hover, .film-cta:focus-visible { background: #000; transform: translateY(-2px); outline: none; }
         .film-cta:active { transform: translateY(1px); }
@@ -69,7 +73,7 @@
         .strip { width: clamp(120px, min(17vw, 22vh), 230px); padding: 12px 12px 46px; background: #FBF8F2;
             box-shadow: 0 30px 60px rgba(20,18,16,.18), 0 3px 8px rgba(20,18,16,.10); display: grid; gap: 10px; position: relative; }
         .strip::after { content: attr(data-stamp); position: absolute; left: 0; right: 0; bottom: 15px; text-align: center;
-            font: 400 .66rem/1 'Prompt', sans-serif; letter-spacing: .3em; color: var(--film-red); opacity: .8; }
+            font: 400 .66rem/1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .3em; color: var(--film-red); opacity: .8; }
         .frame { aspect-ratio: 4 / 3; position: relative; overflow: hidden; background: #E9E1D2; }
         .frame .img { position: absolute; inset: 0; opacity: 0;
             background: radial-gradient(ellipse at var(--hx, 50%) 40%, #F6EEE1 0 18%, transparent 19%),
@@ -84,10 +88,10 @@
         .frame.is-done .img { opacity: 1; }
         @keyframes frameFade { from { opacity: 0; } to { opacity: 1; } }
         .frame-no { position: absolute; left: -3.1rem; top: 50%; transform: translateY(-50%) rotate(-90deg);
-            font: 400 .62rem/1 'Prompt', sans-serif; letter-spacing: .25em; opacity: .4; white-space: nowrap; }
+            font: 400 .62rem/1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .25em; opacity: .4; white-space: nowrap; }
 
         .film-counter { position: absolute; right: -1.2rem; top: -1.4rem; background: var(--ink); color: var(--paper);
-            font: 400 .76rem/1 'Prompt', sans-serif; letter-spacing: .2em; padding: .55rem .75rem; transform: rotate(-3deg); }
+            font: 400 .76rem/1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .2em; padding: .55rem .75rem; transform: rotate(-3deg); }
         .film-counter b { color: var(--film-red); font-weight: 500; }
 
         .rise { animation: riseIn .9s cubic-bezier(.2,.7,.2,1) both; }

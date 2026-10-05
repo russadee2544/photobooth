@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photobooth-v14';
+const CACHE_NAME = 'photobooth-v15';
 const ASSETS = [
     '/',
     '/index.html',
@@ -25,6 +25,8 @@ const ASSETS = [
     '/icon-512.png',
     '/apple-touch-icon.png',
     '/fonts/Inter-latin.woff2',
+    '/fonts/Cantarell-latin-400.woff2',
+    '/fonts/Cantarell-latin-700.woff2',
     '/fonts/Prompt-latin-300.woff2',
     '/fonts/Prompt-thai-300.woff2',
     '/fonts/Prompt-latin-400.woff2',
