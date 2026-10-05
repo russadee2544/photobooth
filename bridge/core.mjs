@@ -44,6 +44,9 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
       operation: 'reserve', passId: a.passId, sessionToken: a.sessionToken, jobId: a.jobId, assetSha256: a.assetSha256,
     }),
     pausePrintPass: (a) => callFunction('redeem-pass', { operation: 'pause', passId: a.passId, sessionToken: a.sessionToken }),
+    issuePhotoUploadTicket: (a) => callFunction('session-photo', {
+      operation: 'ticket', sessionId: a.sessionId, mode: a.mode, eventName: a.eventName ?? '', layout: a.layout ?? '',
+    }),
     issueGifUploadTicket: (a) => callFunction('session-gif', {
       operation: 'ticket', sessionId: a.sessionId, mode: a.mode, passId: a.passId ?? null,
       sessionToken: a.sessionToken ?? null, packageId: a.packageId ?? null,

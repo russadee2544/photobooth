@@ -820,12 +820,9 @@
 
                 (async () => {
                     try {
-                        const ts = Date.now();
-                        const rand = Math.random().toString(36).substring(2, 7);
-                        const colorFileName = `photo_${ts}_${rand}.jpg`;
 
                         // Upload main photo
-                        const colorUrl = await uploadToCloud(result, colorFileName);
+                        const colorUrl = await uploadToCloud(result, 'color');
                         if (!colorUrl) throw new Error('Cloud upload returned empty url');
 
                         Session.colorCloudUrl = colorUrl;
@@ -834,8 +831,7 @@
                         const hasDistinctDither = dithered && dithered !== result && !paperMode.startsWith('photo');
                         let ditherUrl = null;
                         if (hasDistinctDither) {
-                            const ditherFileName = `retro_${ts}_${rand}.png`;
-                            ditherUrl = await uploadToCloud(dithered, ditherFileName);
+                            ditherUrl = await uploadToCloud(dithered, 'dither');
                             if (ditherUrl) Session.ditheredCloudUrl = ditherUrl;
                         }
 

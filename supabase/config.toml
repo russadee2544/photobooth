@@ -57,3 +57,8 @@ import_map = "./functions/photo-retention/deno.json"
 enabled = true
 verify_jwt = false
 import_map = "./functions/event-photos/deno.json"
+
+[functions.session-photo]
+enabled = true
+verify_jwt = false
+import_map = "./functions/session-photo/deno.json"

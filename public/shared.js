@@ -2442,74 +2442,64 @@ async function uploadSessionGif() {
 }
 
 // ======================== SUPABASE UPLOAD ========================
-async function uploadToCloud(dataUrl, filename) {
+// Photos for the download QR go through the session-photo Edge Function. The native
+// agent issues a one-session ticket (it holds the kiosk credential); the browser then
+// uploads with that ticket only. There is no anonymous write access to Storage.
+let photoTicket = null;
+
+async function ensurePhotoUploadTicket() {
+    if (photoTicket && photoTicket.sessionId === Session.sessionId && Date.parse(photoTicket.expiresAt) > Date.now() + 60000) {
+        return photoTicket.ticket;
+    }
+    const bridge = window.PhotoboothDevice;
+    if (!bridge || typeof bridge.issuePhotoUploadTicket !== 'function' || !Session.sessionId) return null;
+    try {
+        const result = await bridge.issuePhotoUploadTicket({
+            kioskId: Kiosk.kioskId,
+            sessionId: Session.sessionId,
+            mode: Kiosk.mode === 'event' ? 'event' : 'redeem',
+            eventName: Kiosk.mode === 'event' ? Kiosk.eventName : '',
+            layout: Session.layout || ''
+        });
+        if (result && result.ticket) {
+            photoTicket = { ticket: result.ticket, expiresAt: result.expiresAt, sessionId: Session.sessionId };
+            return result.ticket;
+        }
+        console.warn('Photo ticket unavailable:', result && result.error);
+    } catch (e) {
+        console.warn('Photo ticket request failed:', e);
+    }
+    return null;
+}
+
+// kind: 'color' (must be uploaded first) or 'dither'. Returns the public URL or null.
+async function uploadToCloud(dataUrl, kind) {
     if (!dataUrl) return null;
     try {
-        // Convert data URL to blob
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-
-        const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(filename)}`;
-
-        const response = await fetch(uploadUrl, {
+        const ticket = await ensurePhotoUploadTicket();
+        if (!ticket) return null;
+        const blob = await (await fetch(dataUrl)).blob();
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/session-photo`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': blob.type || 'image/jpeg',
-                'x-upsert': 'true',
-            },
+            headers: { 'Content-Type': blob.type || 'image/jpeg', 'x-photo-ticket': ticket, 'x-photo-kind': kind },
             body: blob
         });
-
-        if (!response.ok) {
-            const errTxt = await response.text().catch(() => '');
-            console.error(`Upload to Supabase failed (${response.status}):`, errTxt);
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !body.url) {
+            console.error(`Photo upload failed (${response.status}):`, body.error);
             return null;
         }
-
-        // Return public URL
-        return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(filename)}`;
+        return body.url;
     } catch (err) {
         console.error('Cloud upload error:', err);
         return null;
     }
 }
 
-async function logSessionToCloud(colorUrl, ditheredUrl) {
-    try {
-        const isCafeMode = Kiosk.mode !== 'event';
-        const payload = {
-            kiosk_mode: Kiosk.mode,
-            event_name: Kiosk.mode === 'event' ? Kiosk.eventName : null,
-            layout: Session.layout,
-            color_url: colorUrl,
-            dithered_url: ditheredUrl,
-            is_cafe_mode: isCafeMode,
-            // Café Mode: photos expire in 24 hours; Event Mode: no expiry (keep)
-            expires_at: isCafeMode ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null
-        };
-
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/kiosk_sessions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'apikey': SUPABASE_ANON_KEY,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            console.error("Supabase Analytics log error:", res.status);
-            return false;
-        }
-        return true;
-    } catch (e) {
-        console.error("Failed to log session:", e);
-        return false;
-    }
+// The session-photo function writes the log row together with the upload, so the
+// kiosk has nothing left to log. Kept so older pages calling it keep working.
+async function logSessionToCloud() {
+    return true;
 }
 
 // ======================== NAVIGATION GUARD ========================

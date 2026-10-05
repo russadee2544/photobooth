@@ -17,7 +17,7 @@ Migrations 20261005090000, 20261005100000, 20261005110000 were pushed with the S
 - anon can still call kiosk_session_counts() (returns 9 redeem / 23 event at the time).
 
 ## Still open (not fixed here)
-1. **Public bucket 'photobooth' accepts anonymous uploads** (policy "Allow public uploads", INSERT only; there is no UPDATE/DELETE policy so existing files cannot be overwritten). Anyone with the public anon key can upload junk files. Proper fix: send photos through an Edge Function (ticket like 'session-gif') into the private bucket and drop the anon insert policy. Not done yet.
+1. ~~Public bucket accepts anonymous uploads~~ **Closed 2026-10-05**: photo QR uploads go through the `session-photo` Edge Function (agent-issued ticket, 1 color + 1 print image per session, JPEG/PNG magic-byte check, 10 MB cap, unguessable file names). The anon Storage insert policy and the anon `kiosk_sessions` insert grant were removed; verified denied with the anon key. The photo QR therefore needs the Windows agent (it holds the kiosk credential).
 2. **`custom_themes`**: anon select + insert (admin theme builder uses the anon key). Anyone can
    add theme rows. Fix needs the admin theme save to go through an admin-capability Edge Function.
 3. **`transactions` and `debts`** are open to anon for all operations (`20260806064633`). They belong to
