@@ -1898,11 +1898,14 @@
             const remaining = document.getElementById('pass-remaining');
             if (!pass?.passId || !panel) return;
             remaining.textContent = pass.remaining === 0 ? 'ใช้สิทธิ์พิมพ์ครบแล้ว' : printPassMessage(pass);
+            if (pass.code && pass.remaining !== 0) {
+                remaining.textContent += ` · รหัสของคุณ ${pass.code} (จดไว้ใช้ต่อ)`;
+            }
             panel.classList.remove('hidden');
             if (pass.remaining === 0) {
                 panel.querySelector('button').classList.add('hidden');
             }
-            let seconds = 30;
+            let seconds = pass.code ? 60 : 30; // extra time to note down a QR-purchased code
             const countdown = document.getElementById('pass-auto-pause');
             countdown.textContent = `จะกลับหน้าเริ่มใน ${seconds} วินาที`;
             clearInterval(autoPauseTimer);
@@ -1918,6 +1921,10 @@
 
         async function continueWithPrintPass() {
             clearInterval(autoPauseTimer);
+            // New round = new session: fresh id and a fresh GIF ticket/status. The old
+            // ticket was spent on round 1's upload, so reusing it broke the 2nd GIF.
+            Session.sessionId = crypto.randomUUID();
+            snapshotGifSetting();
             for (const key of ['layout', 'templateSchemaId', 'photos', 'raw_photos',
                 'template', 'result', 'dithered', 'printJobId']) {
                 await SessionAsync.remove(key);

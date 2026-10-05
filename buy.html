@@ -82,6 +82,10 @@
             <!-- Step 3: paid -->
             <section id="paid-view" class="hidden w-full text-center">
                 <p id="paid-summary" class="text-xl font-bold text-gray-900 mb-4"></p>
+                <div class="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-4 mb-5">
+                    <p class="text-xs text-gray-500 mb-1">รหัสของคุณ · จดหรือถ่ายรูปไว้ ใช้ต่อได้ที่ "มีรหัส Redeem"</p>
+                    <p id="paid-code" class="text-4xl font-bold tracking-widest font-mono" translate="no"></p>
+                </div>
                 <button id="start-btn" class="btn-modern btn-primary w-full text-lg py-5">เริ่มถ่าย →</button>
             </section>
 
@@ -271,7 +275,13 @@
             currentOrder = null;
             $('title').textContent = 'ชำระเงินสำเร็จ';
             $('desc').textContent = 'ขอบคุณ! พร้อมเริ่มถ่ายภาพแล้ว';
+            // The code is only delivered once, so the customer must see it here and
+            // on the print page to be able to resume after pausing or a reset.
+            const shownCode = String(code).trim().toUpperCase();
+            claim.pass.code = shownCode;
+            Session.authorization = claim.pass;
             $('paid-summary').textContent = printPassMessage(claim.pass);
+            $('paid-code').textContent = shownCode;
             show('paid-view');
         }
 
