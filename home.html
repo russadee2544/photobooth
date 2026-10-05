@@ -56,6 +56,9 @@
         .film-tagline { font-weight: 400; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.6;
             letter-spacing: .02em; opacity: .75; max-width: 32ch; }
 
+        .film-price { margin-top: 1rem; font: 700 clamp(1rem, 1.6vw, 1.3rem)/1.2 'Cantarell', 'Prompt', sans-serif;
+            letter-spacing: .06em; color: var(--film-red); }
+        .film-price[hidden] { display: none; }
         .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: 1.6rem; font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .24em; text-transform: uppercase; opacity: .6; justify-content: inherit; }
         @media (min-width: 900px) and (min-aspect-ratio: 1/1) { .film-meta { justify-content: flex-start; } }
@@ -125,6 +128,7 @@
                 <div class="film-kicker rise" style="animation-delay:.05s"><span class="dot"></span>Photo Booth<span class="rule"></span>Est. 2026</div>
                 <h1 id="hero-title" class="film-title" aria-label="Memories">Memories</h1>
                 <p class="film-tagline rise" style="animation-delay:1s" data-i18n="home_subtitle">Premium digital photo booth experience.</p>
+                <p id="film-price" class="film-price rise" style="animation-delay:1.1s" hidden></p>
                 <div class="film-meta rise" style="animation-delay:1.15s" aria-hidden="true"><span>4 Poses</span><span>·</span><span>1 Strip</span><span>·</span><span>Print + GIF</span></div>
                 <button type="button" onclick="event.stopPropagation(); startSession()" class="film-cta rise" style="animation-delay:1.3s">
                     <span data-i18n="home_start">Tap to Start</span><span class="arrow" aria-hidden="true">&rarr;</span>
@@ -229,7 +233,34 @@
             setTimeout(() => { roll(); setInterval(roll, 600 + frames.length * SHOT_MS + HOLD_MS); }, 1400);
         })();
 
+        // "Starting at ฿19": the cheapest package the kiosk actually sells (not shown in free event mode).
+        // The last known price is cached so the line still shows when the network is slow.
+        function renderPrice() {
+            const el = document.getElementById('film-price');
+            if (!el) return;
+            const minor = Number(localStorage.getItem('pb_min_price_minor'));
+            if (Kiosk.mode === 'event' || !(minor > 0)) { el.hidden = true; return; }
+            const dict = i18n[getLanguage()] || i18n.th;
+            el.textContent = dict.home_price.replace('{price}', formatBaht(minor));
+            el.hidden = false;
+        }
+        const baseSetLanguage = setLanguage;
+        window.setLanguage = (lang) => { baseSetLanguage(lang); renderPrice(); };
+        async function refreshMinPrice() {
+            if (Kiosk.mode === 'event') return renderPrice();
+            renderPrice();
+            try {
+                const result = await listPassOffers();
+                const prices = result.success ? result.offers.map((o) => Number(o.priceMinor)).filter((n) => n > 0) : [];
+                if (prices.length) {
+                    localStorage.setItem('pb_min_price_minor', String(Math.min(...prices)));
+                    renderPrice();
+                }
+            } catch (_) { /* keep the cached price */ }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            refreshMinPrice();
             await closePrintPassAndClearCustomer();
             Session.sessionId = crypto.randomUUID();
             snapshotGifSetting();
