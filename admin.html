@@ -1134,25 +1134,7 @@
         let adminGateStatus = { configured: true, authenticated: false };
 
         function adminErrorText(code, lockedUntil) {
-            const messages = {
-                pin_format: 'PIN ต้องเป็นตัวเลข 4 หลัก',
-                pin_mismatch: 'PIN ที่ยืนยันไม่ตรงกัน',
-                pin_unchanged: 'PIN ใหม่ต้องไม่ซ้ำกับ PIN ปัจจุบัน',
-                pin_incorrect: 'PIN ไม่ถูกต้อง',
-                pin_locked: 'กรอก PIN ผิดหลายครั้ง ระบบล็อกชั่วคราว',
-                pin_setup_required: 'ต้องตั้ง PIN ก่อนเข้าใช้งาน',
-                pin_already_configured: 'ตู้นี้ตั้ง PIN แล้ว',
-                device_not_provisioned: 'ยังไม่ได้ provision อุปกรณ์ จึงตรวจ PIN จริงไม่ได้',
-                device_unavailable: 'ติดต่อระบบยืนยันตัวตนของตู้ไม่ได้',
-                pin_enroll_failed: 'ตั้ง PIN ไม่สำเร็จ',
-                pin_change_failed: 'เปลี่ยน PIN ไม่สำเร็จ'
-            };
-            let text = messages[code] || 'ไม่สามารถยืนยัน PIN ได้';
-            const lockTime = lockedUntil ? new Date(lockedUntil).getTime() : 0;
-            if (code === 'pin_locked' && lockTime > Date.now()) {
-                text += ` กรุณารอ ${Math.max(1, Math.ceil((lockTime - Date.now()) / 1000))} วินาที`;
-            }
-            return text;
+            return adminPinErrorText(code, lockedUntil || getAdminLockedUntil());
         }
 
         function setGateError(message) {
@@ -1178,6 +1160,12 @@
             const gate = document.getElementById('admin-gate');
             if (gate) gate.classList.remove('hidden');
             updateAdminGate(status);
+            // e.g. the agent or server could not be reached while reading the PIN status.
+            const statusError = getAdminAuthError();
+            if (statusError) setGateError(adminErrorText(statusError));
+            else if (status && status.lockedUntil && new Date(status.lockedUntil).getTime() > Date.now()) {
+                setGateError(adminErrorText('pin_locked', status.lockedUntil));
+            }
             setTimeout(() => document.getElementById('gate-pin').focus(), 100);
         }
 
@@ -1199,7 +1187,7 @@
                 initAdmin();
             } else {
                 const code = typeof getAdminAuthError === 'function' ? getAdminAuthError() : 'pin_incorrect';
-                setGateError(adminErrorText(code, adminGateStatus.lockedUntil));
+                setGateError(adminErrorText(code));
                 submit.textContent = adminGateStatus.configured ? 'เข้าสู่ระบบ' : 'ตั้ง PIN และเข้าสู่ระบบ';
             }
         }

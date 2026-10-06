@@ -369,6 +369,7 @@
             }
         }
 
+        let adminPinSubmitting = false;
         async function submitAdminPin() {
             const input = document.getElementById('admin-pin');
             const pin = input.value;
@@ -376,9 +377,13 @@
                 setPinError('กรุณากรอก PIN ให้ครบ 4 หลัก');
                 return;
             }
+            // The 4th digit auto-submits; Enter right after must not send a second attempt.
+            if (adminPinSubmitting) return;
+            adminPinSubmitting = true;
             const btn = document.getElementById('btn-admin-submit');
             if (btn) btn.textContent = 'กำลังตรวจสอบ...';
             const ok = await adminVerifyPin(pin);
+            adminPinSubmitting = false;
             if (btn) btn.textContent = 'เข้าสู่ระบบ';
             if (ok) {
                 window.location.href = 'admin.html';
@@ -392,7 +397,9 @@
                     box.classList.add('border-accent-coral', 'animate-pulse');
                     setTimeout(() => box.classList.remove('border-accent-coral', 'animate-pulse'), 800);
                 }
-                setPinError('PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                setPinError(adminAuthError === 'pin_incorrect'
+                    ? 'PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง'
+                    : adminPinErrorText(adminAuthError));
                 input.value = '';
                 input.focus();
             }
