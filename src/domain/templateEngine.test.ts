@@ -21,6 +21,10 @@ type Engine = {
   ) => { x: number; y: number; width: number; height: number };
   extractUniversalTheme: (template: any, name?: string) => any;
   applyUniversalTheme: (universalTheme: any, targetTemplate: any) => any;
+  applyUniversalThemeWithReport: (universalTheme: any, targetTemplate: any) => { template: any; warnings: { code: string; elementId?: string }[]; bucket: string };
+  migrateUniversalTheme: (theme: any) => any;
+  computeThemeRegions: (template: any) => any;
+  getRatioBucket: (width: number, height: number) => string;
 };
 
 let engine: Engine;
@@ -255,13 +259,18 @@ describe('PhotoTemplateEngine', () => {
     expect(uTheme.style.backgroundImage).toBe('data:image/png;base64,BG123');
     expect(uTheme.style.backgroundFitMode).toBe('contain');
     expect(uTheme.style.overlay.url).toBe('data:image/png;base64,OV456');
-    expect(uTheme.style.artboard).toHaveLength(1);
-    
-    // Relative coordinates should be normalized (x = 60/600 = 0.1, width = 240/600 = 0.4)
-    const relArt = uTheme.style.artboard[0];
-    expect(relArt.relX).toBeCloseTo(0.1, 2);
-    expect(relArt.relWidth).toBeCloseTo(0.4, 2);
-    expect(relArt.aspectRatio).toBeCloseTo(2.0, 2); // 240/120 = 2.0
+    expect(uTheme.schemaVersion).toBe(2);
+    expect(uTheme.sourceCanvas.bucket).toBe('strip');
+    expect(uTheme.style.overlay.buckets).toEqual(['strip']);
+    expect(uTheme.style.elements).toHaveLength(1);
+
+    // The logo sits above the photos, so it is anchored to the header and
+    // sized from the paper's short side (240 / 600 = 0.4).
+    const logo = uTheme.style.elements[0];
+    expect(logo.anchor.to).toBe('header');
+    expect(logo.size.mode).toBe('short-side');
+    expect(logo.size.value).toBeCloseTo(0.4, 3);
+    expect(logo.aspectRatio).toBeCloseTo(2.0, 2);
   });
 
   it('applies a UniversalTheme to different canvas formats (2x6 -> 4x6 & thermal)', () => {
@@ -293,5 +302,218 @@ describe('PhotoTemplateEngine', () => {
     expect(appliedThermal.type).toBe('thermal80');
     expect(appliedThermal.artboard).toHaveLength(1);
     expect(appliedThermal.artboard[0].width).toBe(Math.round(0.5 * 576));
+  });
+
+  describe('Universal Theme v2', () => {
+    const IMG = 'data:image/png;base64,AAAA';
+    const PRESETS = ['2x6', '4x6-portrait', '4x6-landscape', 'photo5x7', 'thermal58', 'thermal80', 'thermal100'];
+
+    function decorated(layoutId: string, preset: string) {
+      const template = engine.createTemplate(layoutId, preset);
+      const { width, height } = template.canvas;
+      const slotsTop = Math.min(...template.slots.map((s: any) => s.y));
+      const slotsBottom = Math.max(...template.slots.map((s: any) => s.y + s.height));
+      const logoW = Math.round(width * 0.3);
+      template.artboard = [
+        { id: 'logo', name: 'Logo', url: IMG, placement: 'front', x: Math.round((width - logoW) / 2), y: Math.round(slotsTop / 2 - logoW / 4), width: logoW, height: Math.round(logoW / 2), rotation: 0, zIndex: 2, opacity: 1, visible: true },
+        { id: 'brand', name: 'Brand', url: IMG, placement: 'front', x: width - 40 - 120, y: Math.round((slotsBottom + height) / 2 - 30), width: 120, height: 60, rotation: 0, zIndex: 3, opacity: 1, visible: true },
+        { id: 'corner', name: 'Corner', url: IMG, placement: 'back', x: 0, y: 0, width: 80, height: 80, rotation: 15, zIndex: 1, opacity: 0.8, visible: true }
+      ];
+      return template;
+    }
+
+    function coverRatio(layer: any, template: any) {
+      return Math.max(0, ...template.slots.map((slot: any) => {
+        const w = Math.min(layer.x + layer.width, slot.x + slot.width) - Math.max(layer.x, slot.x);
+        const h = Math.min(layer.y + layer.height, slot.y + slot.height) - Math.max(layer.y, slot.y);
+        return w > 0 && h > 0 ? (w * h) / (slot.width * slot.height) : 0;
+      }));
+    }
+
+    it('groups paper shapes into ratio buckets', () => {
+      expect(engine.getRatioBucket(600, 1800)).toBe('strip');
+      expect(engine.getRatioBucket(1200, 1800)).toBe('portrait');
+      expect(engine.getRatioBucket(1500, 2100)).toBe('portrait');
+      expect(engine.getRatioBucket(1080, 1080)).toBe('square');
+      expect(engine.getRatioBucket(1800, 1200)).toBe('landscape');
+    });
+
+    it('finds header, footer and photo regions from the layout', () => {
+      const template = engine.createTemplate('3_1x1', '2x6');
+      const regions = engine.computeThemeRegions(template);
+      const slotsTop = Math.min(...template.slots.map((s: any) => s.y));
+      expect(regions.slots.y).toBe(slotsTop);
+      expect(regions.header.y + regions.header.height).toBe(slotsTop);
+      expect(regions.footer.y).toBe(regions.slots.y + regions.slots.height);
+      expect(regions.slotRects).toHaveLength(3);
+      expect(regions.shortSide).toBe(600);
+    });
+
+    it.each(PRESETS)('reproduces the source design exactly when applied back onto %s', (preset) => {
+      const source = decorated('3_1x1', preset);
+      const theme = engine.extractUniversalTheme(source, 'Round Trip');
+      const applied = engine.applyUniversalTheme(theme, engine.createTemplate('3_1x1', preset));
+      expect(applied.artboard).toHaveLength(3);
+      for (const original of source.artboard) {
+        const layer = applied.artboard.find((l: any) => l.name === original.name);
+        expect(Math.abs(layer.x - original.x)).toBeLessThanOrEqual(1);
+        expect(Math.abs(layer.y - original.y)).toBeLessThanOrEqual(1);
+        expect(Math.abs(layer.width - original.width)).toBeLessThanOrEqual(1);
+        expect(Math.abs(layer.height - original.height)).toBeLessThanOrEqual(1);
+        expect(layer.rotation).toBe(original.rotation);
+      }
+    });
+
+    it('applies a strip theme to every default layout without distorting or covering photos', () => {
+      const theme = engine.extractUniversalTheme(decorated('3_1x1', '2x6'), 'Everywhere');
+      for (const target of engine.createDefaultTemplates()) {
+        const { template, warnings } = engine.applyUniversalThemeWithReport(theme, target);
+        expect(template.slots).toEqual(target.slots);
+        const logo = template.artboard.find((l: any) => l.name === 'Logo');
+        const brand = template.artboard.find((l: any) => l.name === 'Brand');
+        // Stickers keep their own shape on every paper.
+        expect(logo.width / logo.height).toBeCloseTo(2, 1);
+        expect(brand.width / brand.height).toBeCloseTo(2, 1);
+        // Header/footer decorations never sit on the photos.
+        expect(coverRatio(logo, template)).toBeLessThanOrEqual(0.15);
+        expect(coverRatio(brand, template)).toBeLessThanOrEqual(0.15);
+        expect(warnings.filter((w) => w.code === 'covers_photo')).toEqual([]);
+      }
+    });
+
+    it('keeps a logo that hangs into the top margin on the paper of a shorter header', () => {
+      const source = engine.createTemplate('3_1x1', '2x6');
+      source.artboard = [{ id: 'logo', name: 'Logo', url: IMG, x: 180, y: 30, width: 240, height: 60 }];
+      const theme = engine.extractUniversalTheme(source, 'Top Margin');
+      for (const target of engine.createDefaultTemplates()) {
+        const { template, warnings } = engine.applyUniversalThemeWithReport(theme, target);
+        const logo = template.artboard[0];
+        expect(logo.y).toBeGreaterThanOrEqual(0);
+        expect(logo.y + logo.height).toBeLessThanOrEqual(Math.min(...template.slots.map((s: any) => s.y)));
+        expect(warnings.map((w) => w.code)).not.toContain('outside_canvas');
+      }
+    });
+
+    it('keeps a footer logo in the footer of a landscape postcard', () => {
+      const theme = engine.extractUniversalTheme(decorated('3_1x1', '2x6'), 'Footer');
+      const target = engine.createTemplate('4_1x1', '4x6-landscape');
+      const applied = engine.applyUniversalTheme(theme, target);
+      const brand = applied.artboard.find((l: any) => l.name === 'Brand');
+      const slotsBottom = Math.max(...target.slots.map((s: any) => s.y + s.height));
+      expect(brand.y).toBeGreaterThanOrEqual(slotsBottom);
+      expect(brand.y + brand.height).toBeLessThanOrEqual(applied.canvas.height);
+    });
+
+    it('sizes stickers from the short side so landscape paper does not blow them up', () => {
+      const theme = engine.extractUniversalTheme(decorated('3_1x1', '2x6'), 'Short Side');
+      const portrait = engine.applyUniversalTheme(theme, engine.createTemplate('3_1x1', '4x6-portrait'));
+      const landscape = engine.applyUniversalTheme(theme, engine.createTemplate('3_1x1', '4x6-landscape'));
+      const corner = (t: any) => t.artboard.find((l: any) => l.name === 'Corner');
+      // Same 4x6 sheet turned sideways: same short side, same sticker size.
+      expect(corner(landscape).width).toBe(corner(portrait).width);
+    });
+
+    it('migrates v1 relative themes and stops width-only scaling', () => {
+      const legacy = {
+        themeId: 'utheme_legacy',
+        name: 'Legacy',
+        sourceCanvas: { width: 600, height: 1800, type: '2x6', orientation: 'portrait' },
+        style: {
+          backgroundColor: '#112233',
+          overlay: { url: IMG, zIndex: 100, fitMode: 'cover' },
+          artboard: [{ id: 'old', name: 'Old', url: IMG, placement: 'front', relX: 0.1, relY: 0.02, relWidth: 0.5, relHeight: 0.0833, aspectRatio: 2, rotation: 0, zIndex: 1, opacity: 1, visible: true, scaleMode: 'width-relative' }]
+        }
+      };
+      const migrated = engine.migrateUniversalTheme(legacy);
+      expect(migrated.schemaVersion).toBe(2);
+      expect(migrated.style.elements[0].anchor).toMatchObject({ to: 'canvas', unit: 'region', h: 'left', v: 'top' });
+      // Legacy overlays keep applying everywhere (no buckets) so old frames do not vanish.
+      expect(migrated.style.overlay.buckets).toBeNull();
+
+      const postcard = engine.applyUniversalTheme(legacy, engine.createTemplate('4_3x4', '4x6-portrait'));
+      expect(postcard.artboard[0].width).toBe(600);
+      const landscape = engine.applyUniversalTheme(legacy, engine.createTemplate('2_1x1', '4x6-landscape'));
+      expect(landscape.artboard[0].width).toBe(600); // v1 made this 900
+      expect(landscape.overlay.url).toBe(IMG);
+    });
+
+    it('skips a full-page frame on a different paper shape unless a variant provides one', () => {
+      const source = engine.createTemplate('3_1x1', '2x6');
+      source.overlay = { url: 'data:image/png;base64,STRIPFRAME', zIndex: 100, fitMode: 'stretch' };
+      const theme = engine.extractUniversalTheme(source, 'Framed');
+
+      const strip = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('3_3x4', '2x6'));
+      expect(strip.template.overlay.url).toBe('data:image/png;base64,STRIPFRAME');
+
+      const postcard = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('4_3x4', '4x6-portrait'));
+      expect(postcard.template.overlay.url).toBe('');
+      expect(postcard.warnings.map((w) => w.code)).toContain('overlay_skipped');
+
+      theme.style.variants = { portrait: { overlay: { url: 'data:image/png;base64,CARDFRAME' } } };
+      const withVariant = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('4_3x4', '4x6-portrait'));
+      expect(withVariant.template.overlay.url).toBe('data:image/png;base64,CARDFRAME');
+      expect(withVariant.warnings.map((w) => w.code)).not.toContain('overlay_skipped');
+    });
+
+    it('lets a ratio variant move or hide a single element', () => {
+      const theme = engine.extractUniversalTheme(decorated('3_1x1', '2x6'), 'Variants');
+      theme.style.variants = {
+        landscape: { elements: { brand: { anchor: { h: 'left' } }, corner: { visible: false } } }
+      };
+      const applied = engine.applyUniversalTheme(theme, engine.createTemplate('4_1x1', '4x6-landscape'));
+      const regions = engine.computeThemeRegions(applied);
+      const brand = applied.artboard.find((l: any) => l.name === 'Brand');
+      expect(brand.x).toBeLessThan(regions.footer.x + regions.footer.width / 2);
+      expect(applied.artboard.find((l: any) => l.name === 'Corner').visible).toBe(false);
+    });
+
+    it('frames every photo slot and follows slot rotation', () => {
+      const theme = engine.migrateUniversalTheme({
+        schemaVersion: 2,
+        themeId: 'utheme_frames',
+        name: 'Polaroid',
+        sourceCanvas: { width: 600, height: 1800 },
+        style: {
+          elements: [{ id: 'tape', name: 'Tape', url: IMG, anchor: { to: 'each-slot', h: 'center', v: 'top', unit: 'region', dy: -0.05 }, size: { mode: 'region-width', value: 0.4 }, aspectRatio: 4 }]
+        }
+      });
+      const target = engine.createTemplate('4_1x1', '2x6');
+      target.slots[1].rotation = 90;
+      const applied = engine.applyUniversalTheme(theme, target);
+      expect(applied.artboard).toHaveLength(target.slots.length);
+      const first = applied.artboard[0];
+      expect(first.width).toBe(Math.round(target.slots[0].width * 0.4));
+      expect(applied.artboard[1].rotation).toBe(90);
+      expect(applied.artboard[0].rotation).toBe(0);
+    });
+
+    it('nudges a sticker off the photos and reports it', () => {
+      const theme = engine.migrateUniversalTheme({
+        schemaVersion: 2,
+        themeId: 'utheme_nudge',
+        name: 'Nudge',
+        sourceCanvas: { width: 600, height: 1800 },
+        style: {
+          elements: [{ id: 'big', name: 'Big', url: IMG, anchor: { to: 'canvas', h: 'center', v: 'top', unit: 'region', dy: 0.1 }, size: { mode: 'short-side', value: 0.9 }, aspectRatio: 4 }]
+        }
+      });
+      const target = engine.createTemplate('3_1x1', '2x6');
+      const { template, warnings } = engine.applyUniversalThemeWithReport(theme, target);
+      expect(warnings.map((w) => w.code)).toContain('nudged');
+      expect(coverRatio(template.artboard[0], template)).toBeLessThanOrEqual(0.15);
+    });
+
+    it('warns when an element is tied to a photo the layout does not have', () => {
+      const theme = engine.migrateUniversalTheme({
+        schemaVersion: 2,
+        themeId: 'utheme_slot4',
+        name: 'Slot 4',
+        sourceCanvas: { width: 600, height: 1800 },
+        style: { elements: [{ id: 'star', name: 'Star', url: IMG, anchor: { to: 'slot', slot: 4 } }] }
+      });
+      const { template, warnings } = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('2_1x1', '2x6'));
+      expect(template.artboard).toHaveLength(0);
+      expect(warnings.map((w) => w.code)).toContain('slot_missing');
+    });
   });
 });

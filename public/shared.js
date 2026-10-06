@@ -321,6 +321,14 @@ const UniversalThemeStore = {
      * @returns {Array<object>} Created templates
      */
     applyToLayouts(themeId, targetLayouts) {
+        return this.applyToLayoutsWithReport(themeId, targetLayouts).templates;
+    },
+    /**
+     * Same as applyToLayouts, plus the placement warnings for each layout
+     * (frames skipped on another paper shape, stickers moved off photos, ...).
+     * @returns {{ templates: Array<object>, warnings: Array<{ templateId: string, name: string, code: string, message: string }> }}
+     */
+    applyToLayoutsWithReport(themeId, targetLayouts) {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('PhotoTemplateEngine is unavailable');
         const uTheme = this.find(themeId);
@@ -351,13 +359,15 @@ const UniversalThemeStore = {
         }
 
         const generatedTemplates = [];
+        const warnings = [];
         targets.forEach(targetTpl => {
-            const applied = engine.applyUniversalTheme(uTheme, targetTpl);
-            TemplateCatalog.upsert(applied);
-            generatedTemplates.push(applied);
+            const report = engine.applyUniversalThemeWithReport(uTheme, targetTpl);
+            TemplateCatalog.upsert(report.template);
+            generatedTemplates.push(report.template);
+            report.warnings.forEach(w => warnings.push({ templateId: report.template.templateId, name: report.template.name, ...w }));
         });
 
-        return generatedTemplates;
+        return { templates: generatedTemplates, warnings };
     }
 };
 if (typeof window !== 'undefined') window.UniversalThemeStore = UniversalThemeStore;

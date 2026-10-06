@@ -819,128 +819,539 @@
         return normalizeTemplate(template);
     }
 
+    // ------------------------------------------------------------------
+    // Universal Theme v2
+    // A theme stores placement *rules* instead of absolute positions: each
+    // element is anchored to a region of the target layout (header, footer,
+    // photo slots, ...) and sized from the paper's short side or physical mm,
+    // so applying it to a strip, a postcard or a landscape card keeps the
+    // design's proportions instead of stretching it.
+    // ------------------------------------------------------------------
+    const THEME_SCHEMA_VERSION = 2;
+    const RATIO_BUCKETS = Object.freeze(['strip', 'portrait', 'square', 'landscape']);
+    const ANCHOR_TARGETS = ['canvas', 'safe', 'header', 'footer', 'slots', 'slot', 'each-slot'];
+    const SIZE_MODES = ['short-side', 'physical-mm', 'fit-region', 'region-width', 'stretch'];
+    const PHOTO_COVER_LIMIT = 0.15;
+
+    function getRatioBucket(width, height) {
+        const ratio = Number(width) / Math.max(1, Number(height) || 1);
+        if (ratio < 0.45) return 'strip';
+        if (ratio < 0.9) return 'portrait';
+        if (ratio <= 1.1) return 'square';
+        return 'landscape';
+    }
+
+    function makeRect(x, y, width, height) {
+        return { x, y, width: Math.max(0, width), height: Math.max(0, height) };
+    }
+
+    function rotatedBounds(x, y, width, height, rotation) {
+        const angle = (Number(rotation) || 0) * Math.PI / 180;
+        if (!angle) return makeRect(x, y, width, height);
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+        const cos = Math.abs(Math.cos(angle));
+        const sin = Math.abs(Math.sin(angle));
+        const w = width * cos + height * sin;
+        const h = width * sin + height * cos;
+        return makeRect(cx - w / 2, cy - h / 2, w, h);
+    }
+
+    function overlapArea(a, b) {
+        const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+        const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+        return w > 0 && h > 0 ? w * h : 0;
+    }
+
+    function computeThemeRegions(template) {
+        const source = normalizeTemplate(template);
+        const { width, height, safeMargin } = source.canvas;
+        const canvasRect = makeRect(0, 0, width, height);
+        const safeRect = makeRect(safeMargin.left, safeMargin.top, width - safeMargin.left - safeMargin.right, height - safeMargin.top - safeMargin.bottom);
+        const slotRects = source.slots.map((slot) => ({
+            index: slot.index,
+            rotation: slot.rotation || 0,
+            rect: makeRect(slot.x, slot.y, slot.width, slot.height),
+            bounds: rotatedBounds(slot.x, slot.y, slot.width, slot.height, slot.rotation)
+        }));
+        let slotsRect = safeRect;
+        if (slotRects.length) {
+            const left = Math.min(...slotRects.map((s) => s.bounds.x));
+            const top = Math.min(...slotRects.map((s) => s.bounds.y));
+            const right = Math.max(...slotRects.map((s) => s.bounds.x + s.bounds.width));
+            const bottom = Math.max(...slotRects.map((s) => s.bounds.y + s.bounds.height));
+            slotsRect = makeRect(left, top, right - left, bottom - top);
+        }
+        const slotsBottom = slotsRect.y + slotsRect.height;
+        const safeBottom = safeRect.y + safeRect.height;
+        // Header/footer are the bands between the safe edge and the photos. When
+        // the photos reach into the safe margin, fall back to the paper edge.
+        const header = slotsRect.y - safeRect.y >= 1
+            ? makeRect(safeRect.x, safeRect.y, safeRect.width, slotsRect.y - safeRect.y)
+            : makeRect(safeRect.x, 0, safeRect.width, Math.max(0, slotsRect.y));
+        const footer = safeBottom - slotsBottom >= 1
+            ? makeRect(safeRect.x, slotsBottom, safeRect.width, safeBottom - slotsBottom)
+            : makeRect(safeRect.x, slotsBottom, safeRect.width, Math.max(0, height - slotsBottom));
+        return {
+            bucket: getRatioBucket(width, height),
+            shortSide: Math.min(width, height),
+            dpi: source.canvas.dpi,
+            canvas: canvasRect,
+            safe: safeRect,
+            header,
+            footer,
+            slots: slotsRect,
+            slotRects
+        };
+    }
+
+    function themeWarning(code, message, elementId) {
+        return elementId ? { code, message, elementId } : { code, message };
+    }
+
+    function normalizeThemeElement(source, position) {
+        const el = source && typeof source === 'object' ? source : {};
+        const anchor = el.anchor || {};
+        const size = el.size || {};
+        const to = ANCHOR_TARGETS.includes(anchor.to) ? anchor.to : 'canvas';
+        const mode = SIZE_MODES.includes(size.mode) ? size.mode : 'short-side';
+        return {
+            id: String(el.id || `el_${position + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_'),
+            name: String(el.name || `Sticker ${position + 1}`).slice(0, 80),
+            type: 'image',
+            url: String(el.url || '').slice(0, 600000),
+            placement: el.placement === 'back' ? 'back' : 'front',
+            anchor: {
+                to,
+                slot: to === 'slot' ? Math.round(number(anchor.slot, 1, 1, MAX_SLOTS)) : undefined,
+                h: ['left', 'center', 'right'].includes(anchor.h) ? anchor.h : 'center',
+                v: ['top', 'middle', 'bottom'].includes(anchor.v) ? anchor.v : 'middle',
+                unit: anchor.unit === 'region' ? 'region' : 'short',
+                dx: number(anchor.dx, 0, -10, 10),
+                dy: number(anchor.dy, 0, -10, 10)
+            },
+            size: {
+                mode,
+                value: number(size.value, 0.3, 0.001, 1000),
+                valueY: mode === 'stretch' ? number(size.valueY, 0.3, 0.001, 10) : undefined,
+                max: size.max === undefined || size.max === null ? null : number(size.max, 1, 0.01, 10)
+            },
+            aspectRatio: number(el.aspectRatio, 1, 0.01, 100),
+            rotation: number(el.rotation, 0, -180, 180),
+            zIndex: Math.round(number(el.zIndex, position + 1, -1000, 1000)),
+            opacity: number(el.opacity, 1, 0, 1),
+            visible: el.visible !== false,
+            avoidSlots: el.avoidSlots !== false,
+            allowOverflow: el.allowOverflow === true
+        };
+    }
+
+    function normalizeOverlayStyle(overlay) {
+        const value = overlay && typeof overlay === 'object' ? overlay : {};
+        const buckets = Array.isArray(value.buckets)
+            ? value.buckets.filter((bucket) => RATIO_BUCKETS.includes(bucket))
+            : null;
+        return {
+            url: String(value.url || ''),
+            zIndex: Math.round(number(value.zIndex, 100, -1000, 1000)),
+            fitMode: ['cover', 'contain', 'stretch'].includes(value.fitMode) ? value.fitMode : 'cover',
+            buckets
+        };
+    }
+
+    // Converts any stored theme (v1 relative-coordinate themes included) into
+    // a normalized v2 theme. v1 sizes become short-side sizes so a sticker no
+    // longer triples in size on a landscape card.
+    function migrateUniversalTheme(theme) {
+        if (!theme || typeof theme !== 'object' || !theme.style) {
+            throw new Error('Universal Theme is invalid or missing style.');
+        }
+        const source = clone(theme);
+        const style = source.style;
+        const sourceCanvas = source.sourceCanvas || {};
+        const srcW = Math.max(1, Number(sourceCanvas.width) || 600);
+        const srcH = Math.max(1, Number(sourceCanvas.height) || 1800);
+        const srcShort = Math.min(srcW, srcH);
+        const isV2 = Number(source.schemaVersion) >= THEME_SCHEMA_VERSION;
+
+        const rawElements = isV2
+            ? (Array.isArray(style.elements) ? style.elements : [])
+            : (Array.isArray(style.artboard) ? style.artboard : []).map((layer, index) => {
+                const stretch = layer.scaleMode === 'stretch';
+                return {
+                    id: layer.id || `ut_art_${index + 1}`,
+                    name: layer.name,
+                    url: layer.url,
+                    placement: layer.placement,
+                    anchor: { to: 'canvas', h: 'left', v: 'top', unit: 'region', dx: Number(layer.relX) || 0, dy: Number(layer.relY) || 0 },
+                    size: stretch
+                        ? { mode: 'stretch', value: Number(layer.relWidth) || 0.3, valueY: Number(layer.relHeight) || 0.3 }
+                        : { mode: 'short-side', value: ((Number(layer.relWidth) || 0.3) * srcW) / srcShort },
+                    aspectRatio: layer.aspectRatio,
+                    rotation: layer.rotation,
+                    zIndex: layer.zIndex,
+                    opacity: layer.opacity,
+                    visible: layer.visible
+                };
+            });
+
+        const variants = {};
+        if (isV2 && style.variants && typeof style.variants === 'object') {
+            RATIO_BUCKETS.forEach((bucket) => {
+                const variant = style.variants[bucket];
+                if (variant && typeof variant === 'object') variants[bucket] = clone(variant);
+            });
+        }
+
+        const overlay = normalizeOverlayStyle(style.overlay);
+        return {
+            schemaVersion: THEME_SCHEMA_VERSION,
+            themeId: String(source.themeId || `utheme_${Date.now().toString(36)}`),
+            name: String(source.name || 'Universal Theme').slice(0, 80),
+            enabled: source.enabled !== false,
+            createdAt: source.createdAt || null,
+            updatedAt: source.updatedAt || null,
+            sourceCanvas: {
+                width: srcW,
+                height: srcH,
+                type: sourceCanvas.type || null,
+                orientation: sourceCanvas.orientation || null,
+                dpi: Number(sourceCanvas.dpi) || null,
+                bucket: RATIO_BUCKETS.includes(sourceCanvas.bucket) ? sourceCanvas.bucket : getRatioBucket(srcW, srcH)
+            },
+            style: {
+                backgroundColor: /^#[0-9a-f]{6}$/i.test(style.backgroundColor) ? style.backgroundColor : '#FFFFFF',
+                backgroundImage: String(style.backgroundImage || ''),
+                backgroundFitMode: ['cover', 'contain', 'stretch', 'tile'].includes(style.backgroundFitMode) ? style.backgroundFitMode : 'cover',
+                overlay,
+                elements: rawElements.slice(0, 32).map(normalizeThemeElement),
+                variants
+            }
+        };
+    }
+
+    function resolveThemeForBucket(theme, bucket) {
+        const variant = theme.style.variants[bucket];
+        if (!variant) return theme.style;
+        const overrides = variant.elements && typeof variant.elements === 'object' ? variant.elements : {};
+        const elements = theme.style.elements.map((el, index) => {
+            const patch = overrides[el.id];
+            if (!patch || typeof patch !== 'object') return el;
+            return normalizeThemeElement({
+                ...el,
+                ...patch,
+                anchor: { ...el.anchor, ...(patch.anchor || {}) },
+                size: { ...el.size, ...(patch.size || {}) }
+            }, index);
+        });
+        return {
+            ...theme.style,
+            backgroundColor: /^#[0-9a-f]{6}$/i.test(variant.backgroundColor) ? variant.backgroundColor : theme.style.backgroundColor,
+            backgroundImage: typeof variant.backgroundImage === 'string' ? variant.backgroundImage : theme.style.backgroundImage,
+            backgroundFitMode: ['cover', 'contain', 'stretch', 'tile'].includes(variant.backgroundFitMode) ? variant.backgroundFitMode : theme.style.backgroundFitMode,
+            overlay: variant.overlay ? normalizeOverlayStyle({ ...theme.style.overlay, ...variant.overlay, buckets: [bucket] }) : theme.style.overlay,
+            elements
+        };
+    }
+
+    function sizeElement(el, region, regions) {
+        const aspect = el.aspectRatio || 1;
+        let width;
+        let height;
+        if (el.size.mode === 'stretch') {
+            width = el.size.value * region.width;
+            height = el.size.valueY * region.height;
+        } else {
+            if (el.size.mode === 'physical-mm') width = mmToPx(el.size.value, regions.dpi);
+            else if (el.size.mode === 'region-width') width = el.size.value * region.width;
+            else if (el.size.mode === 'fit-region') width = Math.min(region.width * el.size.value, region.height * el.size.value * aspect);
+            else width = el.size.value * regions.shortSide;
+            height = width / aspect;
+        }
+        if (el.size.max && region.width > 0 && region.height > 0) {
+            const limit = Math.min(1, (region.width * el.size.max) / width, (region.height * el.size.max) / height);
+            width *= limit;
+            height *= limit;
+        }
+        return { width: Math.max(4, width), height: Math.max(4, height) };
+    }
+
+    function placeInRegion(el, region, regions, size) {
+        const ux = el.anchor.unit === 'region' ? region.width : regions.shortSide;
+        const uy = el.anchor.unit === 'region' ? region.height : regions.shortSide;
+        let x;
+        if (el.anchor.h === 'left') x = region.x;
+        else if (el.anchor.h === 'right') x = region.x + region.width - size.width;
+        else x = region.x + (region.width - size.width) / 2;
+        let y;
+        if (el.anchor.v === 'top') y = region.y;
+        else if (el.anchor.v === 'bottom') y = region.y + region.height - size.height;
+        else y = region.y + (region.height - size.height) / 2;
+        return { x: x + el.anchor.dx * ux, y: y + el.anchor.dy * uy };
+    }
+
+    // Places an element anchored to a (possibly rotated) photo slot: lay it out
+    // in the slot's own frame, then turn it with the slot around the slot centre.
+    function placeOnSlot(el, slot, regions) {
+        const size = sizeElement(el, slot.rect, regions);
+        const local = placeInRegion(el, slot.rect, regions, size);
+        let x = local.x;
+        let y = local.y;
+        let rotation = el.rotation;
+        if (slot.rotation) {
+            const angle = slot.rotation * Math.PI / 180;
+            const scx = slot.rect.x + slot.rect.width / 2;
+            const scy = slot.rect.y + slot.rect.height / 2;
+            const ex = x + size.width / 2 - scx;
+            const ey = y + size.height / 2 - scy;
+            x = scx + ex * Math.cos(angle) - ey * Math.sin(angle) - size.width / 2;
+            y = scy + ex * Math.sin(angle) + ey * Math.cos(angle) - size.height / 2;
+            rotation = ((rotation + slot.rotation + 540) % 360) - 180;
+        }
+        return { ...size, x, y, rotation };
+    }
+
+    // Offsets are relative, so on a much shorter header or footer an element
+    // can be pushed past the paper edge. Pull it back inside the paper, and
+    // keep header/footer elements on their side of the photos, when it fits.
+    function keepInBand(layer, anchorTo, regions) {
+        const box = rotatedBounds(layer.x, layer.y, layer.width, layer.height, layer.rotation);
+        const slotsBottom = regions.slots.y + regions.slots.height;
+        let top = 0;
+        let bottom = regions.canvas.height;
+        if (anchorTo === 'header') bottom = regions.slots.y;
+        if (anchorTo === 'footer') top = slotsBottom;
+        let { x, y } = layer;
+        if (box.width <= regions.canvas.width) {
+            x += Math.max(0, -box.x) - Math.max(0, box.x + box.width - regions.canvas.width);
+        }
+        if (box.height <= bottom - top) {
+            y += Math.max(0, top - box.y) - Math.max(0, box.y + box.height - bottom);
+        }
+        return { ...layer, x, y };
+    }
+
+    function photoCoverRatio(box, regions) {
+        return regions.slotRects.reduce((worst, slot) => {
+            const area = Math.max(1, slot.rect.width * slot.rect.height);
+            return Math.max(worst, overlapArea(box, slot.bounds) / area);
+        }, 0);
+    }
+
+    // Moves an element that covers a photo up into the header or down into the
+    // footer, whichever is the shorter move that still fits on the paper.
+    function nudgeOffPhotos(layer, regions) {
+        const box = rotatedBounds(layer.x, layer.y, layer.width, layer.height, layer.rotation);
+        const slotsTop = regions.slots.y;
+        const slotsBottom = regions.slots.y + regions.slots.height;
+        const offsetY = layer.y - box.y;
+        const options = [
+            slotsTop - box.height,
+            slotsBottom
+        ]
+            .map((top) => ({ top, shift: Math.abs(top - box.y) }))
+            .filter((option) => option.top >= 0 && option.top + box.height <= regions.canvas.height)
+            .sort((a, b) => a.shift - b.shift);
+        if (!options.length) return null;
+        return { ...layer, y: options[0].top + offsetY };
+    }
+
+    function applyUniversalThemeWithReport(universalTheme, targetTemplate) {
+        const theme = migrateUniversalTheme(universalTheme);
+        const target = normalizeTemplate(targetTemplate);
+        const regions = computeThemeRegions(target);
+        const style = resolveThemeForBucket(theme, regions.bucket);
+        const warnings = [];
+
+        target.canvas.backgroundColor = style.backgroundColor;
+        target.canvas.backgroundImage = style.backgroundImage;
+        target.canvas.backgroundFitMode = style.backgroundFitMode;
+
+        // A full-page frame is drawn for one paper shape. On another shape it
+        // would be cropped or stretched, so it is only used where it was made
+        // for (or where a variant supplies a frame for this shape).
+        const overlay = style.overlay;
+        const overlayFits = !overlay.buckets || overlay.buckets.includes(regions.bucket);
+        target.overlay = overlay.url && overlayFits
+            ? { url: overlay.url, zIndex: overlay.zIndex, fitMode: overlay.fitMode }
+            : { url: '', zIndex: overlay.zIndex, fitMode: overlay.fitMode };
+        if (overlay.url && !overlayFits) {
+            warnings.push(themeWarning('overlay_skipped', `กรอบเต็มแผ่นออกแบบไว้สำหรับกระดาษทรง ${overlay.buckets.join(', ')} จึงไม่ใส่บนกระดาษทรง ${regions.bucket} (กันภาพเบี้ยว)`));
+        } else if (overlay.url && !overlay.buckets && regions.bucket !== theme.sourceCanvas.bucket && overlay.fitMode !== 'contain') {
+            warnings.push(themeWarning('overlay_may_distort', `กรอบเต็มแผ่นออกแบบบนกระดาษทรง ${theme.sourceCanvas.bucket} อาจถูกตัดหรือยืดบนทรง ${regions.bucket}`));
+        }
+
+        const layers = [];
+        style.elements.forEach((el) => {
+            if (!el.url) return;
+            if (el.anchor.to === 'each-slot' || el.anchor.to === 'slot') {
+                const slots = el.anchor.to === 'each-slot'
+                    ? regions.slotRects
+                    : regions.slotRects.filter((slot) => slot.index === el.anchor.slot);
+                if (!slots.length) {
+                    warnings.push(themeWarning('slot_missing', `"${el.name}" ยึดกับรูปที่ ${el.anchor.slot} แต่ layout นี้ไม่มีรูปนั้น`, el.id));
+                    return;
+                }
+                slots.forEach((slot) => {
+                    const placed = placeOnSlot(el, slot, regions);
+                    layers.push({ el, id: el.anchor.to === 'each-slot' ? `ut_${el.id}_s${slot.index}` : `ut_${el.id}`, ...placed });
+                });
+                return;
+            }
+            const region = regions[el.anchor.to];
+            if (!region || region.width < 1 || region.height < 1) {
+                warnings.push(themeWarning('region_empty', `"${el.name}" ยึดกับ ${el.anchor.to} แต่ layout นี้ไม่มีพื้นที่ส่วนนั้น จึงวางเทียบทั้งแผ่นแทน`, el.id));
+            }
+            const area = region && region.width >= 1 && region.height >= 1 ? region : regions.canvas;
+            const size = sizeElement(el, area, regions);
+            const pos = placeInRegion(el, area, regions, size);
+            let layer = { el, id: `ut_${el.id}`, ...size, ...pos, rotation: el.rotation };
+            if (!el.allowOverflow) layer = keepInBand(layer, el.anchor.to, regions);
+            if (el.visible && el.placement === 'front' && el.avoidSlots) {
+                const box = rotatedBounds(layer.x, layer.y, layer.width, layer.height, layer.rotation);
+                if (photoCoverRatio(box, regions) > PHOTO_COVER_LIMIT) {
+                    const moved = nudgeOffPhotos(layer, regions);
+                    const movedBox = moved && rotatedBounds(moved.x, moved.y, moved.width, moved.height, moved.rotation);
+                    if (moved && photoCoverRatio(movedBox, regions) <= PHOTO_COVER_LIMIT) {
+                        layer = moved;
+                        warnings.push(themeWarning('nudged', `เลื่อน "${el.name}" ออกจากรูปถ่ายอัตโนมัติ`, el.id));
+                    } else {
+                        warnings.push(themeWarning('covers_photo', `"${el.name}" ทับรูปถ่ายและไม่มีที่ว่างให้เลื่อน`, el.id));
+                    }
+                }
+            }
+            layers.push(layer);
+        });
+
+        target.artboard = layers.map((layer) => ({
+            id: layer.id,
+            name: layer.el.name,
+            url: layer.el.url,
+            placement: layer.el.placement,
+            x: Math.round(layer.x),
+            y: Math.round(layer.y),
+            width: Math.round(layer.width),
+            height: Math.round(layer.height),
+            rotation: Math.round(layer.rotation * 10) / 10,
+            zIndex: layer.el.zIndex,
+            opacity: layer.el.opacity,
+            visible: layer.el.visible
+        }));
+
+        target.isCustom = true;
+        target.universalThemeId = theme.themeId;
+        const baseName = target.name.replace(/^[^(]+·\s*/, '').replace(/\(.*?\)/g, '').trim() || target.layoutId;
+        target.name = `${theme.name} · ${baseName}`;
+        target.templateId = `custom_${theme.themeId.replace(/^utheme_/, '')}_${target.type}_${target.layoutId}_${target.orientation}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        const result = normalizeTemplate(target);
+        result.artboard.forEach((layer) => {
+            if (layer.x < 0 || layer.y < 0 || layer.x + layer.width > result.canvas.width || layer.y + layer.height > result.canvas.height) {
+                warnings.push(themeWarning('outside_canvas', `"${layer.name}" ล้นขอบกระดาษ`, layer.id));
+            }
+        });
+        return { template: result, warnings, bucket: regions.bucket };
+    }
+
+    function applyUniversalTheme(universalTheme, targetTemplate) {
+        return applyUniversalThemeWithReport(universalTheme, targetTemplate).template;
+    }
+
+    function pickAlignment(position, start, length, low, high) {
+        if (length <= 0) return low;
+        const relative = (position - start) / length;
+        if (Math.abs(relative - 0.5) < 0.08) return 'center';
+        return relative < 0.5 ? low : high;
+    }
+
+    // Reads a finished template and turns each decoration into a placement
+    // rule: things in the header stay in the header, things in the footer stay
+    // in the footer, and everything is sized from the paper's short side.
+    // Applying the result back onto the same template reproduces it.
     function extractUniversalTheme(template, name) {
         const source = normalizeTemplate(template);
-        const cw = source.canvas.width || 600;
-        const ch = source.canvas.height || 1800;
+        const regions = computeThemeRegions(source);
         const themeId = `utheme_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
         const themeName = (name || source.name || 'Untitled Theme')
             .replace(/·.*$/, '')
             .replace(/\(.*?\)/g, '')
             .trim() || 'Universal Theme';
 
-        const artboard = (source.artboard || []).map((layer, index) => {
-            const w = Math.max(1, layer.width || 100);
-            const h = Math.max(1, layer.height || 100);
-            const aspect = w / h;
-            return {
+        const elements = (source.artboard || []).map((layer, index) => {
+            const width = Math.max(1, layer.width);
+            const height = Math.max(1, layer.height);
+            const cx = layer.x + width / 2;
+            const cy = layer.y + height / 2;
+            const box = rotatedBounds(layer.x, layer.y, width, height, layer.rotation);
+            const coversPhoto = photoCoverRatio(box, regions) > PHOTO_COVER_LIMIT;
+            let to = 'canvas';
+            if (!coversPhoto && regions.slotRects.length) {
+                if (cy < regions.slots.y && regions.header.height >= 1) to = 'header';
+                else if (cy > regions.slots.y + regions.slots.height && regions.footer.height >= 1) to = 'footer';
+            }
+            const region = regions[to];
+            const unit = to === 'canvas' ? 'region' : 'short';
+            const h = pickAlignment(cx, region.x, region.width, 'left', 'right');
+            const v = pickAlignment(cy, region.y, region.height, 'top', 'bottom');
+            const fitsRegion = to !== 'canvas' && width <= region.width + 1 && height <= region.height + 1;
+            // A decoration deliberately bleeding off the paper keeps doing so
+            // instead of being pulled back in.
+            const kept = keepInBand({ x: layer.x, y: layer.y, width, height, rotation: layer.rotation }, to, regions);
+            const allowOverflow = kept.x !== layer.x || kept.y !== layer.y;
+            const el = normalizeThemeElement({
                 id: layer.id || `ut_art_${index + 1}`,
                 name: layer.name || `Sticker ${index + 1}`,
-                url: layer.url || '',
-                placement: layer.placement === 'back' ? 'back' : 'front',
-                relX: layer.x / cw,
-                relY: layer.y / ch,
-                relWidth: layer.width / cw,
-                relHeight: layer.height / ch,
-                aspectRatio: aspect,
-                rotation: layer.rotation || 0,
-                zIndex: layer.zIndex || (index + 1),
-                opacity: typeof layer.opacity === 'number' ? layer.opacity : 1,
-                visible: layer.visible !== false,
-                scaleMode: 'width-relative'
-            };
+                url: layer.url,
+                placement: layer.placement,
+                anchor: { to, h, v, unit, dx: 0, dy: 0 },
+                size: { mode: 'short-side', value: width / regions.shortSide, max: fitsRegion ? 1 : null },
+                aspectRatio: width / height,
+                rotation: layer.rotation,
+                zIndex: layer.zIndex,
+                opacity: layer.opacity,
+                visible: layer.visible,
+                avoidSlots: !coversPhoto,
+                allowOverflow
+            }, index);
+            // Offsets that reproduce the exact source position from the anchor.
+            const base = placeInRegion(el, region, regions, { width, height });
+            const ux = unit === 'region' ? region.width : regions.shortSide;
+            const uy = unit === 'region' ? region.height : regions.shortSide;
+            el.anchor.dx = ux > 0 ? (layer.x - base.x) / ux : 0;
+            el.anchor.dy = uy > 0 ? (layer.y - base.y) / uy : 0;
+            return el;
         });
 
+        const overlayUrl = (source.overlay && source.overlay.url) || '';
         return {
+            schemaVersion: THEME_SCHEMA_VERSION,
             themeId,
             name: themeName,
             enabled: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             sourceCanvas: {
-                width: cw,
-                height: ch,
+                width: source.canvas.width,
+                height: source.canvas.height,
                 type: source.type,
-                orientation: source.orientation
+                orientation: source.orientation,
+                dpi: source.canvas.dpi,
+                bucket: regions.bucket
             },
             style: {
                 backgroundColor: source.canvas.backgroundColor || '#FFFFFF',
                 backgroundImage: source.canvas.backgroundImage || '',
                 backgroundFitMode: source.canvas.backgroundFitMode || 'cover',
                 overlay: {
-                    url: (source.overlay && source.overlay.url) || '',
+                    url: overlayUrl,
                     zIndex: (source.overlay && source.overlay.zIndex) || 100,
-                    fitMode: (source.overlay && source.overlay.fitMode) || 'cover'
+                    fitMode: (source.overlay && source.overlay.fitMode) || 'cover',
+                    buckets: overlayUrl ? [regions.bucket] : null
                 },
-                artboard
+                elements,
+                variants: {}
             }
         };
-    }
-
-    function applyUniversalTheme(universalTheme, targetTemplate) {
-        if (!universalTheme || !universalTheme.style) {
-            throw new Error('Universal Theme is invalid or missing style.');
-        }
-        const target = normalizeTemplate(targetTemplate);
-        const tw = target.canvas.width;
-        const th = target.canvas.height;
-        const style = universalTheme.style;
-
-        // 1. Background styling
-        target.canvas.backgroundColor = style.backgroundColor || '#FFFFFF';
-        target.canvas.backgroundImage = style.backgroundImage || '';
-        target.canvas.backgroundFitMode = style.backgroundFitMode || 'cover';
-
-        // 2. Overlay Frame PNG
-        target.overlay = {
-            url: (style.overlay && style.overlay.url) || '',
-            zIndex: (style.overlay && style.overlay.zIndex) || 100,
-            fitMode: (style.overlay && style.overlay.fitMode) || 'cover'
-        };
-
-        // 3. Artboard Stickers / Decorations
-        target.artboard = (style.artboard || []).map((layer, idx) => {
-            let lw, lh, lx, ly;
-            const scaleMode = layer.scaleMode || 'width-relative';
-
-            if (scaleMode === 'stretch') {
-                lw = Math.round(layer.relWidth * tw);
-                lh = Math.round(layer.relHeight * th);
-                lx = Math.round(layer.relX * tw);
-                ly = Math.round(layer.relY * th);
-            } else {
-                // width-relative: maintain sticker aspect ratio, scale relative to canvas width
-                lw = Math.round(layer.relWidth * tw);
-                const aspect = layer.aspectRatio || 1;
-                lh = Math.round(lw / aspect);
-                lx = Math.round(layer.relX * tw);
-                ly = Math.round(layer.relY * th);
-            }
-
-            return {
-                id: `ab_${Date.now().toString(36)}_${idx + 1}`,
-                name: layer.name || `Sticker ${idx + 1}`,
-                url: layer.url || '',
-                placement: layer.placement === 'back' ? 'back' : 'front',
-                x: lx,
-                y: ly,
-                width: Math.max(4, lw),
-                height: Math.max(4, lh),
-                rotation: layer.rotation || 0,
-                zIndex: layer.zIndex || (idx + 1),
-                opacity: typeof layer.opacity === 'number' ? layer.opacity : 1,
-                visible: layer.visible !== false
-            };
-        });
-
-        // 4. Metadata
-        target.isCustom = true;
-        target.universalThemeId = universalTheme.themeId;
-        const baseName = target.name.replace(/^[^(]+·\s*/, '').replace(/\(.*?\)/g, '').trim() || target.layoutId;
-        target.name = `${universalTheme.name} · ${baseName}`;
-        target.templateId = `custom_${universalTheme.themeId.replace(/^utheme_/, '')}_${target.type}_${target.layoutId}_${target.orientation}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-        return normalizeTemplate(target);
     }
 
     root.PhotoTemplateEngine = Object.freeze({
@@ -963,7 +1374,13 @@
         moveSlotLayer,
         validateTemplate,
         getCoverCrop,
+        THEME_SCHEMA_VERSION,
+        RATIO_BUCKETS,
+        getRatioBucket,
+        computeThemeRegions,
+        migrateUniversalTheme,
         extractUniversalTheme,
-        applyUniversalTheme
+        applyUniversalTheme,
+        applyUniversalThemeWithReport
     });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

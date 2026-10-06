@@ -1129,8 +1129,8 @@
         </div>
     </div>
 
-    <script src="template-engine.js?v=1.0"></script>
-    <script src="shared.js?v=2.9"></script>
+    <script src="template-engine.js?v=2.0"></script>
+    <script src="shared.js?v=3.1"></script>
     <script>
         const engine = window.PhotoTemplateEngine;
         let catalog = [];
@@ -2719,7 +2719,7 @@
                     bgStyle += ` background-image: url('${ut.style.backgroundImage}'); background-size: ${bgSize}; background-repeat: ${bgRep}; background-position: center;`;
                 }
 
-                const stickersCount = (ut.style.artboard || []).length;
+                const stickersCount = (ut.style.elements || ut.style.artboard || []).length;
                 const hasOverlay = !!(ut.style.overlay && ut.style.overlay.url);
 
                 card.innerHTML = `
@@ -2929,10 +2929,14 @@
             }));
 
             try {
-                const generated = UniversalThemeStore.applyToLayouts(activeUniversalThemeIdForApply, targetLayouts);
+                const { templates: generated, warnings } = UniversalThemeStore.applyToLayoutsWithReport(activeUniversalThemeIdForApply, targetLayouts);
                 closeApplyUniversalModal();
                 renderThemeManager();
-                toast(`🚀 สร้างและบันทึกธีมลงคลังสำเร็จ ${generated.length} แบบ!`);
+                const notable = warnings.filter(w => w.code !== 'nudged');
+                if (warnings.length) console.info('Universal Theme placement notes', warnings);
+                toast(notable.length
+                    ? `🚀 สร้างและบันทึกธีมลงคลังสำเร็จ ${generated.length} แบบ · ⚠️ ควรตรวจ ${notable.length} จุด: ${notable.slice(0, 3).map(w => `${w.name}: ${w.message}`).join(' / ')}`
+                    : `🚀 สร้างและบันทึกธีมลงคลังสำเร็จ ${generated.length} แบบ!`);
             } catch (err) {
                 console.error(err);
                 toast('เกิดข้อผิดพลาดในการ Apply ธีม: ' + err.message);
