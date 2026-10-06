@@ -2220,19 +2220,40 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         ctx.save();
         ctx.translate(x + width / 2, y + height / 2);
         ctx.rotate((slot.rotation * Math.PI) / 180);
-        ctx.beginPath();
-        ctx.rect(-width / 2, -height / 2, width, height);
-        ctx.clip();
+        // The photo fills `area`; the slot's frame shape decides what part of it stays visible.
+        let area = { x: -width / 2, y: -height / 2, w: width, h: height };
+        const shape = slot.shape || 'rectangle';
+        if (shape === 'stamp') {
+            // Real postage stamp: perforated white paper, photo inset inside it.
+            const stamp = engine.stampGeometry(width, height);
+            ctx.save();
+            ctx.translate(-width / 2, -height / 2);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill(new Path2D(stamp.path));
+            ctx.restore();
+            area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
+            ctx.beginPath();
+            ctx.rect(area.x, area.y, area.w, area.h);
+            ctx.clip();
+        } else if (shape !== 'rectangle') {
+            ctx.translate(-width / 2, -height / 2);
+            ctx.clip(new Path2D(engine.shapeSvgPath(shape, width, height)));
+            ctx.translate(width / 2, height / 2);
+        } else {
+            ctx.beginPath();
+            ctx.rect(-width / 2, -height / 2, width, height);
+            ctx.clip();
+        }
         if (image) {
             const crop = engine.getCoverCrop(
                 image.naturalWidth || image.width,
                 image.naturalHeight || image.height,
-                width,
-                height,
+                area.w,
+                area.h,
                 slot.focusX,
                 slot.focusY
             );
-            ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, -width / 2, -height / 2, width, height);
+            ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, area.x, area.y, area.w, area.h);
         } else {
             // Elegant 3:4 photo placeholder with camera icon & label
             ctx.fillStyle = '#F3F4F6';

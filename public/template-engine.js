@@ -512,7 +512,8 @@
                 rotation: number(slot.rotation, 0, -180, 180),
                 zIndex: Math.round(number(slot.zIndex, position + 1, -1000, 1000)),
                 focusX: number(slot.focusX, 0.5, 0, 1),
-                focusY: number(slot.focusY, 0.42, 0, 1)
+                focusY: number(slot.focusY, 0.42, 0, 1),
+                shape: SHAPE_IDS.includes(slot.shape) ? slot.shape : 'rectangle'
             }))
             .sort((a, b) => a.index - b.index)
             .map((slot, position) => ({ ...slot, index: position + 1 }));
@@ -606,6 +607,103 @@
             }
         });
         return { valid: errors.length === 0, errors, warnings, template: value };
+    }
+
+    // ---- Photo frame shapes ---------------------------------------------------------------
+    // Every shape is an SVG path in a w x h box with its origin at the top-left. The same string
+    // clips the photo on the kiosk canvas (new Path2D(d)) and the preview in the editor (CSS path()).
+    const SHAPES = [
+        { id: 'rectangle', label: 'สี่เหลี่ยมปกติ', labelEn: 'Rectangle' },
+        { id: 'rounded', label: 'มุมมน', labelEn: 'Rounded' },
+        { id: 'circle', label: 'วงกลม', labelEn: 'Circle' },
+        { id: 'oval', label: 'วงรี', labelEn: 'Oval' },
+        { id: 'heart', label: 'หัวใจ', labelEn: 'Heart' },
+        { id: 'diamond', label: 'ข้าวหลามตัด', labelEn: 'Diamond' },
+        { id: 'hexagon', label: 'หกเหลี่ยม', labelEn: 'Hexagon' },
+        { id: 'star', label: 'ดาว', labelEn: 'Star' },
+        { id: 'arch', label: 'ซุ้มประตู', labelEn: 'Arch' },
+        { id: 'stamp', label: 'แสตมป์', labelEn: 'Stamp' }
+    ];
+    const SHAPE_IDS = SHAPES.map((shape) => shape.id);
+    const fix = (value) => Math.round(value * 100) / 100;
+
+    function ellipsePath(cx, cy, rx, ry) {
+        return `M${fix(cx - rx)} ${fix(cy)}A${fix(rx)} ${fix(ry)} 0 1 0 ${fix(cx + rx)} ${fix(cy)}A${fix(rx)} ${fix(ry)} 0 1 0 ${fix(cx - rx)} ${fix(cy)}Z`;
+    }
+
+    // Closed polygon from unit-square points.
+    function polygonPath(points, w, h) {
+        return 'M' + points.map(([x, y]) => `${fix(x * w)} ${fix(y * h)}`).join('L') + 'Z';
+    }
+
+    // Five-point star scaled to fill the whole box.
+    function starPoints() {
+        const raw = [];
+        for (let k = 0; k < 10; k++) {
+            const angle = (-90 + k * 36) * Math.PI / 180;
+            const radius = k % 2 === 0 ? 1 : 0.42;
+            raw.push([Math.cos(angle) * radius, Math.sin(angle) * radius]);
+        }
+        const xs = raw.map((p) => p[0]);
+        const ys = raw.map((p) => p[1]);
+        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+        return raw.map(([x, y]) => [(x - minX) / (maxX - minX), (y - minY) / (maxY - minY)]);
+    }
+
+    // Heart from cubic curves in the unit square (tip at the bottom centre).
+    const HEART = [
+        ['M', 0.5, 1],
+        ['C', 0.15, 0.74, 0, 0.53, 0, 0.32],
+        ['C', 0, 0.13, 0.14, 0, 0.3, 0],
+        ['C', 0.4, 0, 0.47, 0.05, 0.5, 0.13],
+        ['C', 0.53, 0.05, 0.6, 0, 0.7, 0],
+        ['C', 0.86, 0, 1, 0.13, 1, 0.32],
+        ['C', 1, 0.53, 0.85, 0.74, 0.5, 1]
+    ];
+
+    // A real postage stamp: white paper whose four edges are perforated with semicircular
+    // notches. `path` is the paper outline, `inset` the rectangle where the photo goes.
+    function stampGeometry(w, h) {
+        const base = Math.min(w, h);
+        const r = Math.max(1.5, base * 0.032);
+        const margin = Math.min(r * 2.7, base * 0.3);
+        const pitch = r * 3.4;
+        const nx = Math.max(2, Math.round(w / pitch));
+        const ny = Math.max(2, Math.round(h / pitch));
+        const notch = (x, y) => `A${fix(r)} ${fix(r)} 0 0 0 ${fix(x)} ${fix(y)}`;
+        let d = 'M0 0';
+        for (let i = 0; i < nx; i++) { const cx = (i + 0.5) * w / nx; d += `L${fix(cx - r)} 0${notch(cx + r, 0)}`; }
+        d += `L${fix(w)} 0`;
+        for (let j = 0; j < ny; j++) { const cy = (j + 0.5) * h / ny; d += `L${fix(w)} ${fix(cy - r)}${notch(w, cy + r)}`; }
+        d += `L${fix(w)} ${fix(h)}`;
+        for (let i = nx - 1; i >= 0; i--) { const cx = (i + 0.5) * w / nx; d += `L${fix(cx + r)} ${fix(h)}${notch(cx - r, h)}`; }
+        d += `L0 ${fix(h)}`;
+        for (let j = ny - 1; j >= 0; j--) { const cy = (j + 0.5) * h / ny; d += `L0 ${fix(cy + r)}${notch(0, cy - r)}`; }
+        d += 'Z';
+        return { path: d, inset: { x: margin, y: margin, w: Math.max(1, w - 2 * margin), h: Math.max(1, h - 2 * margin) }, radius: r };
+    }
+
+    function shapeSvgPath(shape, w, h) {
+        switch (shape) {
+            case 'rounded': {
+                const r = Math.min(w, h) * 0.14;
+                return `M${fix(r)} 0H${fix(w - r)}A${fix(r)} ${fix(r)} 0 0 1 ${fix(w)} ${fix(r)}V${fix(h - r)}A${fix(r)} ${fix(r)} 0 0 1 ${fix(w - r)} ${fix(h)}H${fix(r)}A${fix(r)} ${fix(r)} 0 0 1 0 ${fix(h - r)}V${fix(r)}A${fix(r)} ${fix(r)} 0 0 1 ${fix(r)} 0Z`;
+            }
+            case 'circle': { const size = Math.min(w, h); return ellipsePath(w / 2, h / 2, size / 2, size / 2); }
+            case 'oval': return ellipsePath(w / 2, h / 2, w / 2, h / 2);
+            case 'heart':
+                return HEART.map(([cmd, ...n]) => cmd + n.map((v, i) => fix(v * (i % 2 === 0 ? w : h))).join(' ')).join('') + 'Z';
+            case 'diamond': return polygonPath([[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]], w, h);
+            case 'hexagon': return polygonPath([[0.5, 0], [1, 0.25], [1, 0.75], [0.5, 1], [0, 0.75], [0, 0.25]], w, h);
+            case 'star': return polygonPath(starPoints(), w, h);
+            case 'arch': {
+                const rx = w / 2;
+                const ry = Math.min(w / 2, h * 0.8);
+                return `M0 ${fix(h)}V${fix(ry)}A${fix(rx)} ${fix(ry)} 0 0 1 ${fix(w)} ${fix(ry)}V${fix(h)}Z`;
+            }
+            case 'stamp': return stampGeometry(w, h).path;
+            default: return `M0 0H${fix(w)}V${fix(h)}H0Z`;
+        }
     }
 
     function getCoverCrop(sourceWidth, sourceHeight, targetWidth, targetHeight, focusX, focusY) {
@@ -963,6 +1061,9 @@
         moveSlotLayer,
         validateTemplate,
         getCoverCrop,
+        SHAPES,
+        shapeSvgPath,
+        stampGeometry,
         extractUniversalTheme,
         applyUniversalTheme
     });
