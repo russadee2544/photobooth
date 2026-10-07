@@ -18,7 +18,9 @@
         @font-face { font-family: 'Cantarell'; font-style: normal; font-weight: 700; font-display: swap;
             src: url('/fonts/Cantarell-latin-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+2190-2193; }
         /* ===== Welcome: minimal type-led home (Prompt for Thai + Latin) ===== */
-        :root { --paper: #F3EEE4; --ink: #141210; --film-red: #D7362B; --sepia: #B98E62; }
+        :root { --paper: #F3EEE4; --ink: #141210; --film-red: #D7362B; --sepia: #B98E62;
+            /* Golden-ratio rhythm: widths and gaps step by phi (1.618). Sign = 1, headline = 1/phi of its width. */
+            --phi: 1.618; --g1: clamp(.9rem, 2vw, 2rem); --g2: calc(var(--g1) * 1.618); --g3: calc(var(--g1) * 2.618); }
         body.home-film { background: var(--paper); color: var(--ink); font-family: 'Cantarell', 'Prompt', 'Inter', system-ui, sans-serif; }
         body.home-film .kiosk-brand { color: var(--ink); font-weight: 700; letter-spacing: .32em; font-size: .8rem; }
         body.home-film .lang-btn, body.home-film .kiosk-header button { font-family: 'Cantarell', 'Prompt', sans-serif; font-weight: 400; }
@@ -36,14 +38,24 @@
             .film-layout { grid-template-columns: 1.15fr .85fr; justify-items: start; text-align: left; }
         }
 
-        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .74rem/1 'Cantarell', 'Prompt', sans-serif;
-            letter-spacing: .34em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .8rem/1 'Prompt', 'Cantarell', sans-serif;
+            letter-spacing: .3em; text-transform: uppercase; opacity: .9; white-space: nowrap; }
+        /* Booth sign in the page's own palette: paper, ink, film red (no new colours) */
+        .booth-sign { position: relative; display: inline-flex; align-items: center; gap: clamp(.8rem, 1.6vw, 1.6rem);
+            padding: clamp(1rem, 2vw, 1.7rem) clamp(1.6rem, 3vw, 2.8rem); background: #FBF8F2; color: var(--ink);
+            border: 3px solid var(--ink); border-radius: 1.2rem; box-shadow: 6px 6px 0 var(--ink); white-space: nowrap; }
+        .booth-sign::after { content: ''; position: absolute; inset: 6px; border: 2px dotted var(--film-red); border-radius: .8rem; pointer-events: none; }
+        .booth-sign .sign-icon { font-size: clamp(2.8rem, 5.6vw, 5.6rem); color: var(--film-red); font-variation-settings: 'FILL' 1; }
+        .booth-sign .sign-text { display: flex; flex-direction: column; align-items: flex-start; gap: .35em; }
+        .booth-sign b { font: 800 clamp(2rem, 4.9vw, 4.9rem)/1 'Prompt', sans-serif; letter-spacing: .07em; }
+        .booth-sign i { font: 700 clamp(1.05rem, 2.2vw, 2.1rem)/1 'Prompt', sans-serif; font-style: normal; letter-spacing: .32em; color: var(--film-red); }
         .film-kicker .dot { width: .4rem; height: .4rem; border-radius: 9999px; background: var(--film-red); }
         .film-kicker .rule { width: 2.5rem; height: 1px; background: var(--ink); opacity: .45; }
 
         /* Title: letters rise in one by one, then a slow wave keeps passing through them */
-        .film-title { font-family: 'Cantarell', 'Prompt', 'Inter', sans-serif; font-weight: 700; line-height: 1;
-            letter-spacing: .02em; text-transform: uppercase; font-size: clamp(3rem, 8vw, 8rem); margin: 1rem 0 1rem; white-space: nowrap; }
+        /* Headline: Prompt ExtraBold, heavy and compact so it reads from across the room */
+        .film-title { font-family: 'Prompt', 'Cantarell', 'Inter', sans-serif; font-weight: 800; line-height: .95;
+            letter-spacing: .005em; text-transform: uppercase; font-size: clamp(2.4rem, 6.5vw, 6.5rem); margin: var(--g1) 0 0; white-space: nowrap; }
         .film-title .ch { display: inline-block; opacity: 0; transform: translateY(.3em);
             animation: letterIn .9s cubic-bezier(.2,.7,.2,1) forwards, letterWave 7s ease-in-out infinite;
             animation-delay: calc(var(--i) * 70ms + 200ms), calc(var(--i) * 130ms + 2.8s); }
@@ -53,20 +65,26 @@
             9% { transform: translateY(-.07em); color: var(--film-red); }
         }
 
-        .film-tagline { font-weight: 400; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.6;
+        .film-tagline { margin-top: calc(var(--g1) / 1.618); font-weight: 400; font-size: clamp(1.1rem, 2.5vw, 2.5rem); line-height: 1.6;
             letter-spacing: .02em; opacity: .75; max-width: 32ch; }
 
         .film-price { margin-top: 1rem; font: 700 clamp(1rem, 1.6vw, 1.3rem)/1.2 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .06em; color: var(--film-red); }
         .film-price[hidden] { display: none; }
-        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: 1.6rem; font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
+        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: var(--g1); font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .24em; text-transform: uppercase; opacity: .6; justify-content: inherit; }
         @media (min-width: 900px) and (min-aspect-ratio: 1/1) { .film-meta { justify-content: flex-start; } }
 
-        .film-cta { margin-top: 2.2rem; display: inline-flex; align-items: center; gap: 1rem; padding: 1.15rem 2.4rem;
-            background: var(--ink); color: var(--paper); border-radius: 9999px; font: 400 clamp(1rem, 1.5vw, 1.2rem)/1 'Cantarell', 'Prompt', sans-serif;
-            letter-spacing: .08em; text-transform: uppercase; transition: transform .2s ease, background .2s ease; }
-        .film-cta:hover, .film-cta:focus-visible { background: #000; transform: translateY(-2px); outline: none; }
+        .film-cta { position: relative; margin-top: var(--g2); display: inline-flex; align-items: center; justify-content: center; gap: 1rem;
+            padding: 1.35rem 3rem; background: var(--film-red); color: #fff; border-radius: 9999px;
+            font: 700 clamp(1.25rem, 2vw, 1.7rem)/1.1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .04em;
+            box-shadow: 0 12px 30px rgba(215, 54, 43, .32); transition: transform .2s ease, background .2s ease; }
+        /* soft ring that expands and fades: invites a tap without flashing */
+        .film-cta::before { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 2px solid var(--film-red);
+            opacity: 0; animation: ctaRing 2.8s ease-out infinite; pointer-events: none; }
+        @keyframes ctaRing { 0% { transform: scale(1); opacity: .55; } 70%, 100% { transform: scale(1.12, 1.3); opacity: 0; } }
+        .film-cta .cta-icon { font-size: 1.5em; }
+        .film-cta:hover, .film-cta:focus-visible { background: #bd2c22; transform: translateY(-2px); outline: none; }
         .film-cta:active { transform: translateY(1px); }
         .film-cta .arrow { display: inline-block; animation: nudge 2s ease-in-out infinite; }
         @keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
@@ -100,10 +118,36 @@
         .rise { animation: riseIn .9s cubic-bezier(.2,.7,.2,1) both; }
         @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-        /* Phones are not the kiosk target: keep the text + button, drop the strip. */
-        @media (max-width: 599px) { .strip-wrap { display: none; } }
+        /* Portrait and narrow screens: one column where nothing overlaps, laid out on the golden ratio.
+           Column width W: the sign, the film strip and the button are all W wide; the headline is W/phi.
+           The column fills the screen height as two groups (who we are / what to do) with free space split
+           top : between : bottom = 1 : phi : 1, so tall tablets no longer bunch everything in the middle.
+           The film strip lies down as a row of four frames above the button, and the button is the biggest thing. */
+        @media not all and (min-width: 900px) and (min-aspect-ratio: 1/1) {
+            .film-stage { padding-top: clamp(4.5rem, 7vh, 7rem); padding-bottom: clamp(3.5rem, 6vh, 6rem); }
+            .film-layout { --W: min(92vw, 1120px); align-self: stretch; display: grid; gap: 0; justify-items: center; align-content: stretch;
+                grid-template-rows: minmax(0, 1fr) auto auto auto auto minmax(0, 1.618fr) auto auto auto minmax(0, 1fr); }
+            .film-layout > section { display: contents; }
+            .booth-sign { grid-row: 2; width: var(--W); justify-content: center; padding: clamp(1.1rem, 2.6vh, 2.2rem) 1.2rem; }
+            .booth-sign .sign-icon { font-size: clamp(3rem, 12vw, 9rem); }
+            .booth-sign b { font-size: clamp(2.1rem, 8.6vw, 7.2rem); }
+            .booth-sign i { font-size: clamp(1.1rem, 4.2vw, 3.4rem); }
+            .film-title { grid-row: 3; font-size: clamp(2.6rem, 11.1vw, 10.3rem); margin-top: var(--g2); }  /* 0.618 of W */
+            .film-tagline { grid-row: 4; text-align: center; margin-top: var(--g1); font-size: clamp(1.1rem, 3vw, 2.4rem); }
+            .film-price { grid-row: 5; }
+            .strip-wrap { grid-row: 7; transform: rotate(-1.5deg); }
+            .film-cta { grid-row: 8; margin-top: var(--g3); width: var(--W);
+                padding: clamp(1.4rem, 3.2vh, 2.6rem) 2rem; font-size: clamp(1.45rem, 4.4vw, 3.4rem); }
+            .film-meta { grid-row: 9; justify-content: center; margin-top: var(--g2); font-size: clamp(.74rem, 1.6vw, 1rem); }
+            .strip { width: calc(var(--W) * .94); grid-template-columns: repeat(4, 1fr); padding: 10px 10px 34px; gap: 8px; }
+            .frame-no { display: none; }
+            .film-counter { right: 6px; top: -1.35rem; }
+        }
+        /* Very small screens are not the kiosk target: keep the text and the button, drop the strip. */
+        @media (max-width: 420px) { .strip-wrap { display: none; } }
         @media (prefers-reduced-motion: reduce) {
             .film-stage *, .film-stage *::before, .film-stage *::after { animation: none !important; }
+            .film-cta::before { display: none; }
             .film-title .ch { opacity: 1; transform: none; }
             .frame .img { opacity: 1; }
         }
@@ -125,13 +169,13 @@
     <main id="main-content" class="film-stage flex-grow flex items-center justify-center relative z-10 px-6 pt-24 pb-20 sm:px-10 overflow-hidden" onclick="startSession()">
         <div class="film-layout">
             <section>
-                <div class="film-kicker rise" style="animation-delay:.05s"><span class="dot"></span>Photo Booth<span class="rule"></span>Est. 2026</div>
+                <div class="booth-sign rise" style="animation-delay:.05s" role="img" aria-label="Photo Booth ตู้ถ่ายรูป"><span class="material-symbols-outlined sign-icon" aria-hidden="true">photo_camera</span><span class="sign-text"><b>PHOTO BOOTH</b><i>ตู้ถ่ายรูป</i></span></div>
                 <h1 id="hero-title" class="film-title" aria-label="Memories">Memories</h1>
                 <p class="film-tagline rise" style="animation-delay:1s" data-i18n="home_subtitle">Premium digital photo booth experience.</p>
                 <p id="film-price" class="film-price rise" style="animation-delay:1.1s" hidden></p>
                 <div class="film-meta rise" style="animation-delay:1.15s" aria-hidden="true"><span>4 Poses</span><span>·</span><span>1 Strip</span><span>·</span><span>Print + GIF</span></div>
                 <button type="button" onclick="event.stopPropagation(); startSession()" class="film-cta rise" style="animation-delay:1.3s">
-                    <span data-i18n="home_start">Tap to Start</span><span class="arrow" aria-hidden="true">&rarr;</span>
+                    <span class="material-symbols-outlined cta-icon" aria-hidden="true">photo_camera</span><span data-i18n="home_start">Tap here to start</span><span class="arrow" aria-hidden="true">&rarr;</span>
                 </button>
             </section>
 
@@ -216,6 +260,31 @@
                 strip.dataset.stamp = "'" + String(d.getFullYear()).slice(2) + ' ' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getDate()).padStart(2, '0');
             }
             const frames = [...document.querySelectorAll('#film-strip .frame')];
+            // Real photos uploaded from the admin page (kept in IndexedDB) replace the drawn placeholders.
+            const loadPhotos = () => new Promise((resolve) => {
+                try {
+                    const open = indexedDB.open('pb_kiosk', 1);
+                    open.onupgradeneeded = () => open.result.createObjectStore('kv');
+                    open.onerror = () => resolve(null);
+                    open.onsuccess = () => {
+                        const db = open.result;
+                        const req = db.transaction('kv', 'readonly').objectStore('kv').get('home_photos');
+                        req.onsuccess = () => { db.close(); resolve(req.result || null); };
+                        req.onerror = () => { db.close(); resolve(null); };
+                    };
+                } catch (_) { resolve(null); }
+            });
+            loadPhotos().then((photos) => {
+                if (!Array.isArray(photos)) {
+                    try { photos = JSON.parse(localStorage.getItem('kiosk_home_photos') || '[]'); } catch (_) { photos = []; }
+                }
+                frames.forEach((frame, i) => {
+                    if (typeof photos[i] !== 'string' || !photos[i].startsWith('data:image/')) return;
+                    const img = frame.querySelector('.img');
+                    img.classList.remove('two');
+                    img.style.background = 'url("' + photos[i] + '") center / cover no-repeat';
+                });
+            });
             const counter = document.getElementById('film-counter');
             const setCounter = (n) => { if (counter) counter.innerHTML = 'FRAME <b>' + String(n).padStart(2, '0') + '</b>/04'; };
             if (reduce || !frames.length) {
@@ -375,6 +444,7 @@
             }
         }
 
+        let adminPinSubmitting = false;
         async function submitAdminPin() {
             const input = document.getElementById('admin-pin');
             const pin = input.value;
@@ -382,9 +452,13 @@
                 setPinError('กรุณากรอก PIN ให้ครบ 4 หลัก');
                 return;
             }
+            // The 4th digit auto-submits; Enter right after must not send a second attempt.
+            if (adminPinSubmitting) return;
+            adminPinSubmitting = true;
             const btn = document.getElementById('btn-admin-submit');
             if (btn) btn.textContent = 'กำลังตรวจสอบ...';
             const ok = await adminVerifyPin(pin);
+            adminPinSubmitting = false;
             if (btn) btn.textContent = 'เข้าสู่ระบบ';
             if (ok) {
                 window.location.href = 'admin.html';
@@ -398,7 +472,9 @@
                     box.classList.add('border-accent-coral', 'animate-pulse');
                     setTimeout(() => box.classList.remove('border-accent-coral', 'animate-pulse'), 800);
                 }
-                setPinError('PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+                setPinError(adminAuthError === 'pin_incorrect'
+                    ? 'PIN ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง'
+                    : adminPinErrorText(adminAuthError));
                 input.value = '';
                 input.focus();
             }

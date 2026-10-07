@@ -14,6 +14,7 @@ import { createJournal } from './jobs.mjs';
 import { createPrintService } from './print-pass.mjs';
 import { listPrinters, printerHealth, printImage } from './printer-win.mjs';
 import { createHeartbeat } from './heartbeat.mjs';
+import { ensureResetShortcut } from './shortcut.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -324,6 +325,7 @@ async function runKiosk(config) {
 
 const config = await loadConfig();
 if (config) {
+  ensureResetShortcut();
   await runKiosk(config);
 } else {
   await runSetup();

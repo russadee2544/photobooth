@@ -1,7 +1,7 @@
 import '@supabase/functions-js/edge-runtime.d.ts';
 import { withSupabase } from '@supabase/server';
 
-type Operation = 'status' | 'enroll' | 'verify' | 'change';
+type Operation = 'status' | 'enroll' | 'verify' | 'change' | 'recover';
 
 interface AdminPinRequest {
   operation?: unknown;
@@ -72,7 +72,7 @@ export default {
 
     const operation = typeof body.operation === 'string' ? body.operation as Operation : '';
     const kioskId = typeof body.kioskId === 'string' ? body.kioskId : '';
-    if (!['status', 'enroll', 'verify', 'change'].includes(operation) || !UUID.test(kioskId)) {
+    if (!['status', 'enroll', 'verify', 'change', 'recover'].includes(operation) || !UUID.test(kioskId)) {
       return Response.json({ error: 'invalid_request' }, { status: 400 });
     }
 
@@ -95,6 +95,14 @@ export default {
         lockedUntil: status?.locked_until ?? null,
         revision: status?.revision ?? 0,
       }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    // Forgotten PIN: removes it so the kiosk asks for a new one. The kiosk web page never calls this;
+    // it is only used by the "Reset admin PIN" shortcut that runs on the kiosk's Windows PC.
+    if (operation === 'recover') {
+      const { error } = await context.supabaseAdmin.rpc('recover_kiosk_admin_pin', { p_kiosk_id: kioskId });
+      if (error) return Response.json({ error: knownRpcError(error.message) }, { status: 409 });
+      return Response.json({ success: true }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     if (operation === 'enroll') {

@@ -155,7 +155,25 @@ function kioskCard(k: Kiosk): HTMLElement {
       h('div', { class: 'spark-title' }, h('span', {}, `รอบถ่าย ${k.series.length} วันล่าสุด`), h('span', {}, `รวม ${total.toLocaleString('th-TH')}`)),
       sparkline(k.series)),
     issues.length ? h('div', { class: 'issues' }, ...issues) : null,
-    live?.last_error ? h('div', { class: 'err' }, `${live.last_error}${live.last_error_at ? ` · ${ago(live.last_error_at)}` : ''}`) : null);
+    live?.last_error ? h('div', { class: 'err' }, `${live.last_error}${live.last_error_at ? ` · ${ago(live.last_error_at)}` : ''}`) : null,
+    resetPinControl(k));
+}
+
+// Forgotten admin PIN: removes it on the server; the kiosk asks for a new one next time Admin opens.
+function resetPinControl(k: Kiosk): HTMLElement {
+  const status = h('span', { class: 'sub', 'aria-live': 'polite' });
+  const button = h('button', { type: 'button' }, 'รีเซ็ต PIN แอดมิน');
+  button.addEventListener('click', async () => {
+    if (!window.confirm(`รีเซ็ต PIN แอดมินของ "${k.name}" ใช่ไหม?
+
+PIN เดิมจะถูกลบ และต้องตั้ง PIN ใหม่ที่หน้า Admin ของตู้`)) return;
+    button.disabled = true;
+    status.textContent = 'กำลังรีเซ็ต…';
+    const { error } = await client.rpc('owner_reset_kiosk_admin_pin', { p_kiosk_id: k.id });
+    button.disabled = false;
+    status.textContent = error ? 'รีเซ็ตไม่สำเร็จ ลองใหม่อีกครั้ง' : 'รีเซ็ตแล้ว เปิดหน้า Admin ที่ตู้เพื่อตั้ง PIN ใหม่';
+  });
+  return h('div', { class: 'card-actions' }, button, status);
 }
 
 function tile(label: string, value: string, alert = false): HTMLElement {

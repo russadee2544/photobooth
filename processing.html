@@ -87,7 +87,7 @@
 
                 // 2. Apply Dithering for the alternate version
                 if (Kiosk.paperMode.startsWith('thermal')) {
-                    statusText.innerText = "Generating Retro Dithered version...";
+                    statusText.innerText = "Generating black and white version...";
                     const workCanvas = document.getElementById('work-canvas');
                     workCanvas.width = colorCanvas.width;
                     workCanvas.height = colorCanvas.height;
@@ -95,9 +95,16 @@
                     ctx.drawImage(colorCanvas, 0, 0);
 
                     const imageData = ctx.getImageData(0, 0, workCanvas.width, workCanvas.height);
-                    const ditheredData = await ditherImageData(imageData);
-                    ctx.putImageData(ditheredData, 0, 0);
-                    await SessionAsync.set('dithered', workCanvas.toDataURL('image/png'));
+                    // Plain black-and-white photo (smooth greys, no dither dots). Luma plus a gentle contrast lift
+                    // so thermal paper does not print it flat; the Windows driver handles the paper's own halftone.
+                    const px = imageData.data;
+                    for (let i = 0; i < px.length; i += 4) {
+                        const luma = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+                        const v = Math.max(0, Math.min(255, (luma - 128) * 1.12 + 128));
+                        px[i] = px[i + 1] = px[i + 2] = v;
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                    await SessionAsync.set('dithered', workCanvas.toDataURL('image/jpeg', 0.92));
                 } else {
                     await SessionAsync.remove('dithered');
                 }

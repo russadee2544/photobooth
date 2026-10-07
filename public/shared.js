@@ -838,7 +838,7 @@ const i18n = {
         "brand": "MEMORIES",
         "home_subtitle": "Photo booth. Solo is great, squad is better.",
         "home_price": "Starting at {price}",
-        "home_start": "Tap to Start",
+        "home_start": "Tap here to start",
         "btn_back": "BACK",
         "layout_title": "Choose Your Layout",
         "layout_desc": "Select a frame style that matches your mood.",
@@ -878,7 +878,7 @@ const i18n = {
         "brand": "MEMORIES",
         "home_subtitle": "ตู้ถ่ายรูป ถ่ายคนเดียวก็ได้ ถ่ายเป็นแก๊งยิ่งดี",
         "home_price": "เริ่มต้น {price}",
-        "home_start": "แตะเพื่อเริ่มต้น",
+        "home_start": "แตะที่นี่เพื่อเริ่มถ่ายรูป",
         "btn_back": "กลับ",
         "layout_title": "เลือกรูปแบบ",
         "layout_desc": "เลือกสไตล์กรอบที่เข้ากับอารมณ์ของคุณ",
@@ -2450,19 +2450,40 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         ctx.save();
         ctx.translate(x + width / 2, y + height / 2);
         ctx.rotate((slot.rotation * Math.PI) / 180);
-        ctx.beginPath();
-        ctx.rect(-width / 2, -height / 2, width, height);
-        ctx.clip();
+        // The photo fills `area`; the slot's frame shape decides what part of it stays visible.
+        let area = { x: -width / 2, y: -height / 2, w: width, h: height };
+        const shape = slot.shape || 'rectangle';
+        if (shape === 'stamp') {
+            // Real postage stamp: perforated white paper, photo inset inside it.
+            const stamp = engine.stampGeometry(width, height);
+            ctx.save();
+            ctx.translate(-width / 2, -height / 2);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill(new Path2D(stamp.path));
+            ctx.restore();
+            area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
+            ctx.beginPath();
+            ctx.rect(area.x, area.y, area.w, area.h);
+            ctx.clip();
+        } else if (shape !== 'rectangle') {
+            ctx.translate(-width / 2, -height / 2);
+            ctx.clip(new Path2D(engine.shapeSvgPath(shape, width, height)));
+            ctx.translate(width / 2, height / 2);
+        } else {
+            ctx.beginPath();
+            ctx.rect(-width / 2, -height / 2, width, height);
+            ctx.clip();
+        }
         if (image) {
             const crop = engine.getCoverCrop(
                 image.naturalWidth || image.width,
                 image.naturalHeight || image.height,
-                width,
-                height,
+                area.w,
+                area.h,
                 slot.focusX,
                 slot.focusY
             );
-            ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, -width / 2, -height / 2, width, height);
+            ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, area.x, area.y, area.w, area.h);
         } else {
             // Elegant 3:4 photo placeholder with camera icon & label
             ctx.fillStyle = '#F3F4F6';
@@ -3407,9 +3428,11 @@ async function issueReplacementEntitlement(originalCode, reason) {
 
 // ======================== ADMIN AUTH (native/server verified PIN) ========================
 // Production never persists a PIN, PIN hash, device credentials, or an admin
-// capability. The localhost fallback below uses sessionStorage for testing only.
+// capability. The localhost fallback below keeps its demo PIN in localStorage for
+// testing only (sessionStorage lost it whenever the browser restarted).
 let cachedAdminAuthUntil = 0;
 let adminAuthError = '';
+let adminLockedUntil = null;
 let demoAdminPin = null;
 let demoAdminFailedCount = 0;
 let demoAdminLockedUntil = 0;
@@ -3424,7 +3447,7 @@ function isLocalAdminDemo() {
 
 if (isLocalAdminDemo()) {
     cachedAdminAuthUntil = Number(sessionStorage.getItem('pb_demo_admin_auth_until') || 0);
-    demoAdminPin = sessionStorage.getItem('pb_demo_admin_pin') || '1234';
+    demoAdminPin = localStorage.getItem('pb_demo_admin_pin') || sessionStorage.getItem('pb_demo_admin_pin') || '1234';
 }
 
 function setLocalAdminAuthUntil(value) {
@@ -3445,6 +3468,41 @@ function getAdminPin() {
 
 function getAdminAuthError() {
     return adminAuthError;
+}
+
+function getAdminLockedUntil() {
+    return adminLockedUntil;
+}
+
+// One wording for every PIN screen. Only `pin_incorrect` means the PIN itself was
+// wrong: a lockout, an unreachable agent, or a rejected device credential used to
+// read as "PIN ไม่ถูกต้อง" too, which looked like the saved PIN had been lost.
+function adminPinErrorText(code, lockedUntil = adminLockedUntil) {
+    const messages = {
+        pin_format: 'PIN ต้องเป็นตัวเลข 4 หลัก',
+        pin_mismatch: 'PIN ที่ยืนยันไม่ตรงกัน',
+        pin_unchanged: 'PIN ใหม่ต้องไม่ซ้ำกับ PIN ปัจจุบัน',
+        pin_incorrect: 'PIN ไม่ถูกต้อง',
+        pin_locked: 'กรอก PIN ผิดหลายครั้ง ระบบล็อกชั่วคราว (PIN ที่ถูกก็เข้าไม่ได้จนกว่าจะหมดเวลา)',
+        pin_setup_required: 'ต้องตั้ง PIN ก่อนเข้าใช้งาน',
+        pin_not_configured: 'ตู้นี้ยังไม่ได้ตั้ง PIN',
+        pin_already_configured: 'ตู้นี้ตั้ง PIN แล้ว',
+        device_not_provisioned: 'ยังไม่ได้ provision อุปกรณ์ จึงตรวจ PIN จริงไม่ได้',
+        device_unauthorized: 'ตู้นี้ยืนยันตัวตนกับเซิร์ฟเวอร์ไม่ผ่าน (credential ของตู้ถูกเปลี่ยนหรือยกเลิก)',
+        kiosk_not_active: 'ตู้นี้ถูกปิดใช้งานในระบบ',
+        device_unavailable: 'ติดต่อระบบยืนยันตัวตนของตู้ไม่ได้',
+        network_error: 'ติดต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',
+        bad_upstream_response: 'เซิร์ฟเวอร์ตอบกลับผิดปกติ ลองใหม่อีกครั้ง',
+        admin_pin_failed: 'เซิร์ฟเวอร์ตรวจ PIN ไม่สำเร็จ ลองใหม่อีกครั้ง',
+        pin_enroll_failed: 'ตั้ง PIN ไม่สำเร็จ',
+        pin_change_failed: 'เปลี่ยน PIN ไม่สำเร็จ'
+    };
+    let text = messages[code] || `ไม่สามารถยืนยัน PIN ได้ (${code || 'unknown'})`;
+    const lockTime = lockedUntil ? new Date(lockedUntil).getTime() : 0;
+    if (code === 'pin_locked' && lockTime > Date.now()) {
+        text += ` กรุณารอ ${Math.max(1, Math.ceil((lockTime - Date.now()) / 1000))} วินาที`;
+    }
+    return text;
 }
 
 function isAdminAuthed() {
@@ -3489,6 +3547,13 @@ async function adminGetPinStatus() {
     }
     try {
         const result = await bridge.adminPinStatus({ kioskId: Kiosk.kioskId });
+        if (!result || result.error) {
+            // A failed status call says nothing about the PIN. Showing the first-time
+            // setup screen here invited a "new" PIN that the server never saved.
+            adminAuthError = (result && result.error) || 'device_unavailable';
+            return { configured: true, authenticated: false, lockedUntil: null };
+        }
+        adminLockedUntil = result.lockedUntil || null;
         if (result && result.authenticated && Number(result.expiresAt || 0) > Date.now()) {
             cachedAdminAuthUntil = Number(result.expiresAt);
         }
@@ -3523,7 +3588,7 @@ async function adminEnrollPin(pin, confirmation) {
             return false;
         }
         demoAdminPin = pin;
-        sessionStorage.setItem('pb_demo_admin_pin', demoAdminPin);
+        localStorage.setItem('pb_demo_admin_pin', demoAdminPin);
         setLocalAdminAuthUntil(Date.now() + (15 * 60 * 1000));
         adminAuditLocal('demo_admin_pin_enrolled');
         return true;
@@ -3549,6 +3614,7 @@ async function adminEnrollPin(pin, confirmation) {
 
 async function adminVerifyPin(pin) {
     adminAuthError = '';
+    adminLockedUntil = null;
     pin = String(pin || '').trim();
     if (!adminPinIsValid(pin)) {
         adminAuthError = 'pin_format';
@@ -3561,6 +3627,7 @@ async function adminVerifyPin(pin) {
         }
         if (demoAdminLockedUntil > Date.now()) {
             adminAuthError = 'pin_locked';
+            adminLockedUntil = demoAdminLockedUntil;
             return false;
         }
         if (pin === demoAdminPin) {
@@ -3579,6 +3646,7 @@ async function adminVerifyPin(pin) {
             failedCount: demoAdminFailedCount,
             lockedUntil: demoAdminLockedUntil || null
         });
+        adminLockedUntil = demoAdminLockedUntil || null;
         adminAuthError = demoAdminLockedUntil > Date.now() ? 'pin_locked' : 'pin_incorrect';
         return false;
     }
@@ -3594,6 +3662,7 @@ async function adminVerifyPin(pin) {
             return true;
         }
         adminAuthError = (result && result.error) || 'pin_incorrect';
+        adminLockedUntil = (result && result.lockedUntil) || null;
     } catch (e) {
         console.error('Admin PIN verify error:', e);
         adminAuthError = 'device_unavailable';
@@ -3621,7 +3690,7 @@ async function adminChangePin(currentPin, nextPin, confirmation) {
     if (isLocalAdminDemo()) {
         if (!(await adminVerifyPin(currentPin))) return false;
         demoAdminPin = nextPin;
-        sessionStorage.setItem('pb_demo_admin_pin', demoAdminPin);
+        localStorage.setItem('pb_demo_admin_pin', demoAdminPin);
         demoAdminFailedCount = 0;
         demoAdminLockedUntil = 0;
         setLocalAdminAuthUntil(0);
