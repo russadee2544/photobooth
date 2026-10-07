@@ -36,14 +36,15 @@
             .film-layout { grid-template-columns: 1.15fr .85fr; justify-items: start; text-align: left; }
         }
 
-        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .74rem/1 'Cantarell', 'Prompt', sans-serif;
-            letter-spacing: .34em; text-transform: uppercase; opacity: .75; white-space: nowrap; }
+        .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .8rem/1 'Prompt', 'Cantarell', sans-serif;
+            letter-spacing: .3em; text-transform: uppercase; opacity: .9; white-space: nowrap; }
         .film-kicker .dot { width: .4rem; height: .4rem; border-radius: 9999px; background: var(--film-red); }
         .film-kicker .rule { width: 2.5rem; height: 1px; background: var(--ink); opacity: .45; }
 
         /* Title: letters rise in one by one, then a slow wave keeps passing through them */
-        .film-title { font-family: 'Cantarell', 'Prompt', 'Inter', sans-serif; font-weight: 700; line-height: 1;
-            letter-spacing: .02em; text-transform: uppercase; font-size: clamp(3rem, 8vw, 8rem); margin: 1rem 0 1rem; white-space: nowrap; }
+        /* Headline: Prompt ExtraBold, heavy and compact so it reads from across the room */
+        .film-title { font-family: 'Prompt', 'Cantarell', 'Inter', sans-serif; font-weight: 800; line-height: .95;
+            letter-spacing: .005em; text-transform: uppercase; font-size: clamp(3.2rem, 9.2vw, 9.2rem); margin: 1rem 0 1rem; white-space: nowrap; }
         .film-title .ch { display: inline-block; opacity: 0; transform: translateY(.3em);
             animation: letterIn .9s cubic-bezier(.2,.7,.2,1) forwards, letterWave 7s ease-in-out infinite;
             animation-delay: calc(var(--i) * 70ms + 200ms), calc(var(--i) * 130ms + 2.8s); }
@@ -111,6 +112,7 @@
         @media not all and (min-width: 900px) and (min-aspect-ratio: 1/1) {
             .film-layout { display: flex; flex-direction: column; align-items: center; gap: 0; }
             .film-layout > section { display: contents; }
+            .film-title { font-size: clamp(3.4rem, 15.5vw, 11.5rem); }  /* the column is full width: use it */
             .film-kicker { order: 1; } .film-title { order: 2; } .film-tagline { order: 3; text-align: center; }
             .film-price { order: 4; }
             .strip-wrap { order: 5; margin-top: clamp(1.2rem, 3vh, 2.6rem); transform: rotate(-1.5deg); }
