@@ -118,24 +118,28 @@
         .rise { animation: riseIn .9s cubic-bezier(.2,.7,.2,1) both; }
         @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-        /* Portrait and narrow screens: a single column where nothing overlaps. The film strip lies down
-           as a row of four frames between the text and the button, and the button is the biggest thing. */
+        /* Portrait and narrow screens: one column where nothing overlaps, laid out on the golden ratio.
+           Column width W: the sign, the film strip and the button are all W wide; the headline is W/phi.
+           The column fills the screen height as two groups (who we are / what to do) with free space split
+           top : between : bottom = 1 : phi : 1, so tall tablets no longer bunch everything in the middle.
+           The film strip lies down as a row of four frames above the button, and the button is the biggest thing. */
         @media not all and (min-width: 900px) and (min-aspect-ratio: 1/1) {
-            .film-layout { display: flex; flex-direction: column; align-items: center; gap: 0; }
+            .film-stage { padding-top: clamp(4.5rem, 7vh, 7rem); padding-bottom: clamp(3.5rem, 6vh, 6rem); }
+            .film-layout { --W: min(92vw, 1120px); align-self: stretch; display: grid; gap: 0; justify-items: center; align-content: stretch;
+                grid-template-rows: minmax(0, 1fr) auto auto auto auto minmax(0, 1.618fr) auto auto auto minmax(0, 1fr); }
             .film-layout > section { display: contents; }
-            .film-title { font-size: clamp(2.6rem, 11.1vw, 8rem); }  /* 0.618 of the sign's width */
-            .booth-sign { order: 1; width: min(92vw, 860px); justify-content: center; padding: clamp(1.1rem, 2.6vh, 2rem) 1.2rem; }
-            .booth-sign .sign-icon { font-size: clamp(3rem, 12vw, 7rem); }
-            .booth-sign b { font-size: clamp(2.1rem, 8.6vw, 5.6rem); }
-            .booth-sign i { font-size: clamp(1.1rem, 4.2vw, 2.6rem); }
-            .film-title { margin-top: var(--g2); }
-            .film-title { order: 2; } .film-tagline { order: 3; text-align: center; }
-            .film-price { order: 4; }
-            .strip-wrap { order: 5; margin-top: clamp(1.2rem, 3vh, 2.6rem); transform: rotate(-1.5deg); }
-            .film-cta { order: 6; margin-top: var(--g3); width: min(88vw, 680px);
-                padding: clamp(1.4rem, 3.2vh, 2.1rem) 2rem; font-size: clamp(1.45rem, 4.4vw, 2.4rem); }
-            .film-meta { order: 7; justify-content: center; margin-top: var(--g2); }
-            .strip { width: min(78vw, 560px); grid-template-columns: repeat(4, 1fr); padding: 10px 10px 34px; gap: 8px; }
+            .booth-sign { grid-row: 2; width: var(--W); justify-content: center; padding: clamp(1.1rem, 2.6vh, 2.2rem) 1.2rem; }
+            .booth-sign .sign-icon { font-size: clamp(3rem, 12vw, 9rem); }
+            .booth-sign b { font-size: clamp(2.1rem, 8.6vw, 7.2rem); }
+            .booth-sign i { font-size: clamp(1.1rem, 4.2vw, 3.4rem); }
+            .film-title { grid-row: 3; font-size: clamp(2.6rem, 11.1vw, 10.3rem); margin-top: var(--g2); }  /* 0.618 of W */
+            .film-tagline { grid-row: 4; text-align: center; margin-top: var(--g1); font-size: clamp(1.1rem, 3vw, 2.4rem); }
+            .film-price { grid-row: 5; }
+            .strip-wrap { grid-row: 7; transform: rotate(-1.5deg); }
+            .film-cta { grid-row: 8; margin-top: var(--g3); width: var(--W);
+                padding: clamp(1.4rem, 3.2vh, 2.6rem) 2rem; font-size: clamp(1.45rem, 4.4vw, 3.4rem); }
+            .film-meta { grid-row: 9; justify-content: center; margin-top: var(--g2); font-size: clamp(.74rem, 1.6vw, 1rem); }
+            .strip { width: calc(var(--W) * .94); grid-template-columns: repeat(4, 1fr); padding: 10px 10px 34px; gap: 8px; }
             .frame-no { display: none; }
             .film-counter { right: 6px; top: -1.35rem; }
         }
