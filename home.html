@@ -250,6 +250,16 @@
                 strip.dataset.stamp = "'" + String(d.getFullYear()).slice(2) + ' ' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getDate()).padStart(2, '0');
             }
             const frames = [...document.querySelectorAll('#film-strip .frame')];
+            // Real photos uploaded from the admin page replace the drawn placeholders, frame by frame.
+            try {
+                const photos = JSON.parse(localStorage.getItem('kiosk_home_photos') || '[]');
+                frames.forEach((frame, i) => {
+                    if (typeof photos[i] !== 'string' || !photos[i].startsWith('data:image/')) return;
+                    const img = frame.querySelector('.img');
+                    img.classList.remove('two');
+                    img.style.background = 'url("' + photos[i] + '") center / cover no-repeat';
+                });
+            } catch (_) { /* keep the drawn placeholders */ }
             const counter = document.getElementById('film-counter');
             const setCounter = (n) => { if (counter) counter.innerHTML = 'FRAME <b>' + String(n).padStart(2, '0') + '</b>/04'; };
             if (reduce || !frames.length) {

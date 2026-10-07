@@ -749,6 +749,22 @@
             <p id="retention-note" class="text-xs text-gray-500 mt-4">ระบบจะเชื่อม Google Drive หรือบริการอื่นเมื่อกำหนดปลายทางและสิทธิ์เข้าถึงแล้ว</p>
         </div>
 
+        <div id="home-photos-card" class="bg-gray-800 rounded-2xl p-6 border border-gray-700 mt-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-accent-blue">photo_library</span>
+                        รูปตัวอย่างหน้าแรก
+                    </h2>
+                    <p class="text-gray-400 text-xs mt-1">อัปโหลดรูปจริง 4 รูปให้แสดงในแถบฟิล์มหน้าแรก (ตัดเป็นสัดส่วน 4:3 ให้อัตโนมัติ) ช่องที่ว่างจะใช้ภาพวาดเดิม</p>
+                </div>
+                <button onclick="resetHomePhotos()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold">ใช้ภาพเดิมทั้งหมด</button>
+            </div>
+            <div id="home-photo-slots" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+            <input id="home-photo-input" type="file" accept="image/*" class="hidden">
+            <p id="home-photos-status" class="text-xs text-gray-400 mt-4 min-h-4" aria-live="polite"></p>
+        </div>
+
         <div id="event-drive-card" class="bg-gray-800 rounded-2xl p-6 border border-gray-700 mt-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                 <div>
@@ -864,6 +880,86 @@
         const DRIVE_ROOT_FOLDER = 'Photobooth Events';
         let driveToken = null;
         let eventSessions = [];
+
+        // ---- Home page sample photos (stored on this kiosk; kiosk_* keys survive session resets) ----
+        const HOME_PHOTO_KEY = 'kiosk_home_photos';
+        let homePhotoTarget = 0;
+        function homePhotos() {
+            try {
+                const list = JSON.parse(localStorage.getItem(HOME_PHOTO_KEY) || '[]');
+                return [0, 1, 2, 3].map((i) => (typeof list[i] === 'string' ? list[i] : ''));
+            } catch (_) { return ['', '', '', '']; }
+        }
+        function saveHomePhotos(list) {
+            try {
+                if (list.some(Boolean)) localStorage.setItem(HOME_PHOTO_KEY, JSON.stringify(list));
+                else localStorage.removeItem(HOME_PHOTO_KEY);
+                return true;
+            } catch (_) { return false; }
+        }
+        function renderHomePhotos() {
+            const holder = document.getElementById('home-photo-slots');
+            if (!holder) return;
+            holder.innerHTML = '';
+            homePhotos().forEach((src, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'flex flex-col gap-2';
+                const pick = document.createElement('button');
+                pick.type = 'button';
+                pick.className = 'relative w-full rounded-lg overflow-hidden border border-dashed border-gray-600 bg-gray-900 hover:border-accent-blue flex items-center justify-center text-gray-500 text-xs font-bold';
+                pick.style.aspectRatio = '4 / 3';
+                if (src) { pick.style.background = 'url("' + src + '") center / cover'; pick.style.borderStyle = 'solid'; }
+                else pick.textContent = '+ รูปที่ ' + (i + 1);
+                pick.onclick = () => { homePhotoTarget = i; const input = document.getElementById('home-photo-input'); input.value = ''; input.click(); };
+                cell.appendChild(pick);
+                if (src) {
+                    const del = document.createElement('button');
+                    del.type = 'button';
+                    del.className = 'text-xs text-gray-400 hover:text-red-400 font-bold';
+                    del.textContent = 'ลบรูปที่ ' + (i + 1);
+                    del.onclick = () => { const list = homePhotos(); list[i] = ''; saveHomePhotos(list); renderHomePhotos(); };
+                    cell.appendChild(del);
+                }
+                holder.appendChild(cell);
+            });
+        }
+        function resetHomePhotos() { saveHomePhotos(['', '', '', '']); renderHomePhotos(); document.getElementById('home-photos-status').textContent = 'กลับไปใช้ภาพเดิมแล้ว'; }
+        // Center-crop to 4:3 and shrink, so four photos stay well inside the browser's storage limit.
+        function resizeToFrame(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const W = 720, H = 540;
+                    const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+                    const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = W; canvas.height = H;
+                    canvas.getContext('2d').drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL('image/jpeg', 0.82));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad_image')); };
+                img.src = url;
+            });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHomePhotos();
+            const input = document.getElementById('home-photo-input');
+            if (!input) return;
+            input.addEventListener('change', async () => {
+                const file = input.files && input.files[0];
+                const status = document.getElementById('home-photos-status');
+                if (!file) return;
+                try {
+                    const list = homePhotos();
+                    list[homePhotoTarget] = await resizeToFrame(file);
+                    if (!saveHomePhotos(list)) { status.textContent = 'บันทึกไม่ได้ (พื้นที่เก็บของเบราว์เซอร์เต็ม) ลองลบรูปเก่าก่อน'; return; }
+                    renderHomePhotos();
+                    status.textContent = 'บันทึกรูปที่ ' + (homePhotoTarget + 1) + ' แล้ว จะแสดงที่หน้าแรกทันที';
+                } catch (_) { status.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพที่เปิดได้'; }
+            });
+        });
 
         function driveSettings() {
             try { return JSON.parse(localStorage.getItem('kiosk_drive_settings') || '{}'); } catch (_) { return {}; }
