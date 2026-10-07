@@ -180,6 +180,7 @@ const Kiosk = {
 // The catalog is local-first so configured events keep working offline.
 // ============================================================
 const TEMPLATE_CATALOG_KEY = 'kiosk_template_catalog_v1';
+const isSyncedTemplateId = (id) => typeof id === 'string' && id.startsWith('synced_');
 
 const TemplateCatalog = {
     load() {
@@ -195,11 +196,15 @@ const TemplateCatalog = {
         engine.createDefaultTemplates().forEach(template => byId.set(template.templateId, template));
         if (Array.isArray(stored)) {
             stored.forEach(template => {
+                if (isSyncedTemplateId(template && template.templateId)) return;
                 const normalized = engine.normalizeTemplate(template);
                 byId.set(normalized.templateId, normalized);
             });
         }
-        return Array.from(byId.values());
+        // Themes from the central library: this kiosk's default theme comes first so it is
+        // what a layout uses unless the customer picks another one.
+        const synced = typeof window !== 'undefined' && window.ThemeLibrary ? window.ThemeLibrary.templates() : { first: [], rest: [] };
+        return [...synced.first, ...byId.values(), ...synced.rest];
     },
     loadStored() {
         let stored = [];
@@ -225,6 +230,7 @@ const TemplateCatalog = {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('Template engine is unavailable.');
         const normalized = (Array.isArray(templates) ? templates : [])
+            .filter(template => !isSyncedTemplateId(template && template.templateId))
             .map(template => engine.normalizeTemplate(template));
         localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(normalized));
         return normalized;
@@ -371,6 +377,160 @@ const UniversalThemeStore = {
     }
 };
 if (typeof window !== 'undefined') window.UniversalThemeStore = UniversalThemeStore;
+
+// ============================================================
+// THEME LIBRARY (shared by every kiosk in the workspace)
+// The server keeps the themes and this kiosk's choices (on/off, default, pinned version,
+// small overrides). The kiosk keeps a copy in its own IndexedDB so it prints offline,
+// and syncs only on the welcome page so a theme never changes during a session.
+// ============================================================
+const ThemeLibrary = (() => {
+    const DB_NAME = 'pb_themes';
+    const STORE = 'kv';
+    const MANIFEST_KEY = 'manifest';
+    let dbPromise = null;
+    let manifest = null;
+    const docs = new Map(); // `${themeId}@${version}` -> Universal Theme doc
+    let built = { first: [], rest: [] };
+    let syncing = null;
+
+    const docKey = (themeId, version) => `doc:${themeId}@${version}`;
+    const device = () => (typeof window !== 'undefined' ? window.PhotoboothDevice : null);
+
+    function openDb() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB not supported')); return; }
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+        return dbPromise;
+    }
+    async function idb(mode, run) {
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, mode);
+            const req = run(tx.objectStore(STORE));
+            tx.oncomplete = () => resolve(req ? req.result : undefined);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+    const idbGet = (key) => idb('readonly', store => store.get(key));
+    const idbSet = (key, value) => idb('readwrite', store => store.put(value, key));
+    const idbKeys = () => idb('readonly', store => store.getAllKeys());
+    const idbDel = (key) => idb('readwrite', store => store.delete(key));
+
+    function activeThemes() {
+        return (manifest && Array.isArray(manifest.themes) ? manifest.themes : [])
+            .filter(theme => theme.setting && theme.setting.enabled !== false && theme.version);
+    }
+
+    function rebuild() {
+        const engine = typeof window !== 'undefined' ? window.PhotoTemplateEngine : null;
+        built = { first: [], rest: [] };
+        if (!engine) return;
+        const presets = engine.createDefaultTemplates();
+        for (const entry of activeThemes()) {
+            const doc = docs.get(docKey(entry.themeId, entry.version));
+            if (!doc) continue;
+            let theme;
+            try {
+                theme = engine.applyThemeOverrides({ ...doc, themeId: 'synced', name: entry.name }, entry.setting.overrides);
+            } catch (error) {
+                console.warn('Synced theme skipped', entry.themeId, error);
+                continue;
+            }
+            const target = entry.setting.isDefault ? built.first : built.rest;
+            for (const preset of presets) {
+                const template = engine.applyUniversalTheme(theme, engine.clone(preset));
+                template.templateId = `synced_${entry.themeId}_${preset.type}_${preset.layoutId}_${preset.orientation}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+                template.enabled = true;
+                target.push(template);
+            }
+        }
+    }
+
+    async function loadCache() {
+        try {
+            manifest = (await idbGet(MANIFEST_KEY)) || null;
+            for (const entry of activeThemes()) {
+                const key = docKey(entry.themeId, entry.version);
+                const doc = await idbGet(key);
+                if (doc) docs.set(key, doc);
+            }
+        } catch (error) {
+            console.warn('Theme cache unavailable', error);
+        }
+        rebuild();
+    }
+
+    const ready = typeof window !== 'undefined' ? loadCache() : Promise.resolve();
+
+    async function runSync() {
+        const bridge = device();
+        if (!bridge || typeof bridge.themeManifest !== 'function') return { success: false, error: 'bridge_unavailable' };
+        const next = await bridge.themeManifest({});
+        if (!next || !next.success || !Array.isArray(next.themes)) return { success: false, error: (next && next.error) || 'manifest_failed' };
+
+        const wanted = next.themes.filter(theme => theme.setting && theme.setting.enabled !== false && theme.version);
+        let downloaded = 0;
+        const failed = [];
+        for (const entry of wanted) {
+            const key = docKey(entry.themeId, entry.version);
+            if (docs.has(key)) continue;
+            const cached = await idbGet(key).catch(() => null);
+            if (cached) { docs.set(key, cached); continue; }
+            const reply = await bridge.themeFetch({ themeId: entry.themeId, version: entry.version });
+            if (!reply || !reply.success || !reply.doc) { failed.push(entry.themeId); continue; }
+            await idbSet(key, reply.doc);
+            docs.set(key, reply.doc);
+            downloaded += 1;
+        }
+
+        manifest = { rev: next.rev, themes: next.themes, syncedAt: new Date().toISOString() };
+        await idbSet(MANIFEST_KEY, manifest);
+        // Drop versions nothing points at any more (kept: every version still in use).
+        const keep = new Set(wanted.map(entry => docKey(entry.themeId, entry.version)));
+        for (const key of await idbKeys().catch(() => [])) {
+            if (typeof key === 'string' && key.startsWith('doc:') && !keep.has(key)) {
+                await idbDel(key).catch(() => {});
+                docs.delete(key);
+            }
+        }
+        rebuild();
+        return { success: failed.length === 0, rev: next.rev, themes: next.themes.length, downloaded, failed };
+    }
+
+    return {
+        ready,
+        templates() { return built; },
+        manifest() { return manifest; },
+        /** Fetch what changed on the server. Call only on the welcome page or the admin page. */
+        sync() {
+            if (!syncing) syncing = ready.then(runSync).catch(error => ({ success: false, error: String(error && error.message || error) }))
+                .finally(() => { syncing = null; });
+            return syncing;
+        },
+        /** The doc a kiosk uses for one theme (cached copy), with its overrides applied. */
+        async themeDoc(themeId, version) {
+            const key = docKey(themeId, version);
+            if (docs.has(key)) return docs.get(key);
+            const cached = await idbGet(key).catch(() => null);
+            if (cached) { docs.set(key, cached); return cached; }
+            const bridge = device();
+            const reply = bridge && typeof bridge.themeFetch === 'function' ? await bridge.themeFetch({ themeId, version }) : null;
+            if (!reply || !reply.success) return null;
+            await idbSet(key, reply.doc).catch(() => {});
+            docs.set(key, reply.doc);
+            return reply.doc;
+        }
+    };
+})();
+if (typeof window !== 'undefined') window.ThemeLibrary = ThemeLibrary;
 
 // ============================================================
 // INDEXEDDB STORAGE for large payloads (photos, composed result)
@@ -2405,6 +2565,7 @@ async function composeTemplateBySchema(photos, templateName, outputWidth, custom
 
 async function composePhotoByMode(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '4', layoutSize = null) {
     const mode = Kiosk.paperMode || 'photo4x6_dual';
+    await ThemeLibrary.ready;
     const schema = TemplateCatalog.current(layoutStr, mode);
     if (window.PhotoTemplateEngine && schema) {
         return composeTemplateBySchema(photos, templateName, outputWidth, customThemeObj, schema, mode);

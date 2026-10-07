@@ -67,3 +67,8 @@ import_map = "./functions/session-photo/deno.json"
 enabled = true
 verify_jwt = false
 import_map = "./functions/kiosk-heartbeat/deno.json"
+
+[functions.kiosk-themes]
+enabled = true
+verify_jwt = false
+import_map = "./functions/kiosk-themes/deno.json"

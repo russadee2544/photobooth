@@ -71,8 +71,8 @@
     <!-- Flash Overlay -->
     <div id="flash-overlay" class="flash-overlay"></div>
 
-    <script src="template-engine.js?v=1.0"></script>
-    <script src="shared.js?v=2.9"></script>
+    <script src="template-engine.js?v=2.2"></script>
+    <script src="shared.js?v=3.3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const video = document.getElementById('video-feed');
@@ -91,6 +91,7 @@
             const retakeIdx = urlParams.get('retake');
             const isRetake = retakeIdx !== null;
 
+            if (window.ThemeLibrary) await ThemeLibrary.ready;
             const layoutStr = Session.layout || '4_1x1';
             let requiredShots = TemplateCatalog.requiredShots(layoutStr);
             let ratio = '1x1';

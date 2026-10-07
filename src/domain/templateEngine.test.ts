@@ -23,6 +23,7 @@ type Engine = {
   applyUniversalTheme: (universalTheme: any, targetTemplate: any) => any;
   applyUniversalThemeWithReport: (universalTheme: any, targetTemplate: any) => { template: any; warnings: { code: string; elementId?: string }[]; bucket: string };
   migrateUniversalTheme: (theme: any) => any;
+  applyThemeOverrides: (theme: any, overrides: any) => any;
   computeThemeRegions: (template: any) => any;
   getRatioBucket: (width: number, height: number) => string;
   normalizeSlice: (source: any) => any;
@@ -618,6 +619,67 @@ describe('PhotoTemplateEngine', () => {
       expect(card.overlay.url).toBe(IMG);
       expect(card.overlay.slice).toEqual({ top: 30, right: 30, bottom: 30, left: 30 });
       expect(warnings.map((w) => w.code)).not.toContain('overlay_skipped');
+    });
+  });
+
+  describe('Kiosk overrides (phase 4)', () => {
+    const IMG = 'data:image/png;base64,AAAA';
+
+    function sharedTheme() {
+      const source = engine.createTemplate('3_1x1', '2x6');
+      const slotsTop = Math.min(...source.slots.map((s: any) => s.y));
+      source.artboard = [
+        { id: 'title', name: 'Title', type: 'text', text: '{event_name}', x: 60, y: Math.round(slotsTop / 2 - 25), width: 480, height: 50, fontSize: 30 },
+        { id: 'logo', name: 'Logo', url: IMG, x: 200, y: 1700, width: 200, height: 80 }
+      ];
+      source.canvas.backgroundColor = '#ffffff';
+      return engine.extractUniversalTheme(source, 'Shared');
+    }
+
+    it('changes only what the kiosk overrode', () => {
+      const theme = sharedTheme();
+      const out = engine.applyThemeOverrides(theme, {
+        backgroundColor: '#112233',
+        elements: { title: { text: 'งานแต่ง A & B', color: '#ff0000' }, logo: { visible: false }, ghost: { visible: false } }
+      });
+      expect(out.style.backgroundColor).toBe('#112233');
+      const title = out.style.elements.find((e: any) => e.id === 'title');
+      const original = theme.style.elements.find((e: any) => e.id === 'title');
+      expect(title).toMatchObject({ text: 'งานแต่ง A & B', color: '#ff0000' });
+      expect(title.anchor).toEqual(original.anchor);
+      expect(title.size).toEqual(original.size);
+      expect(out.style.elements.find((e: any) => e.id === 'logo').visible).toBe(false);
+      expect(theme.style.backgroundColor).toBe('#ffffff'); // the shared theme is not mutated
+
+      const applied = engine.applyUniversalTheme(out, engine.createTemplate('4_3x4', '4x6-portrait'));
+      expect(applied.canvas.backgroundColor).toBe('#112233');
+      expect(applied.artboard.find((l: any) => l.name === 'Title').text).toBe('งานแต่ง A & B');
+      expect(applied.artboard.find((l: any) => l.name === 'Logo').visible).toBe(false);
+    });
+
+    it('keeps overrides valid and ignores junk', () => {
+      const theme = sharedTheme();
+      const out = engine.applyThemeOverrides(theme, {
+        backgroundColor: 'red',
+        elements: { title: { anchor: { dx: 0.05, to: 'slot' }, size: { value: 0.5, mode: 'stretch' }, opacity: 7, id: 'hijack' } }
+      });
+      expect(out.style.backgroundColor).toBe('#ffffff');
+      const title = out.style.elements.find((e: any) => e.id === 'title');
+      const original = theme.style.elements.find((e: any) => e.id === 'title');
+      expect(title.anchor).toEqual({ ...original.anchor, dx: 0.05 });
+      expect(title.size).toEqual({ ...original.size, value: 0.5 });
+      expect(title.opacity).toBe(1);
+      expect(engine.applyThemeOverrides(theme, null).style).toEqual(engine.migrateUniversalTheme(theme).style);
+    });
+
+    it('keeps element ids when a theme is opened, edited and saved again', () => {
+      const theme = sharedTheme();
+      const ids = theme.style.elements.map((e: any) => e.id).sort();
+      const opened = engine.applyUniversalTheme(theme, engine.createTemplate('3_1x1', '2x6'));
+      const again = engine.extractUniversalTheme(opened, 'Shared v2');
+      expect(again.style.elements.map((e: any) => e.id).sort()).toEqual(ids);
+      const twice = engine.extractUniversalTheme(engine.applyUniversalTheme(again, engine.createTemplate('3_1x1', '2x6')), 'Shared v3');
+      expect(twice.style.elements.map((e: any) => e.id).sort()).toEqual(ids);
     });
   });
 });

@@ -848,6 +848,26 @@
             </div>
         </div>
 
+        <!-- Theme Library (shared by every kiosk) -->
+        <div id="theme-library" class="bg-white p-5 rounded-2xl border border-sky-200 flex flex-col gap-4 shadow-xs">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-sky-500 text-white grid place-items-center shadow-xs">
+                        <span class="material-symbols-outlined text-2xl">cloud_sync</span>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-gray-900 text-base">คลังธีมกลาง (ทุกตู้)</h2>
+                        <p class="text-xs text-gray-600 mt-0.5">ธีมที่เผยแพร่แล้วจะ sync ไปทุกตู้ ตู้นี้เลือกเปิด/ปิด ตั้งเป็นค่าเริ่มต้น ล็อกเวอร์ชัน หรือปรับเฉพาะตู้นี้ได้</p>
+                        <p id="theme-library-status" class="text-[11px] text-gray-500 mt-0.5"></p>
+                    </div>
+                </div>
+                <button type="button" onclick="syncThemeLibrary(true)" class="editor-button py-2 px-4 rounded-xl font-bold text-xs flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">sync</span> Sync ตอนนี้
+                </button>
+            </div>
+            <div id="theme-library-list" class="flex flex-col gap-3"></div>
+        </div>
+
         <!-- Filter & Search Toolbar -->
         <div class="bg-white px-5 py-3.5 rounded-2xl border border-gray-200 flex flex-wrap items-center justify-between gap-4 shadow-xs">
             <div class="flex items-center gap-2 flex-wrap flex-1 min-w-[280px]">
@@ -1139,8 +1159,8 @@
         </div>
     </div>
 
-    <script src="template-engine.js?v=2.1"></script>
-    <script src="shared.js?v=3.2"></script>
+    <script src="template-engine.js?v=2.2"></script>
+    <script src="shared.js?v=3.3"></script>
     <script>
         const engine = window.PhotoTemplateEngine;
         let catalog = [];
@@ -1617,6 +1637,9 @@
             const status = await adminGetPinStatus();
             if (!status.authenticated) { window.location.href = `admin.html${location.search}`; return; }
             
+            await ThemeLibrary.ready;
+            renderThemeLibrary();
+            syncThemeLibrary(false);
             catalog = TemplateCatalog.load();
             const presets = TemplateCatalog.loadPresets();
             const customThemes = TemplateCatalog.loadCustom();
@@ -2846,6 +2869,9 @@
                         <button type="button" onclick="openApplyUniversalModal('${ut.themeId}')" class="editor-button primary flex-1 py-2 px-2 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 border-amber-500 text-white flex items-center justify-center gap-1 shadow-xs transition-all hover:scale-[1.01] active:scale-[0.99]" title="Apply ธีมนี้ไปยัง Layouts อื่นๆ">
                             <span class="material-symbols-outlined text-[15px]">rocket_launch</span> Apply ทุก Layout
                         </button>
+                        <button type="button" onclick="publishUniversalTheme('${ut.themeId}')" class="editor-button py-2 px-2.5 rounded-xl text-xs bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 flex items-center justify-center gap-1" title="${ut.serverThemeId ? 'เผยแพร่เวอร์ชันใหม่ไปทุกตู้' : 'เผยแพร่ไปทุกตู้'}">
+                            <span class="material-symbols-outlined text-sm">cloud_upload</span>
+                        </button>
                         <button type="button" onclick="editUniversalThemeInEditor('${ut.themeId}')" class="editor-button py-2 px-2.5 rounded-xl text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 flex items-center justify-center gap-1" title="เปิดดีไซน์นี้ใน Editor เพื่อแก้ไข">
                             <span class="material-symbols-outlined text-sm text-gray-600">edit</span>
                         </button>
@@ -2859,6 +2885,7 @@
             });
         }
 
+        let editingUniversalTheme = null;
         function editUniversalThemeInEditor(themeId) {
             const store = window.UniversalThemeStore || UniversalThemeStore;
             const uTheme = store.find(themeId);
@@ -2867,6 +2894,7 @@
             const baseTpl = engine.createTemplate('3_1x1', basePreset);
             draft = engine.applyUniversalTheme(uTheme, baseTpl);
             draft.name = uTheme.name;
+            editingUniversalTheme = { themeId: uTheme.themeId, name: uTheme.name, serverThemeId: uTheme.serverThemeId || null };
             switchView('editor');
             writeForms();
             renderStage();
@@ -2879,6 +2907,12 @@
             if (!themeName || !themeName.trim()) return;
 
             const uTheme = engine.extractUniversalTheme(draft, themeName.trim());
+            // Saving under the same name replaces the theme that was opened, keeping its link to
+            // the central library so publishing it makes the next version.
+            if (editingUniversalTheme && editingUniversalTheme.name === uTheme.name && UniversalThemeStore.find(editingUniversalTheme.themeId)) {
+                uTheme.themeId = editingUniversalTheme.themeId;
+                if (editingUniversalTheme.serverThemeId) uTheme.serverThemeId = editingUniversalTheme.serverThemeId;
+            }
             UniversalThemeStore.upsert(uTheme);
             toast(`✨ บันทึก Universal Theme "${uTheme.name}" เรียบร้อยแล้ว!`);
             updateStockBadge();
@@ -3044,6 +3078,205 @@
                 console.error(err);
                 toast('เกิดข้อผิดพลาดในการ Apply ธีม: ' + err.message);
             }
+        }
+
+        // ===== Theme library (central, synced to every kiosk) =====
+        const THEME_ERRORS = {
+            admin_capability_required: 'ต้องใส่ PIN แอดมินก่อน', admin_capability_invalid: 'PIN หมดอายุ ใส่ใหม่อีกครั้ง',
+            stale_setting: 'มีการแก้จากที่อื่นก่อนหน้า โหลดค่าล่าสุดให้แล้ว ลองอีกครั้ง', theme_not_found: 'ไม่พบธีมนี้แล้ว',
+            version_not_found: 'ไม่พบเวอร์ชันนี้', theme_too_large: 'ธีมใหญ่เกิน 8MB (ลดขนาดรูป)', invalid_name: 'ต้องตั้งชื่อธีม',
+            bridge_unavailable: 'หน้านี้ไม่ได้เปิดผ่านโปรแกรมตู้ จึงเชื่อมคลังกลางไม่ได้', network_error: 'เชื่อมต่อไม่ได้'
+        };
+        const themeError = (result) => THEME_ERRORS[result && result.error] || `ทำไม่สำเร็จ (${(result && result.error) || 'unknown'})`;
+        const themeBridge = () => window.PhotoboothDevice || null;
+
+        async function syncThemeLibrary(announce) {
+            const status = byId('theme-library-status');
+            if (status) status.textContent = 'กำลัง sync…';
+            const result = await ThemeLibrary.sync();
+            if (status) {
+                const m = ThemeLibrary.manifest();
+                status.textContent = result.success
+                    ? `sync ล่าสุด ${new Date().toLocaleTimeString('th-TH')} · ${result.themes} ธีม`
+                    : `${themeError(result)}${m && m.syncedAt ? ` · ใช้ข้อมูลที่เก็บไว้ตอน ${new Date(m.syncedAt).toLocaleString('th-TH')}` : ''}`;
+            }
+            if (announce) toast(result.success ? 'Sync คลังธีมเรียบร้อย' : themeError(result));
+            renderThemeLibrary();
+            return result;
+        }
+
+        function renderThemeLibrary() {
+            const list = byId('theme-library-list');
+            if (!list) return;
+            const manifest = ThemeLibrary.manifest();
+            const themes = manifest && Array.isArray(manifest.themes) ? manifest.themes : [];
+            if (!themes.length) {
+                list.innerHTML = `<div class="text-center py-5 text-xs text-gray-500 border border-dashed border-sky-300/70 rounded-xl">ยังไม่มีธีมในคลังกลาง — กดปุ่ม <span class="material-symbols-outlined text-xs align-middle">cloud_upload</span> บนการ์ด Universal Theme เพื่อเผยแพร่</div>`;
+                return;
+            }
+            list.innerHTML = '';
+            themes.forEach(entry => {
+                const st = entry.setting || {};
+                const row = document.createElement('div');
+                row.className = 'border border-gray-200 rounded-xl p-3 flex flex-col gap-2';
+                row.dataset.themeId = entry.themeId;
+                const versions = (entry.versions || []).map(v => `<option value="${v}" ${st.pinnedVersion === v ? 'selected' : ''}>ล็อกที่ v${v}</option>`).join('');
+                const overridden = st.overrides && Object.keys(st.overrides).length > 0;
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <label class="flex items-center gap-1.5 text-xs font-bold"><input type="checkbox" data-k="enabled" ${st.enabled !== false ? 'checked' : ''}> ใช้บนตู้นี้</label>
+                        <div class="font-bold text-sm text-gray-900 flex-1 min-w-[140px]">${escapeHtml(entry.name)}
+                            ${entry.private ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-800">เฉพาะตู้นี้</span>' : ''}
+                            ${st.isDefault ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">ค่าเริ่มต้น</span>' : ''}
+                            ${overridden ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">ปรับแล้ว</span>' : ''}
+                            <span class="ml-1 text-[11px] font-normal text-gray-500">ใช้ v${entry.version} (ล่าสุด v${entry.currentVersion})</span>
+                        </div>
+                        <select data-k="pinnedVersion" class="editor-input text-xs py-1.5">
+                            <option value="" ${st.pinnedVersion == null ? 'selected' : ''}>ตามเวอร์ชันล่าสุด</option>${versions}
+                        </select>
+                        <label class="flex items-center gap-1.5 text-xs"><input type="radio" name="theme-default" data-k="isDefault" ${st.isDefault ? 'checked' : ''}> ค่าเริ่มต้น</label>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" data-act="save" class="editor-button primary py-1.5 px-3 rounded-lg text-xs font-bold">บันทึก</button>
+                        <button type="button" data-act="adjust" class="editor-button py-1.5 px-3 rounded-lg text-xs">ปรับเฉพาะตู้นี้</button>
+                        <button type="button" data-act="edit" class="editor-button py-1.5 px-3 rounded-lg text-xs">แก้ดีไซน์ใน Editor</button>
+                        ${entry.private ? '' : '<button type="button" data-act="fork" class="editor-button py-1.5 px-3 rounded-lg text-xs">แยกเป็นของตู้นี้</button>'}
+                        <button type="button" data-act="archive" class="editor-button danger py-1.5 px-3 rounded-lg text-xs">เลิกใช้ทุกตู้</button>
+                    </div>
+                    <div data-role="adjust" class="hidden"></div>`;
+                row.querySelector('[data-act="save"]').onclick = () => saveKioskThemeSetting(entry, row);
+                row.querySelector('[data-act="adjust"]').onclick = () => toggleThemeAdjust(entry, row);
+                row.querySelector('[data-act="edit"]').onclick = () => editLibraryTheme(entry);
+                const forkBtn = row.querySelector('[data-act="fork"]');
+                if (forkBtn) forkBtn.onclick = () => forkLibraryTheme(entry);
+                row.querySelector('[data-act="archive"]').onclick = () => archiveLibraryTheme(entry);
+                list.appendChild(row);
+            });
+        }
+
+        async function toggleThemeAdjust(entry, row) {
+            const box = row.querySelector('[data-role="adjust"]');
+            if (!box.classList.contains('hidden')) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.classList.remove('hidden');
+            box.innerHTML = '<div class="text-xs text-gray-500">กำลังโหลด…</div>';
+            const doc = await ThemeLibrary.themeDoc(entry.themeId, entry.version);
+            if (!doc) { box.innerHTML = '<div class="text-xs text-red-600">โหลดธีมไม่ได้</div>'; return; }
+            const theme = engine.migrateUniversalTheme(doc);
+            const ov = (entry.setting && entry.setting.overrides) || {};
+            const elOv = ov.elements || {};
+            const bg = ov.backgroundColor || theme.style.backgroundColor || '#ffffff';
+            const rows = theme.style.elements.map(el => {
+                const o = elOv[el.id] || {};
+                const hidden = o.visible === false;
+                const textInput = el.type === 'text'
+                    ? `<input data-el="${escapeHtml(el.id)}" data-f="text" class="editor-input text-xs py-1 flex-1 min-w-[160px]" value="${escapeHtml(o.text != null ? o.text : el.text)}" placeholder="${escapeHtml(el.text)}">`
+                    : '';
+                return `<div class="flex items-center gap-2 flex-wrap text-xs">
+                    <span class="material-symbols-outlined text-sm text-gray-500">${el.type === 'text' ? 'title' : 'image'}</span>
+                    <span class="w-32 truncate" title="${escapeHtml(el.name)}">${escapeHtml(el.name)}</span>
+                    ${textInput}
+                    <label class="flex items-center gap-1"><input type="checkbox" data-el="${escapeHtml(el.id)}" data-f="hide" ${hidden ? 'checked' : ''}> ซ่อน</label>
+                </div>`;
+            }).join('');
+            box.innerHTML = `<div class="bg-gray-50 rounded-lg p-3 flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-xs">
+                    <label class="flex items-center gap-1"><input type="checkbox" data-f="bg-on" ${ov.backgroundColor ? 'checked' : ''}> เปลี่ยนสีพื้น</label>
+                    <input type="color" data-f="bg" value="${escapeHtml(bg)}">
+                </div>
+                ${rows || '<div class="text-xs text-gray-500">ธีมนี้ไม่มีสติกเกอร์หรือข้อความ</div>'}
+                <div class="text-[11px] text-gray-500">ข้อความใช้ตัวแปร {event_name} {date} {time} ได้ · ล้างการปรับทั้งหมดได้ด้วยปุ่มด้านล่าง</div>
+                <div class="flex gap-1.5">
+                    <button type="button" data-act="ov-save" class="editor-button primary py-1.5 px-3 rounded-lg text-xs font-bold">บันทึกการปรับ</button>
+                    <button type="button" data-act="ov-clear" class="editor-button py-1.5 px-3 rounded-lg text-xs">ล้างการปรับ</button>
+                </div></div>`;
+            box.querySelector('[data-act="ov-save"]').onclick = () => {
+                const overrides = {};
+                if (box.querySelector('[data-f="bg-on"]').checked) overrides.backgroundColor = box.querySelector('[data-f="bg"]').value;
+                const elements = {};
+                theme.style.elements.forEach(el => {
+                    const patch = {};
+                    const textEl = box.querySelector(`[data-f="text"][data-el="${CSS.escape(el.id)}"]`);
+                    if (textEl && textEl.value !== el.text) patch.text = textEl.value;
+                    if (box.querySelector(`[data-f="hide"][data-el="${CSS.escape(el.id)}"]`).checked) patch.visible = false;
+                    if (Object.keys(patch).length) elements[el.id] = patch;
+                });
+                if (Object.keys(elements).length) overrides.elements = elements;
+                updateKioskTheme(entry, { overrides });
+            };
+            box.querySelector('[data-act="ov-clear"]').onclick = () => updateKioskTheme(entry, { overrides: {} });
+        }
+
+        async function updateKioskTheme(entry, patch) {
+            const bridge = themeBridge();
+            if (!bridge || !bridge.themeSetKiosk) { toast(THEME_ERRORS.bridge_unavailable); return false; }
+            const result = await bridge.themeSetKiosk({ themeId: entry.themeId, patch, expectedUpdatedAt: entry.setting && entry.setting.updatedAt });
+            if (!result || !result.success) {
+                toast(themeError(result));
+                if (result && result.error === 'stale_setting') await syncThemeLibrary(false);
+                return false;
+            }
+            await syncThemeLibrary(false);
+            toast(`บันทึก "${entry.name}" แล้ว`);
+            return true;
+        }
+
+        function saveKioskThemeSetting(entry, row) {
+            const pinned = row.querySelector('[data-k="pinnedVersion"]').value;
+            const patch = {
+                enabled: row.querySelector('[data-k="enabled"]').checked,
+                pinnedVersion: pinned ? Number(pinned) : null
+            };
+            if (row.querySelector('[data-k="isDefault"]').checked) patch.isDefault = true;
+            else if (entry.setting && entry.setting.isDefault) patch.isDefault = false;
+            return updateKioskTheme(entry, patch);
+        }
+
+        async function forkLibraryTheme(entry) {
+            const name = prompt('ตั้งชื่อธีมที่แยกมาใช้เฉพาะตู้นี้:', `${entry.name} (ตู้นี้)`);
+            if (!name || !name.trim()) return;
+            const result = await themeBridge()?.themeFork?.({ themeId: entry.themeId, name: name.trim() });
+            if (!result || !result.success) { toast(themeError(result || { error: 'bridge_unavailable' })); return; }
+            await syncThemeLibrary(false);
+            toast(`แยก "${name.trim()}" เป็นของตู้นี้แล้ว (ธีมเดิมปิดบนตู้นี้)`);
+        }
+
+        async function archiveLibraryTheme(entry) {
+            if (!confirm(`เลิกใช้ "${entry.name}" ทุกตู้ใช่ไหม? ตู้อื่นจะไม่เห็นธีมนี้หลัง sync ครั้งถัดไป`)) return;
+            const result = await themeBridge()?.themeArchive?.({ themeId: entry.themeId });
+            if (!result || !result.success) { toast(themeError(result || { error: 'bridge_unavailable' })); return; }
+            await syncThemeLibrary(false);
+            toast(`เลิกใช้ "${entry.name}" แล้ว`);
+        }
+
+        // Pull a library theme into this editor's Universal Themes, linked to the server copy,
+        // so "publish" on it creates the next version instead of a new theme.
+        async function editLibraryTheme(entry) {
+            const doc = await ThemeLibrary.themeDoc(entry.themeId, entry.currentVersion);
+            if (!doc) { toast('โหลดธีมไม่ได้'); return; }
+            const local = UniversalThemeStore.load().find(t => t.serverThemeId === entry.themeId);
+            const copy = { ...engine.clone(doc), themeId: local ? local.themeId : `utheme_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`, name: entry.name, serverThemeId: entry.themeId };
+            UniversalThemeStore.upsert(copy);
+            editUniversalThemeInEditor(copy.themeId);
+            toast(`เปิด "${entry.name}" v${entry.currentVersion} แล้ว แก้เสร็จกด "เซฟเป็น Universal Theme" ชื่อเดิม แล้วกดเผยแพร่`);
+        }
+
+        async function publishUniversalTheme(themeId) {
+            const ut = UniversalThemeStore.find(themeId);
+            if (!ut) return;
+            const bridge = themeBridge();
+            if (!bridge || !bridge.themePublish) { toast(THEME_ERRORS.bridge_unavailable); return; }
+            const question = ut.serverThemeId
+                ? `เผยแพร่ "${ut.name}" เป็นเวอร์ชันใหม่ไปทุกตู้? ตู้ที่ล็อกเวอร์ชันไว้จะยังใช้เวอร์ชันเดิม`
+                : `เผยแพร่ "${ut.name}" ไปทุกตู้ใน workspace นี้?`;
+            if (!confirm(question)) return;
+            const doc = engine.migrateUniversalTheme(ut);
+            delete doc.serverThemeId;
+            const result = await bridge.themePublish({ themeId: ut.serverThemeId || null, name: ut.name, doc });
+            if (!result || !result.success) { toast(themeError(result)); return; }
+            UniversalThemeStore.upsert({ ...ut, serverThemeId: result.themeId });
+            renderUniversalThemes();
+            await syncThemeLibrary(false);
+            toast(`เผยแพร่ "${ut.name}" v${result.version} แล้ว ตู้อื่นจะได้รับเมื่อกลับมาหน้าแรก`);
         }
 
         function escapeHtml(value) { const div=document.createElement('div'); div.textContent=value; return div.innerHTML; }

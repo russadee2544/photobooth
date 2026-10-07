@@ -55,8 +55,8 @@
         </button>
     </div>
 
-    <script src="template-engine.js?v=1.0"></script>
-    <script src="shared.js?v=2.9"></script>
+    <script src="template-engine.js?v=2.2"></script>
+    <script src="shared.js?v=3.3"></script>
     <script>
         let globalPhotos = [];
 
@@ -90,14 +90,15 @@
                 gridContainer.appendChild(cardDiv);
             });
 
-            // Load Custom Templates from Template Catalog (Created in Template Editor)
+            // Load Custom Templates from Template Catalog (Created in Template Editor or synced)
+            await ThemeLibrary.ready;
             const catalog = TemplateCatalog.load();
             const customTemplates = catalog.filter(t => {
                 if (t.enabled === false) return false;
                 if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
 
                 // Include custom templates created by user or having custom artboard/overlay
-                const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
+                const isCustom = t.templateId.startsWith('custom_') || t.templateId.startsWith('synced_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
                 const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
                 return isCustom && matchesShots;
             });

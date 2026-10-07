@@ -1194,6 +1194,37 @@
         };
     }
 
+    // A kiosk's own adjustments on top of a shared theme. Small on purpose so a new
+    // version of the shared theme still applies: only what the kiosk changed is kept.
+    //   { backgroundColor, backgroundImage,
+    //     elements: { [id]: { visible, text, url, color, opacity, anchor: {dx, dy}, size: {value} } } }
+    const OVERRIDE_ELEMENT_KEYS = ['visible', 'text', 'url', 'color', 'opacity', 'fontWeight', 'fontFamily'];
+
+    function applyThemeOverrides(universalTheme, overrides) {
+        const theme = migrateUniversalTheme(universalTheme);
+        if (!overrides || typeof overrides !== 'object') return theme;
+        const style = theme.style;
+        if (/^#[0-9a-f]{6}$/i.test(overrides.backgroundColor)) style.backgroundColor = overrides.backgroundColor;
+        if (typeof overrides.backgroundImage === 'string') style.backgroundImage = overrides.backgroundImage.slice(0, 2000000);
+        const patches = overrides.elements && typeof overrides.elements === 'object' ? overrides.elements : {};
+        style.elements = style.elements.map((el, index) => {
+            const patch = patches[el.id];
+            if (!patch || typeof patch !== 'object') return el;
+            const next = { ...el };
+            for (const key of OVERRIDE_ELEMENT_KEYS) {
+                if (patch[key] !== undefined) next[key] = patch[key];
+            }
+            if (patch.anchor && typeof patch.anchor === 'object') {
+                next.anchor = { ...el.anchor };
+                if (Number.isFinite(patch.anchor.dx)) next.anchor.dx = patch.anchor.dx;
+                if (Number.isFinite(patch.anchor.dy)) next.anchor.dy = patch.anchor.dy;
+            }
+            if (patch.size && Number.isFinite(patch.size.value)) next.size = { ...el.size, value: patch.size.value };
+            return normalizeThemeElement(next, index);
+        });
+        return theme;
+    }
+
     function sizeElement(el, region, regions) {
         const aspect = el.aspectRatio || 1;
         let width;
@@ -1466,7 +1497,9 @@
             const fitted = fitBand({ width, height }, { anchor: { to } }, regions);
             const allowOverflow = kept.x !== layer.x || kept.y !== layer.y || fitted.width < width - 0.5;
             const el = normalizeThemeElement({
-                id: layer.id || `ut_art_${index + 1}`,
+                // A layer placed from a theme is `ut_<element id>`; keep the element id so
+                // kiosk overrides (keyed by it) still match the next published version.
+                id: layer.id ? String(layer.id).replace(/^(ut_)+(?!art_\d+$)/, '') || layer.id : `ut_art_${index + 1}`,
                 name: layer.name || `Sticker ${index + 1}`,
                 url: layer.url,
                 placement: layer.placement,
@@ -1560,6 +1593,7 @@
         extractUniversalTheme,
         applyUniversalTheme,
         applyUniversalThemeWithReport,
+        applyThemeOverrides,
         normalizeSlice,
         nineSlicePatches,
         TEXT_VARIABLES,
