@@ -881,19 +881,38 @@
         let driveToken = null;
         let eventSessions = [];
 
-        // ---- Home page sample photos (stored on this kiosk; kiosk_* keys survive session resets) ----
-        const HOME_PHOTO_KEY = 'kiosk_home_photos';
-        let homePhotoTarget = 0;
-        function homePhotos() {
-            try {
-                const list = JSON.parse(localStorage.getItem(HOME_PHOTO_KEY) || '[]');
-                return [0, 1, 2, 3].map((i) => (typeof list[i] === 'string' ? list[i] : ''));
-            } catch (_) { return ['', '', '', '']; }
+        // ---- Home page sample photos ----
+        // Kept in IndexedDB (hundreds of MB of room); localStorage is only ~5 MB and can already be full.
+        function pbKv(mode, run) {
+            return new Promise((resolve, reject) => {
+                const open = indexedDB.open('pb_kiosk', 1);
+                open.onupgradeneeded = () => open.result.createObjectStore('kv');
+                open.onerror = () => reject(open.error);
+                open.onsuccess = () => {
+                    const db = open.result;
+                    const tx = db.transaction('kv', mode);
+                    const req = run(tx.objectStore('kv'));
+                    tx.oncomplete = () => { db.close(); resolve(req && req.result); };
+                    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+                };
+            });
         }
-        function saveHomePhotos(list) {
+        let homePhotoCache = ['', '', '', ''];
+        let homePhotoTarget = 0;
+        async function loadHomePhotos() {
+            let list = null;
+            try { list = await pbKv('readonly', (store) => store.get('home_photos')); } catch (_) { /* fall through */ }
+            if (!Array.isArray(list)) {
+                try { list = JSON.parse(localStorage.getItem('kiosk_home_photos') || '[]'); } catch (_) { list = []; }  // older saves
+            }
+            homePhotoCache = [0, 1, 2, 3].map((i) => (typeof list[i] === 'string' ? list[i] : ''));
+            renderHomePhotos();
+        }
+        async function saveHomePhotos(list) {
             try {
-                if (list.some(Boolean)) localStorage.setItem(HOME_PHOTO_KEY, JSON.stringify(list));
-                else localStorage.removeItem(HOME_PHOTO_KEY);
+                await pbKv('readwrite', (store) => (list.some(Boolean) ? store.put(list, 'home_photos') : store.delete('home_photos')));
+                try { localStorage.removeItem('kiosk_home_photos'); } catch (_) { /* nothing to free */ }
+                homePhotoCache = list;
                 return true;
             } catch (_) { return false; }
         }
@@ -901,7 +920,7 @@
             const holder = document.getElementById('home-photo-slots');
             if (!holder) return;
             holder.innerHTML = '';
-            homePhotos().forEach((src, i) => {
+            homePhotoCache.forEach((src, i) => {
                 const cell = document.createElement('div');
                 cell.className = 'flex flex-col gap-2';
                 const pick = document.createElement('button');
@@ -917,14 +936,14 @@
                     del.type = 'button';
                     del.className = 'text-xs text-gray-400 hover:text-red-400 font-bold';
                     del.textContent = 'ลบรูปที่ ' + (i + 1);
-                    del.onclick = () => { const list = homePhotos(); list[i] = ''; saveHomePhotos(list); renderHomePhotos(); };
+                    del.onclick = async () => { const list = homePhotoCache.slice(); list[i] = ''; await saveHomePhotos(list); renderHomePhotos(); };
                     cell.appendChild(del);
                 }
                 holder.appendChild(cell);
             });
         }
-        function resetHomePhotos() { saveHomePhotos(['', '', '', '']); renderHomePhotos(); document.getElementById('home-photos-status').textContent = 'กลับไปใช้ภาพเดิมแล้ว'; }
-        // Center-crop to 4:3 and shrink, so four photos stay well inside the browser's storage limit.
+        async function resetHomePhotos() { await saveHomePhotos(['', '', '', '']); renderHomePhotos(); document.getElementById('home-photos-status').textContent = 'กลับไปใช้ภาพเดิมแล้ว'; }
+        // Center-crop to 4:3 and shrink so each photo stays small.
         function resizeToFrame(file) {
             return new Promise((resolve, reject) => {
                 const url = URL.createObjectURL(file);
@@ -944,20 +963,20 @@
             });
         }
         document.addEventListener('DOMContentLoaded', () => {
-            renderHomePhotos();
+            loadHomePhotos();
             const input = document.getElementById('home-photo-input');
             if (!input) return;
             input.addEventListener('change', async () => {
                 const file = input.files && input.files[0];
                 const status = document.getElementById('home-photos-status');
                 if (!file) return;
-                try {
-                    const list = homePhotos();
-                    list[homePhotoTarget] = await resizeToFrame(file);
-                    if (!saveHomePhotos(list)) { status.textContent = 'บันทึกไม่ได้ (พื้นที่เก็บของเบราว์เซอร์เต็ม) ลองลบรูปเก่าก่อน'; return; }
-                    renderHomePhotos();
-                    status.textContent = 'บันทึกรูปที่ ' + (homePhotoTarget + 1) + ' แล้ว จะแสดงที่หน้าแรกทันที';
-                } catch (_) { status.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพที่เปิดได้'; }
+                let photo;
+                try { photo = await resizeToFrame(file); } catch (_) { status.textContent = 'ไฟล์นี้ไม่ใช่รูปภาพที่เปิดได้'; return; }
+                const list = homePhotoCache.slice();
+                list[homePhotoTarget] = photo;
+                if (!(await saveHomePhotos(list))) { status.textContent = 'บันทึกไม่สำเร็จ (เบราว์เซอร์ไม่อนุญาตให้เก็บข้อมูล) ลองเปิดหน้านี้ในหน้าต่างปกติ'; return; }
+                renderHomePhotos();
+                status.textContent = 'บันทึกรูปที่ ' + (homePhotoTarget + 1) + ' แล้ว จะแสดงที่หน้าแรกทันที';
             });
         });
 
