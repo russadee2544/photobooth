@@ -38,17 +38,15 @@
 
         .film-kicker { display: inline-flex; align-items: center; gap: .8rem; font: 700 .8rem/1 'Prompt', 'Cantarell', sans-serif;
             letter-spacing: .3em; text-transform: uppercase; opacity: .9; white-space: nowrap; }
-        /* Marquee sign: reads as "photo booth" from across the room (dark plaque, warm bulbs, camera icon) */
+        /* Booth sign in the page's own palette: paper, ink, film red (no new colours) */
         .booth-sign { position: relative; display: inline-flex; align-items: center; gap: clamp(.8rem, 1.6vw, 1.6rem);
-            padding: clamp(1rem, 2vw, 1.7rem) clamp(1.6rem, 3vw, 2.8rem); background: var(--ink); color: #FFF3D6;
-            border-radius: 1.2rem; box-shadow: 0 16px 36px rgba(20,18,16,.3); white-space: nowrap; }
-        .booth-sign::after { content: ''; position: absolute; inset: 7px; border: 5px dotted #FFD36B; border-radius: .9rem;
-            pointer-events: none; filter: drop-shadow(0 0 5px rgba(255, 211, 107, .75)); animation: bulbGlow 3.6s ease-in-out infinite; }
-        @keyframes bulbGlow { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
-        .booth-sign .sign-icon { font-size: clamp(2.8rem, 5.6vw, 5.6rem); color: #FFD36B; font-variation-settings: 'FILL' 1; }
+            padding: clamp(1rem, 2vw, 1.7rem) clamp(1.6rem, 3vw, 2.8rem); background: #FBF8F2; color: var(--ink);
+            border: 3px solid var(--ink); border-radius: 1.2rem; box-shadow: 6px 6px 0 var(--ink); white-space: nowrap; }
+        .booth-sign::after { content: ''; position: absolute; inset: 6px; border: 2px dotted var(--film-red); border-radius: .8rem; pointer-events: none; }
+        .booth-sign .sign-icon { font-size: clamp(2.8rem, 5.6vw, 5.6rem); color: var(--film-red); font-variation-settings: 'FILL' 1; }
         .booth-sign .sign-text { display: flex; flex-direction: column; align-items: flex-start; gap: .35em; }
         .booth-sign b { font: 800 clamp(2rem, 4.9vw, 4.9rem)/1 'Prompt', sans-serif; letter-spacing: .07em; }
-        .booth-sign i { font: 700 clamp(1.05rem, 2.2vw, 2.1rem)/1 'Prompt', sans-serif; font-style: normal; letter-spacing: .32em; color: #FFD36B; }
+        .booth-sign i { font: 700 clamp(1.05rem, 2.2vw, 2.1rem)/1 'Prompt', sans-serif; font-style: normal; letter-spacing: .32em; color: var(--film-red); }
         .film-kicker .dot { width: .4rem; height: .4rem; border-radius: 9999px; background: var(--film-red); }
         .film-kicker .rule { width: 2.5rem; height: 1px; background: var(--ink); opacity: .45; }
 
