@@ -18,7 +18,9 @@
         @font-face { font-family: 'Cantarell'; font-style: normal; font-weight: 700; font-display: swap;
             src: url('/fonts/Cantarell-latin-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F, U+2190-2193; }
         /* ===== Welcome: minimal type-led home (Prompt for Thai + Latin) ===== */
-        :root { --paper: #F3EEE4; --ink: #141210; --film-red: #D7362B; --sepia: #B98E62; }
+        :root { --paper: #F3EEE4; --ink: #141210; --film-red: #D7362B; --sepia: #B98E62;
+            /* Golden-ratio rhythm: widths and gaps step by phi (1.618). Sign = 1, headline = 1/phi of its width. */
+            --phi: 1.618; --g1: clamp(.9rem, 2vw, 2rem); --g2: calc(var(--g1) * 1.618); --g3: calc(var(--g1) * 2.618); }
         body.home-film { background: var(--paper); color: var(--ink); font-family: 'Cantarell', 'Prompt', 'Inter', system-ui, sans-serif; }
         body.home-film .kiosk-brand { color: var(--ink); font-weight: 700; letter-spacing: .32em; font-size: .8rem; }
         body.home-film .lang-btn, body.home-film .kiosk-header button { font-family: 'Cantarell', 'Prompt', sans-serif; font-weight: 400; }
@@ -53,7 +55,7 @@
         /* Title: letters rise in one by one, then a slow wave keeps passing through them */
         /* Headline: Prompt ExtraBold, heavy and compact so it reads from across the room */
         .film-title { font-family: 'Prompt', 'Cantarell', 'Inter', sans-serif; font-weight: 800; line-height: .95;
-            letter-spacing: .005em; text-transform: uppercase; font-size: clamp(3.2rem, 9.2vw, 9.2rem); margin: 1rem 0 1rem; white-space: nowrap; }
+            letter-spacing: .005em; text-transform: uppercase; font-size: clamp(2.4rem, 6.5vw, 6.5rem); margin: var(--g1) 0 0; white-space: nowrap; }
         .film-title .ch { display: inline-block; opacity: 0; transform: translateY(.3em);
             animation: letterIn .9s cubic-bezier(.2,.7,.2,1) forwards, letterWave 7s ease-in-out infinite;
             animation-delay: calc(var(--i) * 70ms + 200ms), calc(var(--i) * 130ms + 2.8s); }
@@ -63,17 +65,17 @@
             9% { transform: translateY(-.07em); color: var(--film-red); }
         }
 
-        .film-tagline { font-weight: 400; font-size: clamp(1.1rem, 2vw, 1.55rem); line-height: 1.6;
+        .film-tagline { margin-top: calc(var(--g1) / 1.618); font-weight: 400; font-size: clamp(1.1rem, 2.5vw, 2.5rem); line-height: 1.6;
             letter-spacing: .02em; opacity: .75; max-width: 32ch; }
 
         .film-price { margin-top: 1rem; font: 700 clamp(1rem, 1.6vw, 1.3rem)/1.2 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .06em; color: var(--film-red); }
         .film-price[hidden] { display: none; }
-        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: 1.6rem; font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
+        .film-meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-top: var(--g1); font: 400 .74rem/1 'Cantarell', 'Prompt', sans-serif;
             letter-spacing: .24em; text-transform: uppercase; opacity: .6; justify-content: inherit; }
         @media (min-width: 900px) and (min-aspect-ratio: 1/1) { .film-meta { justify-content: flex-start; } }
 
-        .film-cta { position: relative; margin-top: 2.2rem; display: inline-flex; align-items: center; justify-content: center; gap: 1rem;
+        .film-cta { position: relative; margin-top: var(--g2); display: inline-flex; align-items: center; justify-content: center; gap: 1rem;
             padding: 1.35rem 3rem; background: var(--film-red); color: #fff; border-radius: 9999px;
             font: 700 clamp(1.25rem, 2vw, 1.7rem)/1.1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .04em;
             box-shadow: 0 12px 30px rgba(215, 54, 43, .32); transition: transform .2s ease, background .2s ease; }
@@ -121,18 +123,18 @@
         @media not all and (min-width: 900px) and (min-aspect-ratio: 1/1) {
             .film-layout { display: flex; flex-direction: column; align-items: center; gap: 0; }
             .film-layout > section { display: contents; }
-            .film-title { font-size: clamp(3.4rem, 15.5vw, 11.5rem); }  /* the column is full width: use it */
+            .film-title { font-size: clamp(2.6rem, 11.1vw, 8rem); }  /* 0.618 of the sign's width */
             .booth-sign { order: 1; width: min(92vw, 860px); justify-content: center; padding: clamp(1.1rem, 2.6vh, 2rem) 1.2rem; }
             .booth-sign .sign-icon { font-size: clamp(3rem, 12vw, 7rem); }
             .booth-sign b { font-size: clamp(2.1rem, 8.6vw, 5.6rem); }
             .booth-sign i { font-size: clamp(1.1rem, 4.2vw, 2.6rem); }
-            .film-title { margin-top: clamp(1.2rem, 3vh, 2.4rem); }
+            .film-title { margin-top: var(--g2); }
             .film-title { order: 2; } .film-tagline { order: 3; text-align: center; }
             .film-price { order: 4; }
             .strip-wrap { order: 5; margin-top: clamp(1.2rem, 3vh, 2.6rem); transform: rotate(-1.5deg); }
-            .film-cta { order: 6; margin-top: clamp(1.8rem, 4.5vh, 3.4rem); width: min(88vw, 680px);
+            .film-cta { order: 6; margin-top: var(--g3); width: min(88vw, 680px);
                 padding: clamp(1.4rem, 3.2vh, 2.1rem) 2rem; font-size: clamp(1.45rem, 4.4vw, 2.4rem); }
-            .film-meta { order: 7; justify-content: center; margin-top: clamp(1.4rem, 3vh, 2.2rem); }
+            .film-meta { order: 7; justify-content: center; margin-top: var(--g2); }
             .strip { width: min(78vw, 560px); grid-template-columns: repeat(4, 1fr); padding: 10px 10px 34px; gap: 8px; }
             .frame-no { display: none; }
             .film-counter { right: 6px; top: -1.35rem; }
