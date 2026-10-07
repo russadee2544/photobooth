@@ -53,26 +53,58 @@
         return { top: px, right: px, bottom: px, left: px };
     }
 
+    // Nine-slice borders, in source-image pixels. Accepts one number for all
+    // four sides. Returns null when there is no border to keep.
+    function normalizeSlice(source) {
+        if (source === undefined || source === null || source === '') return null;
+        const uniform = typeof source === 'number' || typeof source === 'string';
+        const side = (key) => Math.round(number(uniform ? source : source[key], 0, 0, 4000));
+        const slice = { top: side('top'), right: side('right'), bottom: side('bottom'), left: side('left') };
+        return slice.top || slice.right || slice.bottom || slice.left ? slice : null;
+    }
+
+    const TEXT_ALIGN = ['left', 'center', 'right'];
+
+    function normalizeTextStyle(layer, height) {
+        return {
+            text: String(layer && layer.text || '').slice(0, 500),
+            fontFamily: String(layer && layer.fontFamily || 'Prompt').replace(/["';{}<>]/g, '').slice(0, 60) || 'Prompt',
+            fontWeight: Math.round(number(layer && layer.fontWeight, 600, 100, 900) / 100) * 100,
+            fontSize: Math.round(number(layer && layer.fontSize, Math.max(8, Math.round(height * 0.6)), 4, 2000)),
+            color: /^#[0-9a-f]{6}$/i.test(layer && layer.color) ? layer.color : '#111111',
+            align: TEXT_ALIGN.includes(layer && layer.align) ? layer.align : 'center',
+            lineHeight: number(layer && layer.lineHeight, 1.2, 0.8, 3),
+            autoFit: !(layer && layer.autoFit === false)
+        };
+    }
+
     function normalizeArtboard(source, canvas) {
         const list = Array.isArray(source) ? source : [];
         const width = canvas.width;
         const height = canvas.height;
         return list
             .slice(0, 32)
-            .map((layer, position) => ({
-                id: String(layer && layer.id || `ab_${position + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_'),
-                name: String(layer && layer.name || `Layer ${position + 1}`).slice(0, 80),
-                url: String(layer && layer.url || '').slice(0, 600000),
-                placement: layer && layer.placement === 'back' ? 'back' : 'front',
-                x: Math.round(number(layer && layer.x, Math.round(width * 0.2), -width, width * 2)),
-                y: Math.round(number(layer && layer.y, Math.round(height * 0.2), -height, height * 2)),
-                width: Math.round(number(layer && layer.width, Math.round(width * 0.6), 1, width * 2)),
-                height: Math.round(number(layer && layer.height, Math.round(height * 0.3), 1, height * 2)),
-                rotation: number(layer && layer.rotation, 0, -180, 180),
-                zIndex: Math.round(number(layer && layer.zIndex, position + 1, -1000, 1000)),
-                opacity: number(layer && layer.opacity, 1, 0, 1),
-                visible: layer && layer.visible !== false
-            }))
+            .map((layer, position) => {
+                const layerHeight = Math.round(number(layer && layer.height, Math.round(height * 0.3), 1, height * 2));
+                const base = {
+                    id: String(layer && layer.id || `ab_${position + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_'),
+                    name: String(layer && layer.name || `Layer ${position + 1}`).slice(0, 80),
+                    type: layer && layer.type === 'text' ? 'text' : 'image',
+                    url: String(layer && layer.url || '').slice(0, 600000),
+                    placement: layer && layer.placement === 'back' ? 'back' : 'front',
+                    x: Math.round(number(layer && layer.x, Math.round(width * 0.2), -width, width * 2)),
+                    y: Math.round(number(layer && layer.y, Math.round(height * 0.2), -height, height * 2)),
+                    width: Math.round(number(layer && layer.width, Math.round(width * 0.6), 1, width * 2)),
+                    height: layerHeight,
+                    rotation: number(layer && layer.rotation, 0, -180, 180),
+                    zIndex: Math.round(number(layer && layer.zIndex, position + 1, -1000, 1000)),
+                    opacity: number(layer && layer.opacity, 1, 0, 1),
+                    visible: layer && layer.visible !== false
+                };
+                if (base.type === 'text') return { ...base, url: '', ...normalizeTextStyle(layer, layerHeight) };
+                const slice = normalizeSlice(layer && layer.slice);
+                return slice ? { ...base, slice } : base;
+            })
             .sort((a, b) => a.zIndex - b.zIndex);
     }
 
@@ -466,6 +498,102 @@
         ];
     }
 
+    function normalizeTemplateOverlay(overlay) {
+        const value = {
+            url: String(overlay && overlay.url || ''),
+            zIndex: Math.round(number(overlay && overlay.zIndex, 100, -1000, 1000)),
+            fitMode: ['cover', 'contain', 'stretch'].includes(overlay && overlay.fitMode) ? overlay.fitMode : 'cover'
+        };
+        const slice = normalizeSlice(overlay && overlay.slice);
+        return slice ? { ...value, slice } : value;
+    }
+
+    // Splits an image into 3x3 patches so a frame keeps its corners at their
+    // own shape on any box: corners scale evenly with the box's short side,
+    // edges stretch along their length, the centre fills the rest.
+    function nineSlicePatches(imageWidth, imageHeight, slice, boxWidth, boxHeight) {
+        const iw = Math.max(1, imageWidth);
+        const ih = Math.max(1, imageHeight);
+        let sl = Math.min(slice.left, iw);
+        let sr = Math.min(slice.right, iw);
+        let st = Math.min(slice.top, ih);
+        let sb = Math.min(slice.bottom, ih);
+        if (sl + sr > iw) { const f = iw / (sl + sr); sl *= f; sr *= f; }
+        if (st + sb > ih) { const f = ih / (st + sb); st *= f; sb *= f; }
+        const scale = Math.min(boxWidth, boxHeight) / Math.min(iw, ih);
+        let dl = sl * scale;
+        let dr = sr * scale;
+        let dt = st * scale;
+        let db = sb * scale;
+        if (dl + dr > boxWidth) { const f = boxWidth / (dl + dr); dl *= f; dr *= f; }
+        if (dt + db > boxHeight) { const f = boxHeight / (dt + db); dt *= f; db *= f; }
+        const sx = [0, sl, iw - sr, iw];
+        const sy = [0, st, ih - sb, ih];
+        const dx = [0, dl, boxWidth - dr, boxWidth];
+        const dy = [0, dt, boxHeight - db, boxHeight];
+        const patches = [];
+        for (let row = 0; row < 3; row += 1) {
+            for (let col = 0; col < 3; col += 1) {
+                const patch = {
+                    sx: sx[col], sy: sy[row], sw: sx[col + 1] - sx[col], sh: sy[row + 1] - sy[row],
+                    dx: dx[col], dy: dy[row], dw: dx[col + 1] - dx[col], dh: dy[row + 1] - dy[row]
+                };
+                if (patch.sw > 0 && patch.sh > 0 && patch.dw > 0 && patch.dh > 0) patches.push(patch);
+            }
+        }
+        return patches;
+    }
+
+    const TEXT_VARIABLES = ['event_name', 'date', 'time'];
+
+    function resolveTextVariables(text, values) {
+        return String(text || '').replace(/\{([a-z_]+)\}/g, (match, key) => {
+            if (!TEXT_VARIABLES.includes(key)) return match;
+            const value = values && values[key];
+            return value === undefined || value === null ? '' : String(value);
+        });
+    }
+
+    // Thai has no spaces between words, so wrap on word segments when the
+    // runtime can find them and fall back to single characters.
+    function segmentWords(text) {
+        if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+            return Array.from(new Intl.Segmenter('th', { granularity: 'word' }).segment(text), (part) => part.segment);
+        }
+        return text.split(/(\s+)/).filter(Boolean);
+    }
+
+    function wrapText(text, measure, fontSize, maxWidth) {
+        const lines = [];
+        String(text).split('\n').forEach((paragraph) => {
+            let line = '';
+            segmentWords(paragraph).forEach((word) => {
+                const candidate = line + word;
+                if (!line || measure(candidate, fontSize) <= maxWidth) { line = candidate; return; }
+                lines.push(line.trimEnd());
+                line = word.trimStart();
+            });
+            lines.push(line.trimEnd());
+        });
+        return lines;
+    }
+
+    // Lays text out inside a box. measure(text, fontSize) returns a width in
+    // the same units as the box. With autoFit the font shrinks until every
+    // line fits, so a long event name never spills off the paper.
+    function layoutText(text, measure, box) {
+        const lineHeight = box.lineHeight || 1.2;
+        let fontSize = Math.max(4, box.fontSize || 24);
+        let lines = wrapText(text, measure, fontSize, box.width);
+        const fits = () => lines.length * fontSize * lineHeight <= box.height + 0.5 &&
+            lines.every((line) => measure(line, fontSize) <= box.width + 0.5);
+        while (box.autoFit !== false && fontSize > 4 && !fits()) {
+            fontSize = Math.max(4, fontSize * 0.92);
+            lines = wrapText(text, measure, fontSize, box.width);
+        }
+        return { fontSize, lines, lineHeight: fontSize * lineHeight };
+    }
+
     function normalizeTemplate(input) {
         const source = input && typeof input === 'object' ? clone(input) : createTemplate('3_1x1', '2x6');
         const isLandscape = source.type === '4x6' && source.orientation === 'landscape';
@@ -533,11 +661,7 @@
             isCustom: source.isCustom === true,
             universalThemeId: source.universalThemeId ? String(source.universalThemeId) : null,
             canvas,
-            overlay: {
-                url: String(source.overlay && source.overlay.url || ''),
-                zIndex: Math.round(number(source.overlay && source.overlay.zIndex, 100, -1000, 1000)),
-                fitMode: ['cover', 'contain', 'stretch'].includes(source.overlay && source.overlay.fitMode) ? source.overlay.fitMode : 'cover'
-            },
+            overlay: normalizeTemplateOverlay(source.overlay),
             artboard: normalizeArtboard(source.artboard, canvas),
             slots,
             printSettings: {
@@ -918,7 +1042,6 @@
         return {
             id: String(el.id || `el_${position + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_'),
             name: String(el.name || `Sticker ${position + 1}`).slice(0, 80),
-            type: 'image',
             url: String(el.url || '').slice(0, 600000),
             placement: el.placement === 'back' ? 'back' : 'front',
             anchor: {
@@ -942,8 +1065,22 @@
             opacity: number(el.opacity, 1, 0, 1),
             visible: el.visible !== false,
             avoidSlots: el.avoidSlots !== false,
-            allowOverflow: el.allowOverflow === true
+            allowOverflow: el.allowOverflow === true,
+            ...themeElementContent(el)
         };
+    }
+
+    // Image elements may carry a nine-slice border; text elements keep their
+    // style with the font size as a share of the box height, so text scales
+    // with the box the rules give it.
+    function themeElementContent(el) {
+        if (el.type === 'text') {
+            const style = normalizeTextStyle(el, 100);
+            delete style.fontSize;
+            return { type: 'text', ...style, fontScale: number(el.fontScale, 0.6, 0.05, 5) };
+        }
+        const slice = normalizeSlice(el.slice);
+        return slice ? { type: 'image', slice } : { type: 'image' };
     }
 
     function normalizeOverlayStyle(overlay) {
@@ -951,11 +1088,14 @@
         const buckets = Array.isArray(value.buckets)
             ? value.buckets.filter((bucket) => RATIO_BUCKETS.includes(bucket))
             : null;
+        const slice = normalizeSlice(value.slice);
         return {
             url: String(value.url || ''),
             zIndex: Math.round(number(value.zIndex, 100, -1000, 1000)),
             fitMode: ['cover', 'contain', 'stretch'].includes(value.fitMode) ? value.fitMode : 'cover',
-            buckets
+            // A nine-slice frame fits any paper shape, so it is never limited.
+            buckets: slice ? null : buckets,
+            slice
         };
     }
 
@@ -1111,6 +1251,18 @@
         return { ...size, x, y, rotation };
     }
 
+    // Short-side sizing makes header/footer items larger on wide paper, where
+    // the band above or below the photos can be much shorter. Shrink them,
+    // keeping their shape, until they fit between the paper edge and photos.
+    function fitBand(size, el, regions) {
+        if (el.allowOverflow || (el.anchor.to !== 'header' && el.anchor.to !== 'footer')) return size;
+        const slotsBottom = regions.slots.y + regions.slots.height;
+        const bandHeight = el.anchor.to === 'header' ? regions.slots.y : regions.canvas.height - slotsBottom;
+        if (bandHeight < 4) return size;
+        const limit = Math.min(1, bandHeight / size.height, regions.canvas.width / size.width);
+        return { width: size.width * limit, height: size.height * limit };
+    }
+
     // Offsets are relative, so on a much shorter header or footer an element
     // can be pushed past the paper edge. Pull it back inside the paper, and
     // keep header/footer elements on their side of the photos, when it fits.
@@ -1173,17 +1325,18 @@
         const overlay = style.overlay;
         const overlayFits = !overlay.buckets || overlay.buckets.includes(regions.bucket);
         target.overlay = overlay.url && overlayFits
-            ? { url: overlay.url, zIndex: overlay.zIndex, fitMode: overlay.fitMode }
+            ? { url: overlay.url, zIndex: overlay.zIndex, fitMode: overlay.fitMode, slice: overlay.slice }
             : { url: '', zIndex: overlay.zIndex, fitMode: overlay.fitMode };
         if (overlay.url && !overlayFits) {
             warnings.push(themeWarning('overlay_skipped', `กรอบเต็มแผ่นออกแบบไว้สำหรับกระดาษทรง ${overlay.buckets.join(', ')} จึงไม่ใส่บนกระดาษทรง ${regions.bucket} (กันภาพเบี้ยว)`));
-        } else if (overlay.url && !overlay.buckets && regions.bucket !== theme.sourceCanvas.bucket && overlay.fitMode !== 'contain') {
+        } else if (overlay.url && !overlay.buckets && !overlay.slice && regions.bucket !== theme.sourceCanvas.bucket && overlay.fitMode !== 'contain') {
             warnings.push(themeWarning('overlay_may_distort', `กรอบเต็มแผ่นออกแบบบนกระดาษทรง ${theme.sourceCanvas.bucket} อาจถูกตัดหรือยืดบนทรง ${regions.bucket}`));
         }
 
         const layers = [];
         style.elements.forEach((el) => {
-            if (!el.url) return;
+            if (el.type === 'image' && !el.url) return;
+            if (el.type === 'text' && !el.text) return;
             if (el.anchor.to === 'each-slot' || el.anchor.to === 'slot') {
                 const slots = el.anchor.to === 'each-slot'
                     ? regions.slotRects
@@ -1203,7 +1356,7 @@
                 warnings.push(themeWarning('region_empty', `"${el.name}" ยึดกับ ${el.anchor.to} แต่ layout นี้ไม่มีพื้นที่ส่วนนั้น จึงวางเทียบทั้งแผ่นแทน`, el.id));
             }
             const area = region && region.width >= 1 && region.height >= 1 ? region : regions.canvas;
-            const size = sizeElement(el, area, regions);
+            const size = fitBand(sizeElement(el, area, regions), el, regions);
             const pos = placeInRegion(el, area, regions, size);
             let layer = { el, id: `ut_${el.id}`, ...size, ...pos, rotation: el.rotation };
             if (!el.allowOverflow) layer = keepInBand(layer, el.anchor.to, regions);
@@ -1223,20 +1376,33 @@
             layers.push(layer);
         });
 
-        target.artboard = layers.map((layer) => ({
-            id: layer.id,
-            name: layer.el.name,
-            url: layer.el.url,
-            placement: layer.el.placement,
-            x: Math.round(layer.x),
-            y: Math.round(layer.y),
-            width: Math.round(layer.width),
-            height: Math.round(layer.height),
-            rotation: Math.round(layer.rotation * 10) / 10,
-            zIndex: layer.el.zIndex,
-            opacity: layer.el.opacity,
-            visible: layer.el.visible
-        }));
+        target.artboard = layers.map((layer) => {
+            const el = layer.el;
+            const out = {
+                id: layer.id,
+                name: el.name,
+                type: el.type,
+                url: el.url,
+                placement: el.placement,
+                x: Math.round(layer.x),
+                y: Math.round(layer.y),
+                width: Math.round(layer.width),
+                height: Math.round(layer.height),
+                rotation: Math.round(layer.rotation * 10) / 10,
+                zIndex: el.zIndex,
+                opacity: el.opacity,
+                visible: el.visible
+            };
+            if (el.type === 'text') {
+                return {
+                    ...out,
+                    text: el.text, fontFamily: el.fontFamily, fontWeight: el.fontWeight, color: el.color,
+                    align: el.align, lineHeight: el.lineHeight, autoFit: el.autoFit,
+                    fontSize: Math.max(4, Math.round(el.fontScale * layer.height))
+                };
+            }
+            return el.slice ? { ...out, slice: el.slice } : out;
+        });
 
         target.isCustom = true;
         target.universalThemeId = theme.themeId;
@@ -1297,7 +1463,8 @@
             // A decoration deliberately bleeding off the paper keeps doing so
             // instead of being pulled back in.
             const kept = keepInBand({ x: layer.x, y: layer.y, width, height, rotation: layer.rotation }, to, regions);
-            const allowOverflow = kept.x !== layer.x || kept.y !== layer.y;
+            const fitted = fitBand({ width, height }, { anchor: { to } }, regions);
+            const allowOverflow = kept.x !== layer.x || kept.y !== layer.y || fitted.width < width - 0.5;
             const el = normalizeThemeElement({
                 id: layer.id || `ut_art_${index + 1}`,
                 name: layer.name || `Sticker ${index + 1}`,
@@ -1311,7 +1478,17 @@
                 opacity: layer.opacity,
                 visible: layer.visible,
                 avoidSlots: !coversPhoto,
-                allowOverflow
+                allowOverflow,
+                type: layer.type,
+                slice: layer.slice,
+                text: layer.text,
+                fontFamily: layer.fontFamily,
+                fontWeight: layer.fontWeight,
+                color: layer.color,
+                align: layer.align,
+                lineHeight: layer.lineHeight,
+                autoFit: layer.autoFit,
+                fontScale: layer.type === 'text' ? layer.fontSize / height : undefined
             }, index);
             // Offsets that reproduce the exact source position from the anchor.
             const base = placeInRegion(el, region, regions, { width, height });
@@ -1342,12 +1519,13 @@
                 backgroundColor: source.canvas.backgroundColor || '#FFFFFF',
                 backgroundImage: source.canvas.backgroundImage || '',
                 backgroundFitMode: source.canvas.backgroundFitMode || 'cover',
-                overlay: {
+                overlay: normalizeOverlayStyle({
                     url: overlayUrl,
                     zIndex: (source.overlay && source.overlay.zIndex) || 100,
                     fitMode: (source.overlay && source.overlay.fitMode) || 'cover',
-                    buckets: overlayUrl ? [regions.bucket] : null
-                },
+                    buckets: overlayUrl ? [regions.bucket] : null,
+                    slice: source.overlay && source.overlay.slice
+                }),
                 elements,
                 variants: {}
             }
@@ -1381,6 +1559,11 @@
         migrateUniversalTheme,
         extractUniversalTheme,
         applyUniversalTheme,
-        applyUniversalThemeWithReport
+        applyUniversalThemeWithReport,
+        normalizeSlice,
+        nineSlicePatches,
+        TEXT_VARIABLES,
+        resolveTextVariables,
+        layoutText
     });
 })(typeof globalThis !== 'undefined' ? globalThis : window);

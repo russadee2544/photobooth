@@ -25,6 +25,10 @@ type Engine = {
   migrateUniversalTheme: (theme: any) => any;
   computeThemeRegions: (template: any) => any;
   getRatioBucket: (width: number, height: number) => string;
+  normalizeSlice: (source: any) => any;
+  nineSlicePatches: (iw: number, ih: number, slice: any, bw: number, bh: number) => { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number }[];
+  resolveTextVariables: (text: string, values: Record<string, string>) => string;
+  layoutText: (text: string, measure: (value: string, size: number) => number, box: any) => { fontSize: number; lines: string[]; lineHeight: number };
 };
 
 let engine: Engine;
@@ -514,6 +518,106 @@ describe('PhotoTemplateEngine', () => {
       const { template, warnings } = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('2_1x1', '2x6'));
       expect(template.artboard).toHaveLength(0);
       expect(warnings.map((w) => w.code)).toContain('slot_missing');
+    });
+  });
+
+  describe('Frames and text (phase 2)', () => {
+    const IMG = 'data:image/png;base64,AAAA';
+    // Rough stand-in for canvas measureText: every character is half the font size wide.
+    const measure = (value: string, size: number) => Array.from(value).length * size * 0.5;
+
+    it('normalizes nine-slice borders from a number or per side', () => {
+      expect(engine.normalizeSlice(20)).toEqual({ top: 20, right: 20, bottom: 20, left: 20 });
+      expect(engine.normalizeSlice({ top: 10, left: 4 })).toEqual({ top: 10, right: 0, bottom: 0, left: 4 });
+      expect(engine.normalizeSlice(0)).toBeNull();
+      expect(engine.normalizeSlice(null)).toBeNull();
+    });
+
+    it('keeps frame corners square while edges stretch to any box', () => {
+      // 300x300 frame with a 30px border drawn on a tall 600x1800 strip.
+      const patches = engine.nineSlicePatches(300, 300, { top: 30, right: 30, bottom: 30, left: 30 }, 600, 1800);
+      expect(patches).toHaveLength(9);
+      const corner = patches[0];
+      expect(corner.dw).toBeCloseTo(60, 5); // short side 600 / 300 = 2x
+      expect(corner.dh).toBeCloseTo(60, 5);
+      const right = Math.max(...patches.map((p) => p.dx + p.dw));
+      const bottom = Math.max(...patches.map((p) => p.dy + p.dh));
+      expect(right).toBeCloseTo(600, 5);
+      expect(bottom).toBeCloseTo(1800, 5);
+    });
+
+    it('shrinks borders that would not fit the box', () => {
+      const patches = engine.nineSlicePatches(100, 100, { top: 40, right: 40, bottom: 40, left: 40 }, 50, 400);
+      const left = patches.find((p) => p.dx === 0 && p.dy === 0)!;
+      expect(left.dw).toBeLessThanOrEqual(25);
+    });
+
+    it('fills text variables and leaves unknown braces alone', () => {
+      expect(engine.resolveTextVariables('{event_name} · {date} · {other}', { event_name: 'งานแต่ง', date: '7 ต.ค. 2569' }))
+        .toBe('งานแต่ง · 7 ต.ค. 2569 · {other}');
+      expect(engine.resolveTextVariables('{time}', {})).toBe('');
+    });
+
+    it('shrinks a long Thai event name until it fits its box', () => {
+      const text = 'งานแต่งงานคุณสมชายและคุณสมหญิง ณ บ้านใหม่ไออุ่น';
+      const layout = engine.layoutText(text, measure, { width: 300, height: 60, fontSize: 48, lineHeight: 1.2, autoFit: true });
+      expect(layout.fontSize).toBeLessThan(48);
+      expect(layout.lines.length * layout.lineHeight).toBeLessThanOrEqual(60.5);
+      layout.lines.forEach((line) => expect(measure(line, layout.fontSize)).toBeLessThanOrEqual(300.5));
+      expect(layout.lines.join('').replace(/\s/g, '')).toBe(text.replace(/\s/g, ''));
+    });
+
+    it('stores text and nine-slice layers on templates', () => {
+      const template = engine.createTemplate('3_1x1', '2x6');
+      template.artboard = [
+        { id: 'title', type: 'text', text: '{event_name}', x: 50, y: 20, width: 500, height: 60, fontSize: 40, color: '#ff0000', align: 'left' },
+        { id: 'frame', url: IMG, slice: 24, x: 0, y: 0, width: 600, height: 300 }
+      ];
+      template.overlay = { url: IMG, slice: { top: 30, right: 30, bottom: 30, left: 30 } };
+      const normalized = engine.normalizeTemplate(template);
+      expect(normalized.artboard[0]).toMatchObject({ type: 'text', text: '{event_name}', fontSize: 40, color: '#ff0000', align: 'left', url: '' });
+      expect(normalized.artboard[1]).toMatchObject({ type: 'image', slice: { top: 24, right: 24, bottom: 24, left: 24 } });
+      expect(normalized.overlay.slice).toEqual({ top: 30, right: 30, bottom: 30, left: 30 });
+    });
+
+    it('shrinks a header title to fit above the photos on wide paper', () => {
+      const source = engine.createTemplate('3_1x1', '2x6');
+      const slotsTop = Math.min(...source.slots.map((s: any) => s.y));
+      source.artboard = [{ id: 'title', name: 'Title', type: 'text', text: 'Hello', x: 40, y: 8, width: 520, height: slotsTop - 16, fontSize: 40 }];
+      const theme = engine.extractUniversalTheme(source, 'Band');
+      for (const target of engine.createDefaultTemplates()) {
+        const applied = engine.applyUniversalTheme(theme, target);
+        const title = applied.artboard[0];
+        expect(title.y).toBeGreaterThanOrEqual(0);
+        expect(title.y + title.height).toBeLessThanOrEqual(Math.min(...applied.slots.map((s: any) => s.y)) + 1);
+        expect(title.width / title.height).toBeCloseTo(520 / (slotsTop - 16), 1);
+      }
+    });
+
+    it('carries text and frames through a Universal Theme, scaling the font with its box', () => {
+      const source = engine.createTemplate('3_1x1', '2x6');
+      const slotsTop = Math.min(...source.slots.map((s: any) => s.y));
+      source.artboard = [
+        { id: 'title', name: 'Title', type: 'text', text: '{event_name}', x: 60, y: Math.round(slotsTop / 2 - 25), width: 480, height: 50, fontSize: 30, fontWeight: 700, color: '#223344' },
+        { id: 'frame', name: 'Frame', url: IMG, slice: 20, x: 0, y: 0, width: 600, height: 200, placement: 'back' }
+      ];
+      source.overlay = { url: IMG, slice: 30 };
+      const theme = engine.extractUniversalTheme(source, 'Text');
+      const title = theme.style.elements.find((e: any) => e.id === 'title');
+      expect(title.type).toBe('text');
+      expect(title.fontScale).toBeCloseTo(0.6, 3);
+      expect(theme.style.overlay.buckets).toBeNull(); // nine-slice frames fit every shape
+
+      const roundTrip = engine.applyUniversalTheme(theme, engine.createTemplate('3_1x1', '2x6'));
+      expect(roundTrip.artboard.find((l: any) => l.name === 'Title')).toMatchObject({ type: 'text', fontSize: 30, fontWeight: 700, color: '#223344' });
+      expect(roundTrip.artboard.find((l: any) => l.name === 'Frame').slice).toEqual({ top: 20, right: 20, bottom: 20, left: 20 });
+
+      const { template: card, warnings } = engine.applyUniversalThemeWithReport(theme, engine.createTemplate('4_3x4', '4x6-portrait'));
+      const cardTitle = card.artboard.find((l: any) => l.name === 'Title');
+      expect(cardTitle.fontSize).toBe(Math.round(0.6 * cardTitle.height));
+      expect(card.overlay.url).toBe(IMG);
+      expect(card.overlay.slice).toEqual({ top: 30, right: 30, bottom: 30, left: 30 });
+      expect(warnings.map((w) => w.code)).not.toContain('overlay_skipped');
     });
   });
 });
