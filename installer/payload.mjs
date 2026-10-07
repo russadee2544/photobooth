@@ -55,7 +55,7 @@ export function stageAppFiles(dest, version) {
   }
   mkdirSync(join(dest, 'agent'), { recursive: true });
   for (const file of readdirSync(join(root, 'agent'))) {
-    if (/\.(mjs|html|pem)$/.test(file) && !/\.test\.mjs$/.test(file) && file !== 'setup.mjs') {
+    if (/\.(mjs|html|pem)$/.test(file) && !/\.test\.mjs$/.test(file) && file !== 'setup.mjs' || file === 'reset-admin-pin.ps1') {
       cpSync(join(root, 'agent', file), join(dest, 'agent', file));
     }
   }
