@@ -786,7 +786,7 @@
     ];
 
     // A real postage stamp: white paper whose four edges are perforated with semicircular
-    // notches, drawn with a thin dark outline. Proportions follow the reference stamp
+    // notches, drawn with a thin dark outline. The photo fills the whole outline. Proportions follow the reference stamp
     // (498x640): notch radius 4.1% of the short side, one notch every ~3 radii, the same
     // pitch on every edge and the row centred so both corners of an edge keep a tooth.
     // `path` is the paper outline, `inset` the rectangle where the photo goes.

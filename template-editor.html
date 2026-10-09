@@ -39,7 +39,6 @@
         /* Shaped slots: the box becomes a dashed guide and the shape is drawn by an inner clipped layer */
         .editor-slot.shaped { background:transparent; border:1px dashed rgba(10,10,10,.35); overflow:visible; }
         .editor-slot-shape { position:absolute; inset:0; background:#D1D5DB; pointer-events:none; }
-        .editor-slot-stamp-photo { position:absolute; background:#D1D5DB; pointer-events:none; }
         .shape-btn { display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 2px; border:1px solid #E3E3E3; border-radius:8px; background:#F3F4F6; color:#0A0A0A; font-size:10px; font-weight:700; cursor:pointer; transition:all .15s; }
         .shape-btn svg { width:30px; height:30px; fill:#9CA3AF; stroke:#374151; stroke-width:1.2; }
         .shape-btn:hover { background:#E5E7EB; border-color:#4C65FF; }
@@ -2075,14 +2074,9 @@
             const layer = document.createElement('div');
             layer.className = 'editor-slot-shape';
             if (shape === 'stamp') {
+                // The photo fills the whole perforated outline; a thin dark line is drawn on top.
                 const stamp = engine.stampGeometry(w, h);
-                layer.style.background = '#FFFFFF';
                 layer.style.clipPath = "path('" + stamp.path + "')";
-                const photo = document.createElement('div');
-                photo.className = 'editor-slot-stamp-photo';
-                photo.style.left = stamp.inset.x + 'px'; photo.style.top = stamp.inset.y + 'px';
-                photo.style.width = stamp.inset.w + 'px'; photo.style.height = stamp.inset.h + 'px';
-                // Thin dark outline around the perforated paper, as on the printed strip.
                 const outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 outline.setAttribute('class', 'editor-slot-stamp-outline');
                 outline.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -2095,7 +2089,7 @@
                 edge.setAttribute('stroke-width', Math.max(1, stamp.stroke));
                 edge.setAttribute('stroke-linejoin', 'round');
                 outline.appendChild(edge);
-                element.append(layer, photo, outline);
+                element.append(layer, outline);
             } else {
                 layer.style.clipPath = "path('" + engine.shapeSvgPath(shape, w, h) + "')";
                 element.append(layer);

@@ -2453,23 +2453,16 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         // The photo fills `area`; the slot's frame shape decides what part of it stays visible.
         let area = { x: -width / 2, y: -height / 2, w: width, h: height };
         const shape = slot.shape || 'rectangle';
+        let stampOutline = null;
         if (shape === 'stamp') {
-            // Real postage stamp: perforated white paper, photo inset inside it.
+            // Postage stamp: the photo fills the whole perforated outline, which is then
+            // drawn on top as a thin dark line.
             const stamp = engine.stampGeometry(width, height);
-            ctx.save();
             ctx.translate(-width / 2, -height / 2);
-            const paper = new Path2D(stamp.path);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fill(paper);
-            ctx.lineWidth = stamp.stroke;
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = stamp.strokeColor;
-            ctx.stroke(paper);
-            ctx.restore();
-            area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
-            ctx.beginPath();
-            ctx.rect(area.x, area.y, area.w, area.h);
-            ctx.clip();
+            const outline = new Path2D(stamp.path);
+            ctx.clip(outline);
+            ctx.translate(width / 2, height / 2);
+            stampOutline = { path: outline, stroke: stamp.stroke, color: stamp.strokeColor };
         } else if (shape !== 'rectangle') {
             ctx.translate(-width / 2, -height / 2);
             ctx.clip(new Path2D(engine.shapeSvgPath(shape, width, height)));
@@ -2505,6 +2498,14 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
             ctx.font = `600 ${Math.max(9, 11 * scaleX)}px "Inter", sans-serif`;
             ctx.fillStyle = '#B0B5BF';
             ctx.fillText('3:4 Ratio', 0, 12 * scaleX);
+        }
+        if (stampOutline) {
+            ctx.translate(-width / 2, -height / 2);
+            // The clip hides the outer half of the stroke, so draw it twice as wide.
+            ctx.lineWidth = stampOutline.stroke * 2;
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = stampOutline.color;
+            ctx.stroke(stampOutline.path);
         }
         ctx.restore();
     });
