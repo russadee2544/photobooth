@@ -67,7 +67,6 @@ describe('photo frame shapes', () => {
     expect(stamp.radius).toBeCloseTo(20.4, 0);
     // first notch on the top edge is centred ~36px in, leaving a corner tooth
     expect(stamp.path.startsWith('M0 0L15.')).toBe(true);
-    expect(stamp.stroke).toBeGreaterThanOrEqual(1);
   });
 
   it('keeps the shape through normalizeTemplate and falls back for invalid values', () => {

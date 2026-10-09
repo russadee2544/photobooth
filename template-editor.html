@@ -2074,22 +2074,10 @@
             const layer = document.createElement('div');
             layer.className = 'editor-slot-shape';
             if (shape === 'stamp') {
-                // The photo fills the whole perforated outline; a thin dark line is drawn on top.
+                // The photo is cut to the perforated outline, no border line.
                 const stamp = engine.stampGeometry(w, h);
                 layer.style.clipPath = "path('" + stamp.path + "')";
-                const outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                outline.setAttribute('class', 'editor-slot-stamp-outline');
-                outline.setAttribute('viewBox', `0 0 ${w} ${h}`);
-                outline.setAttribute('width', w); outline.setAttribute('height', h);
-                outline.style.cssText = 'position:absolute;inset:0;overflow:visible;pointer-events:none';
-                const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                edge.setAttribute('d', stamp.path);
-                edge.setAttribute('fill', 'none');
-                edge.setAttribute('stroke', stamp.strokeColor);
-                edge.setAttribute('stroke-width', Math.max(1, stamp.stroke));
-                edge.setAttribute('stroke-linejoin', 'round');
-                outline.appendChild(edge);
-                element.append(layer, outline);
+                element.append(layer);
             } else {
                 layer.style.clipPath = "path('" + engine.shapeSvgPath(shape, w, h) + "')";
                 element.append(layer);
