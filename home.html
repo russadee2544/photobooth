@@ -230,8 +230,14 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=2.8"></script>
+    <script src="shared.js?v=3.3"></script>
     <script>
+        // Theme library: fetch what changed on the server while nobody is mid-session.
+        (function syncThemes() {
+            const run = () => { if (window.ThemeLibrary) ThemeLibrary.sync().catch(() => {}); };
+            setTimeout(run, 1500);
+            setInterval(run, 5 * 60 * 1000);
+        })();
         // ===== Welcome motion (Analog Film) =====
         (function initFilmWelcome() {
             const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -180,6 +180,7 @@ const Kiosk = {
 // The catalog is local-first so configured events keep working offline.
 // ============================================================
 const TEMPLATE_CATALOG_KEY = 'kiosk_template_catalog_v1';
+const isSyncedTemplateId = (id) => typeof id === 'string' && id.startsWith('synced_');
 
 const TemplateCatalog = {
     load() {
@@ -195,11 +196,15 @@ const TemplateCatalog = {
         engine.createDefaultTemplates().forEach(template => byId.set(template.templateId, template));
         if (Array.isArray(stored)) {
             stored.forEach(template => {
+                if (isSyncedTemplateId(template && template.templateId)) return;
                 const normalized = engine.normalizeTemplate(template);
                 byId.set(normalized.templateId, normalized);
             });
         }
-        return Array.from(byId.values());
+        // Themes from the central library: this kiosk's default theme comes first so it is
+        // what a layout uses unless the customer picks another one.
+        const synced = typeof window !== 'undefined' && window.ThemeLibrary ? window.ThemeLibrary.templates() : { first: [], rest: [] };
+        return [...synced.first, ...byId.values(), ...synced.rest];
     },
     loadStored() {
         let stored = [];
@@ -225,6 +230,7 @@ const TemplateCatalog = {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('Template engine is unavailable.');
         const normalized = (Array.isArray(templates) ? templates : [])
+            .filter(template => !isSyncedTemplateId(template && template.templateId))
             .map(template => engine.normalizeTemplate(template));
         localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(normalized));
         return normalized;
@@ -321,6 +327,14 @@ const UniversalThemeStore = {
      * @returns {Array<object>} Created templates
      */
     applyToLayouts(themeId, targetLayouts) {
+        return this.applyToLayoutsWithReport(themeId, targetLayouts).templates;
+    },
+    /**
+     * Same as applyToLayouts, plus the placement warnings for each layout
+     * (frames skipped on another paper shape, stickers moved off photos, ...).
+     * @returns {{ templates: Array<object>, warnings: Array<{ templateId: string, name: string, code: string, message: string }> }}
+     */
+    applyToLayoutsWithReport(themeId, targetLayouts) {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('PhotoTemplateEngine is unavailable');
         const uTheme = this.find(themeId);
@@ -351,16 +365,172 @@ const UniversalThemeStore = {
         }
 
         const generatedTemplates = [];
+        const warnings = [];
         targets.forEach(targetTpl => {
-            const applied = engine.applyUniversalTheme(uTheme, targetTpl);
-            TemplateCatalog.upsert(applied);
-            generatedTemplates.push(applied);
+            const report = engine.applyUniversalThemeWithReport(uTheme, targetTpl);
+            TemplateCatalog.upsert(report.template);
+            generatedTemplates.push(report.template);
+            report.warnings.forEach(w => warnings.push({ templateId: report.template.templateId, name: report.template.name, ...w }));
         });
 
-        return generatedTemplates;
+        return { templates: generatedTemplates, warnings };
     }
 };
 if (typeof window !== 'undefined') window.UniversalThemeStore = UniversalThemeStore;
+
+// ============================================================
+// THEME LIBRARY (shared by every kiosk in the workspace)
+// The server keeps the themes and this kiosk's choices (on/off, default, pinned version,
+// small overrides). The kiosk keeps a copy in its own IndexedDB so it prints offline,
+// and syncs only on the welcome page so a theme never changes during a session.
+// ============================================================
+const ThemeLibrary = (() => {
+    const DB_NAME = 'pb_themes';
+    const STORE = 'kv';
+    const MANIFEST_KEY = 'manifest';
+    let dbPromise = null;
+    let manifest = null;
+    const docs = new Map(); // `${themeId}@${version}` -> Universal Theme doc
+    let built = { first: [], rest: [] };
+    let syncing = null;
+
+    const docKey = (themeId, version) => `doc:${themeId}@${version}`;
+    const device = () => (typeof window !== 'undefined' ? window.PhotoboothDevice : null);
+
+    function openDb() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') { reject(new Error('IndexedDB not supported')); return; }
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+        return dbPromise;
+    }
+    async function idb(mode, run) {
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, mode);
+            const req = run(tx.objectStore(STORE));
+            tx.oncomplete = () => resolve(req ? req.result : undefined);
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+    const idbGet = (key) => idb('readonly', store => store.get(key));
+    const idbSet = (key, value) => idb('readwrite', store => store.put(value, key));
+    const idbKeys = () => idb('readonly', store => store.getAllKeys());
+    const idbDel = (key) => idb('readwrite', store => store.delete(key));
+
+    function activeThemes() {
+        return (manifest && Array.isArray(manifest.themes) ? manifest.themes : [])
+            .filter(theme => theme.setting && theme.setting.enabled !== false && theme.version);
+    }
+
+    function rebuild() {
+        const engine = typeof window !== 'undefined' ? window.PhotoTemplateEngine : null;
+        built = { first: [], rest: [] };
+        if (!engine) return;
+        const presets = engine.createDefaultTemplates();
+        for (const entry of activeThemes()) {
+            const doc = docs.get(docKey(entry.themeId, entry.version));
+            if (!doc) continue;
+            let theme;
+            try {
+                theme = engine.applyThemeOverrides({ ...doc, themeId: 'synced', name: entry.name }, entry.setting.overrides);
+            } catch (error) {
+                console.warn('Synced theme skipped', entry.themeId, error);
+                continue;
+            }
+            const target = entry.setting.isDefault ? built.first : built.rest;
+            for (const preset of presets) {
+                const template = engine.applyUniversalTheme(theme, engine.clone(preset));
+                template.templateId = `synced_${entry.themeId}_${preset.type}_${preset.layoutId}_${preset.orientation}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+                template.enabled = true;
+                target.push(template);
+            }
+        }
+    }
+
+    async function loadCache() {
+        try {
+            manifest = (await idbGet(MANIFEST_KEY)) || null;
+            for (const entry of activeThemes()) {
+                const key = docKey(entry.themeId, entry.version);
+                const doc = await idbGet(key);
+                if (doc) docs.set(key, doc);
+            }
+        } catch (error) {
+            console.warn('Theme cache unavailable', error);
+        }
+        rebuild();
+    }
+
+    const ready = typeof window !== 'undefined' ? loadCache() : Promise.resolve();
+
+    async function runSync() {
+        const bridge = device();
+        if (!bridge || typeof bridge.themeManifest !== 'function') return { success: false, error: 'bridge_unavailable' };
+        const next = await bridge.themeManifest({});
+        if (!next || !next.success || !Array.isArray(next.themes)) return { success: false, error: (next && next.error) || 'manifest_failed' };
+
+        const wanted = next.themes.filter(theme => theme.setting && theme.setting.enabled !== false && theme.version);
+        let downloaded = 0;
+        const failed = [];
+        for (const entry of wanted) {
+            const key = docKey(entry.themeId, entry.version);
+            if (docs.has(key)) continue;
+            const cached = await idbGet(key).catch(() => null);
+            if (cached) { docs.set(key, cached); continue; }
+            const reply = await bridge.themeFetch({ themeId: entry.themeId, version: entry.version });
+            if (!reply || !reply.success || !reply.doc) { failed.push(entry.themeId); continue; }
+            await idbSet(key, reply.doc);
+            docs.set(key, reply.doc);
+            downloaded += 1;
+        }
+
+        manifest = { rev: next.rev, themes: next.themes, syncedAt: new Date().toISOString() };
+        await idbSet(MANIFEST_KEY, manifest);
+        // Drop versions nothing points at any more (kept: every version still in use).
+        const keep = new Set(wanted.map(entry => docKey(entry.themeId, entry.version)));
+        for (const key of await idbKeys().catch(() => [])) {
+            if (typeof key === 'string' && key.startsWith('doc:') && !keep.has(key)) {
+                await idbDel(key).catch(() => {});
+                docs.delete(key);
+            }
+        }
+        rebuild();
+        return { success: failed.length === 0, rev: next.rev, themes: next.themes.length, downloaded, failed };
+    }
+
+    return {
+        ready,
+        templates() { return built; },
+        manifest() { return manifest; },
+        /** Fetch what changed on the server. Call only on the welcome page or the admin page. */
+        sync() {
+            if (!syncing) syncing = ready.then(runSync).catch(error => ({ success: false, error: String(error && error.message || error) }))
+                .finally(() => { syncing = null; });
+            return syncing;
+        },
+        /** The doc a kiosk uses for one theme (cached copy), with its overrides applied. */
+        async themeDoc(themeId, version) {
+            const key = docKey(themeId, version);
+            if (docs.has(key)) return docs.get(key);
+            const cached = await idbGet(key).catch(() => null);
+            if (cached) { docs.set(key, cached); return cached; }
+            const bridge = device();
+            const reply = bridge && typeof bridge.themeFetch === 'function' ? await bridge.themeFetch({ themeId, version }) : null;
+            if (!reply || !reply.success) return null;
+            await idbSet(key, reply.doc).catch(() => {});
+            docs.set(key, reply.doc);
+            return reply.doc;
+        }
+    };
+})();
+if (typeof window !== 'undefined') window.ThemeLibrary = ThemeLibrary;
 
 // ============================================================
 // INDEXEDDB STORAGE for large payloads (photos, composed result)
@@ -2143,6 +2313,63 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
     ctx.restore();
 }
 
+// Values for {event_name} / {date} / {time} in theme text layers.
+function templateTextVariables() {
+    const now = new Date();
+    let eventName = '';
+    try { eventName = Kiosk.eventName || ''; } catch (e) {}
+    return {
+        event_name: eventName,
+        date: now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+        time: now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    };
+}
+
+// Draws an image into a box, keeping nine-slice frame corners at their shape.
+function drawImageInBox(ctx, image, x, y, width, height, slice) {
+    const engine = window.PhotoTemplateEngine;
+    if (!slice || !engine || typeof engine.nineSlicePatches !== 'function') {
+        ctx.drawImage(image, x, y, width, height);
+        return;
+    }
+    const iw = image.naturalWidth || image.width || 1;
+    const ih = image.naturalHeight || image.height || 1;
+    engine.nineSlicePatches(iw, ih, slice, width, height).forEach((p) => {
+        ctx.drawImage(image, p.sx, p.sy, p.sw, p.sh, x + p.dx, y + p.dy, p.dw, p.dh);
+    });
+}
+
+async function drawTextLayer(ctx, layer, width, height, scale) {
+    const engine = window.PhotoTemplateEngine;
+    const text = engine.resolveTextVariables(layer.text, templateTextVariables());
+    if (!text.trim()) return;
+    const family = `"${layer.fontFamily || 'Prompt'}", "Prompt", sans-serif`;
+    const weight = layer.fontWeight || 600;
+    try {
+        if (document.fonts && document.fonts.load) await document.fonts.load(`${weight} 32px "${layer.fontFamily || 'Prompt'}"`, text);
+    } catch (e) {}
+    const measure = (value, size) => {
+        ctx.font = `${weight} ${size}px ${family}`;
+        return ctx.measureText(value).width;
+    };
+    const layout = engine.layoutText(text, measure, {
+        width, height,
+        fontSize: (layer.fontSize || 24) * scale,
+        lineHeight: layer.lineHeight || 1.2,
+        autoFit: layer.autoFit !== false
+    });
+    ctx.font = `${weight} ${layout.fontSize}px ${family}`;
+    ctx.fillStyle = layer.color || '#111111';
+    ctx.textBaseline = 'middle';
+    const align = layer.align || 'center';
+    ctx.textAlign = align;
+    const x = align === 'left' ? -width / 2 : align === 'right' ? width / 2 : 0;
+    const top = -(layout.lines.length * layout.lineHeight) / 2;
+    layout.lines.forEach((line, index) => {
+        ctx.fillText(line, x, top + layout.lineHeight * (index + 0.5));
+    });
+}
+
 async function drawTemplateUnit(ctx, schema, images, templateName, customThemeObj, target) {
     const engine = window.PhotoTemplateEngine;
     const scaleX = target.width / schema.canvas.width;
@@ -2192,10 +2419,12 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     const drawArtboardLayers = async (placement) => {
         if (!Array.isArray(schema.artboard)) return;
         for (const layer of schema.artboard.slice().sort((a, b) => a.zIndex - b.zIndex)) {
-            if (!layer || layer.visible === false || !layer.url) continue;
+            if (!layer || layer.visible === false) continue;
             if ((layer.placement || 'front') !== placement) continue;
-            const image = await loadTemplateImage(layer.url);
-            if (!image) continue;
+            const isText = layer.type === 'text';
+            if (!isText && !layer.url) continue;
+            const image = isText ? null : await loadTemplateImage(layer.url);
+            if (!isText && !image) continue;
             const lx = layer.x * scaleX;
             const ly = layer.y * scaleY;
             const lw = layer.width * scaleX;
@@ -2204,7 +2433,8 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
             ctx.globalAlpha = typeof layer.opacity === 'number' ? layer.opacity : 1;
             ctx.translate(lx + lw / 2, ly + lh / 2);
             ctx.rotate(((layer.rotation || 0) * Math.PI) / 180);
-            ctx.drawImage(image, -lw / 2, -lh / 2, lw, lh);
+            if (isText) await drawTextLayer(ctx, layer, lw, lh, scaleY);
+            else drawImageInBox(ctx, image, -lw / 2, -lh / 2, lw, lh, layer.slice);
             ctx.restore();
         }
     };
@@ -2224,17 +2454,11 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         let area = { x: -width / 2, y: -height / 2, w: width, h: height };
         const shape = slot.shape || 'rectangle';
         if (shape === 'stamp') {
-            // Real postage stamp: perforated white paper, photo inset inside it.
+            // Postage stamp: the photo is cut to the perforated outline, no border line.
             const stamp = engine.stampGeometry(width, height);
-            ctx.save();
             ctx.translate(-width / 2, -height / 2);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fill(new Path2D(stamp.path));
-            ctx.restore();
-            area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
-            ctx.beginPath();
-            ctx.rect(area.x, area.y, area.w, area.h);
-            ctx.clip();
+            ctx.clip(new Path2D(stamp.path));
+            ctx.translate(width / 2, height / 2);
         } else if (shape !== 'rectangle') {
             ctx.translate(-width / 2, -height / 2);
             ctx.clip(new Path2D(engine.shapeSvgPath(shape, width, height)));
@@ -2285,7 +2509,9 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     const schemaOverlay = await loadTemplateImage(schema.overlay && schema.overlay.url);
     if (schemaOverlay) {
         const fitMode = (schema.overlay && schema.overlay.fitMode) || 'cover';
-        if (fitMode === 'cover' || fitMode === 'contain') {
+        if (schema.overlay && schema.overlay.slice) {
+            drawImageInBox(ctx, schemaOverlay, 0, 0, target.width, target.height, schema.overlay.slice);
+        } else if (fitMode === 'cover' || fitMode === 'contain') {
             const ow = schemaOverlay.naturalWidth || schemaOverlay.width || 1;
             const oh = schemaOverlay.naturalHeight || schemaOverlay.height || 1;
             const hRatio = target.width / ow;
@@ -2354,6 +2580,7 @@ async function composeTemplateBySchema(photos, templateName, outputWidth, custom
 
 async function composePhotoByMode(photos, templateName, outputWidth = 600, customThemeObj = null, layoutStr = '4', layoutSize = null) {
     const mode = Kiosk.paperMode || 'photo4x6_dual';
+    await ThemeLibrary.ready;
     const schema = TemplateCatalog.current(layoutStr, mode);
     if (window.PhotoTemplateEngine && schema) {
         return composeTemplateBySchema(photos, templateName, outputWidth, customThemeObj, schema, mode);

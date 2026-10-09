@@ -32,6 +32,9 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
   const withAdmin = (body) => (adminValid()
     ? callFunction('admin-redeem', body, { 'x-admin-capability': admin.token })
     : Promise.resolve({ success: false, error: 'admin_capability_required' }));
+  const withThemeAdmin = (body) => (adminValid()
+    ? callFunction('kiosk-themes', body, { 'x-admin-capability': admin.token })
+    : Promise.resolve({ success: false, error: 'admin_capability_required' }));
 
   const handlers = {
     listPassOffers: () => callFunction('payment-order', { operation: 'offers' }),
@@ -92,6 +95,13 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     deleteEventPhotos: (a) => (adminValid()
       ? callFunction('event-photos', { operation: 'delete', ids: a.ids, reason: a.reason }, { 'x-admin-capability': admin.token })
       : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    // Theme library: any page may read; changing this kiosk's choices needs the PIN session.
+    themeManifest: () => callFunction('kiosk-themes', { operation: 'manifest' }),
+    themeFetch: (a) => callFunction('kiosk-themes', { operation: 'fetch', themeId: a.themeId, version: a.version }),
+    themePublish: (a) => withThemeAdmin({ operation: 'publish', themeId: a.themeId ?? null, name: a.name, doc: a.doc, private: a.private === true }),
+    themeSetKiosk: (a) => withThemeAdmin({ operation: 'set', themeId: a.themeId, patch: a.patch, expectedUpdatedAt: a.expectedUpdatedAt ?? null }),
+    themeFork: (a) => withThemeAdmin({ operation: 'fork', themeId: a.themeId, name: a.name }),
+    themeArchive: (a) => withThemeAdmin({ operation: 'archive', themeId: a.themeId }),
     listPrintPasses: async () => {
       const result = await withAdmin({ operation: 'listPass' });
       if (!result.success) return { success: false, codes: [], error: result.error };
