@@ -2082,7 +2082,20 @@
                 photo.className = 'editor-slot-stamp-photo';
                 photo.style.left = stamp.inset.x + 'px'; photo.style.top = stamp.inset.y + 'px';
                 photo.style.width = stamp.inset.w + 'px'; photo.style.height = stamp.inset.h + 'px';
-                element.append(layer, photo);
+                // Thin dark outline around the perforated paper, as on the printed strip.
+                const outline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                outline.setAttribute('class', 'editor-slot-stamp-outline');
+                outline.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                outline.setAttribute('width', w); outline.setAttribute('height', h);
+                outline.style.cssText = 'position:absolute;inset:0;overflow:visible;pointer-events:none';
+                const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                edge.setAttribute('d', stamp.path);
+                edge.setAttribute('fill', 'none');
+                edge.setAttribute('stroke', stamp.strokeColor);
+                edge.setAttribute('stroke-width', Math.max(1, stamp.stroke));
+                edge.setAttribute('stroke-linejoin', 'round');
+                outline.appendChild(edge);
+                element.append(layer, photo, outline);
             } else {
                 layer.style.clipPath = "path('" + engine.shapeSvgPath(shape, w, h) + "')";
                 element.append(layer);

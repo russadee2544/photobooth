@@ -2458,8 +2458,13 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
             const stamp = engine.stampGeometry(width, height);
             ctx.save();
             ctx.translate(-width / 2, -height / 2);
+            const paper = new Path2D(stamp.path);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fill(new Path2D(stamp.path));
+            ctx.fill(paper);
+            ctx.lineWidth = stamp.stroke;
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = stamp.strokeColor;
+            ctx.stroke(paper);
             ctx.restore();
             area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
             ctx.beginPath();

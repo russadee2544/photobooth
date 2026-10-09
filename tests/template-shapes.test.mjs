@@ -61,6 +61,15 @@ describe('photo frame shapes', () => {
     expect(stamp.inset.y + stamp.inset.h).toBeLessThan(400 - stamp.radius * 2);
   });
 
+  it('matches the reference stamp: 8 notches across, 10 down on a 498x640 stamp', () => {
+    const stamp = engine.stampGeometry(498, 640);
+    expect(stamp.notches).toEqual({ across: 8, down: 10 });
+    expect(stamp.radius).toBeCloseTo(20.4, 0);
+    // first notch on the top edge is centred ~36px in, leaving a corner tooth
+    expect(stamp.path.startsWith('M0 0L15.')).toBe(true);
+    expect(stamp.stroke).toBeGreaterThanOrEqual(1);
+  });
+
   it('keeps the shape through normalizeTemplate and falls back for invalid values', () => {
     const base = engine.createDefaultTemplates()[0];
     const make = (shape) => engine.normalizeTemplate({ ...base, slots: base.slots.map((slot) => ({ ...slot, shape })) });

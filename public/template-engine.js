@@ -786,25 +786,43 @@
     ];
 
     // A real postage stamp: white paper whose four edges are perforated with semicircular
-    // notches. `path` is the paper outline, `inset` the rectangle where the photo goes.
+    // notches, drawn with a thin dark outline. Proportions follow the reference stamp
+    // (498x640): notch radius 4.1% of the short side, one notch every ~3 radii, the same
+    // pitch on every edge and the row centred so both corners of an edge keep a tooth.
+    // `path` is the paper outline, `inset` the rectangle where the photo goes.
+    function stampEdgeCentres(length, r, pitch) {
+        let count = Math.max(1, Math.floor((length - 2 * r) / pitch) + 1);
+        // Never let a corner tooth get thinner than 0.6r (it would look torn).
+        while (count > 1 && (length - (count - 1) * pitch) / 2 - r < r * 0.6) count -= 1;
+        const first = (length - (count - 1) * pitch) / 2;
+        return Array.from({ length: count }, (_, i) => first + i * pitch);
+    }
+
     function stampGeometry(w, h) {
         const base = Math.min(w, h);
-        const r = Math.max(1.5, base * 0.032);
-        const margin = Math.min(r * 2.7, base * 0.3);
-        const pitch = r * 3.4;
-        const nx = Math.max(2, Math.round(w / pitch));
-        const ny = Math.max(2, Math.round(h / pitch));
+        const r = Math.max(1.5, base * 0.041);
+        const pitch = r * 2.98;
+        const margin = Math.min(r * 2.6, base * 0.3);
         const notch = (x, y) => `A${fix(r)} ${fix(r)} 0 0 0 ${fix(x)} ${fix(y)}`;
+        const across = stampEdgeCentres(w, r, pitch);
+        const down = stampEdgeCentres(h, r, pitch);
         let d = 'M0 0';
-        for (let i = 0; i < nx; i++) { const cx = (i + 0.5) * w / nx; d += `L${fix(cx - r)} 0${notch(cx + r, 0)}`; }
+        for (const cx of across) d += `L${fix(cx - r)} 0${notch(cx + r, 0)}`;
         d += `L${fix(w)} 0`;
-        for (let j = 0; j < ny; j++) { const cy = (j + 0.5) * h / ny; d += `L${fix(w)} ${fix(cy - r)}${notch(w, cy + r)}`; }
+        for (const cy of down) d += `L${fix(w)} ${fix(cy - r)}${notch(w, cy + r)}`;
         d += `L${fix(w)} ${fix(h)}`;
-        for (let i = nx - 1; i >= 0; i--) { const cx = (i + 0.5) * w / nx; d += `L${fix(cx + r)} ${fix(h)}${notch(cx - r, h)}`; }
+        for (const cx of across.slice().reverse()) d += `L${fix(cx + r)} ${fix(h)}${notch(cx - r, h)}`;
         d += `L0 ${fix(h)}`;
-        for (let j = ny - 1; j >= 0; j--) { const cy = (j + 0.5) * h / ny; d += `L0 ${fix(cy + r)}${notch(0, cy - r)}`; }
+        for (const cy of down.slice().reverse()) d += `L0 ${fix(cy + r)}${notch(0, cy - r)}`;
         d += 'Z';
-        return { path: d, inset: { x: margin, y: margin, w: Math.max(1, w - 2 * margin), h: Math.max(1, h - 2 * margin) }, radius: r };
+        return {
+            path: d,
+            inset: { x: margin, y: margin, w: Math.max(1, w - 2 * margin), h: Math.max(1, h - 2 * margin) },
+            radius: r,
+            notches: { across: across.length, down: down.length },
+            stroke: Math.max(1, base * 0.004),
+            strokeColor: '#111111'
+        };
     }
 
     function shapeSvgPath(shape, w, h) {
