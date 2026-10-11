@@ -92,6 +92,12 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     deleteEventPhotos: (a) => (adminValid()
       ? callFunction('event-photos', { operation: 'delete', ids: a.ids, reason: a.reason }, { 'x-admin-capability': admin.token })
       : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    // Shared themes: every kiosk reads the current set; publishing it needs the PIN session.
+    themeLatest: () => callFunction('theme-sync', { operation: 'latest' }),
+    themeFetch: () => callFunction('theme-sync', { operation: 'fetch' }),
+    themePublish: (a) => (adminValid()
+      ? callFunction('theme-sync', { operation: 'publish', bundle: a.bundle }, { 'x-admin-capability': admin.token })
+      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
     listPrintPasses: async () => {
       const result = await withAdmin({ operation: 'listPass' });
       if (!result.success) return { success: false, codes: [], error: result.error };

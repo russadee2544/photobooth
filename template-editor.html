@@ -526,6 +526,9 @@
                     <button class="editor-button primary flex items-center gap-1.5 text-xs font-bold py-2 px-4 shadow-sm whitespace-nowrap" onclick="createNewThemeFromManager()">
                         <span class="material-symbols-outlined text-[18px]">add</span> + ออกแบบธีมใหม่
                     </button>
+                    <button id="publish-themes-btn" class="editor-button flex items-center gap-1.5 text-xs font-bold py-2 px-3.5 whitespace-nowrap" onclick="publishThemesToAllKiosks()">
+                        <span class="material-symbols-outlined text-[17px] text-gray-600">cloud_sync</span> เผยแพร่ธีมไปทุกตู้
+                    </button>
                     <button class="editor-button flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 whitespace-nowrap" onclick="exportCatalog()">
                         <span class="material-symbols-outlined text-[17px] text-gray-600">file_download</span> Export
                     </button>
@@ -2748,6 +2751,26 @@
             const reader = new FileReader(); reader.onload = () => { draft.overlay.url = reader.result; pushHistory(); renderAll(); }; reader.readAsDataURL(file);
         }
         function clearOverlay() { draft.overlay.url = ''; byId('overlay-file').value=''; pushHistory(); renderAll(); }
+
+        // Sends this kiosk's whole theme set to every kiosk (they pick it up on their welcome page).
+        async function publishThemesToAllKiosks() {
+            if (!ThemeSync.available()) { alert('ใช้ได้เฉพาะบนตู้ที่ติดตั้งโปรแกรมแล้ว'); return; }
+            const bundle = ThemeSync.collect();
+            const count = bundle.catalog.length + bundle.customThemes.length + bundle.universalThemes.length;
+            if (!confirm(`เผยแพร่ธีมทั้งหมดของเครื่องนี้ (${count} รายการ) ไปทุกตู้ใช่ไหม?\n\nธีมในตู้อื่นจะถูกแทนที่ด้วยชุดนี้ ภายในไม่กี่นาทีเมื่อตู้นั้นอยู่หน้าแรก`)) return;
+            const button = byId('publish-themes-btn');
+            button.disabled = true;
+            const result = await ThemeSync.publish();
+            button.disabled = false;
+            const reasons = {
+                admin_capability_required: 'ต้องเข้าสู่ระบบ Admin (ใส่ PIN) ก่อน แล้วลองใหม่',
+                admin_capability_invalid: 'เซสชัน Admin หมดอายุ กรุณาใส่ PIN ใหม่ แล้วลองอีกครั้ง',
+                bundle_too_large: 'ธีมรวมกันใหญ่เกิน 20 MB ลองลดขนาดรูปในธีม',
+                network_error: 'ต่ออินเทอร์เน็ตไม่ได้'
+            };
+            alert(result.success ? 'เผยแพร่แล้ว ตู้อื่นจะได้ธีมชุดนี้เมื่ออยู่หน้าแรก (ภายในไม่กี่นาที)'
+                : `เผยแพร่ไม่สำเร็จ: ${reasons[result.error] || result.error || 'ไม่ทราบสาเหตุ'}`);
+        }
 
         function exportCatalog() {
             const blob = new Blob([JSON.stringify(TemplateCatalog.load(), null, 2)], { type:'application/json' });

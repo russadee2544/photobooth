@@ -2547,6 +2547,66 @@ async function logSessionToCloud() {
     return true;
 }
 
+// ======================== SHARED THEMES (one set for every kiosk) ========================
+// The main kiosk publishes its whole theme set from the Template Editor; every kiosk pulls the newest
+// set while it sits on the welcome page. Talks to the server only through the native bridge.
+const THEME_BUNDLE_ID_KEY = 'kiosk_theme_bundle_id';
+const THEME_BUNDLE_KEYS = {
+    catalog: TEMPLATE_CATALOG_KEY,
+    customThemes: 'kiosk_local_custom_themes',
+    universalThemes: UNIVERSAL_THEME_STORAGE_KEY
+};
+const ThemeSync = {
+    available() {
+        return !!(window.PhotoboothDevice && typeof window.PhotoboothDevice.themeLatest === 'function');
+    },
+    collect() {
+        const bundle = {};
+        for (const [field, key] of Object.entries(THEME_BUNDLE_KEYS)) {
+            try {
+                const value = JSON.parse(localStorage.getItem(key) || '[]');
+                bundle[field] = Array.isArray(value) ? value : [];
+            } catch (_) { bundle[field] = []; }
+        }
+        return bundle;
+    },
+    // All three stores change together or not at all.
+    apply(id, bundle) {
+        const before = {};
+        for (const key of Object.values(THEME_BUNDLE_KEYS)) before[key] = localStorage.getItem(key);
+        try {
+            for (const [field, key] of Object.entries(THEME_BUNDLE_KEYS)) {
+                localStorage.setItem(key, JSON.stringify(Array.isArray(bundle[field]) ? bundle[field] : []));
+            }
+            localStorage.setItem(THEME_BUNDLE_ID_KEY, id);
+            return true;
+        } catch (_) {
+            for (const [key, value] of Object.entries(before)) {
+                try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch (_) { /* best effort */ }
+            }
+            return false;
+        }
+    },
+    async publish() {
+        if (!this.available()) return { success: false, error: 'not_on_kiosk' };
+        const result = await window.PhotoboothDevice.themePublish({ bundle: this.collect() });
+        if (result && result.success && result.id) {
+            try { localStorage.setItem(THEME_BUNDLE_ID_KEY, result.id); } catch (_) { /* next sync re-applies */ }
+        }
+        return result || { success: false, error: 'no_response' };
+    },
+    async syncNow() {
+        if (!this.available()) return { status: 'unavailable' };
+        const latest = await window.PhotoboothDevice.themeLatest();
+        if (!latest || !latest.success) return { status: 'error', error: latest && latest.error };
+        if (!latest.id) return { status: 'none' };
+        if (latest.id === localStorage.getItem(THEME_BUNDLE_ID_KEY)) return { status: 'current' };
+        const full = await window.PhotoboothDevice.themeFetch();
+        if (!full || !full.success || !full.bundle || !full.id) return { status: 'error', error: full && full.error };
+        return this.apply(full.id, full.bundle) ? { status: 'updated', id: full.id } : { status: 'error', error: 'storage_full' };
+    }
+};
+
 // ======================== NAVIGATION GUARD ========================
 function preventBackNavigation() {
     history.pushState(null, '', window.location.href);

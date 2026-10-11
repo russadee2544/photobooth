@@ -257,7 +257,8 @@ async function runKiosk(config) {
       if (req.method !== 'POST' || req.headers['x-pb-bridge'] !== '1') return json(res, 403, { error: 'forbidden' });
       let payload;
       try { payload = JSON.parse(await readBody(req, 30 * 1024 * 1024) || '{}'); } catch { return json(res, 400, { error: 'invalid_json' }); }
-      if (payload.method !== 'reportPageStatus') activity.at = Date.now();
+      // Background calls from the welcome page are not a customer using the kiosk (keeps updates possible).
+      if (!['reportPageStatus', 'themeLatest', 'themeFetch'].includes(payload.method)) activity.at = Date.now();
       const handler = Object.hasOwn(handlers, payload.method) ? handlers[payload.method] : null;
       if (!handler) return json(res, 400, { error: 'unknown_method' });
       try { return json(res, 200, await handler(payload.args || {})); } catch { return json(res, 200, { error: 'agent_error' }); }
