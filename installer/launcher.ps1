@@ -38,7 +38,7 @@ Start-Job -ArgumentList $chrome, $port, $Data -ScriptBlock {
   for ($i = 0; $i -lt 60; $i++) {
     try { (New-Object Net.Sockets.TcpClient('127.0.0.1', $port)).Close(); break } catch { Start-Sleep -Seconds 1 }
   }
-  & $chrome --kiosk --noerrdialogs --disable-infobars --no-first-run `
+  & $chrome --kiosk --kiosk-printing --noerrdialogs --disable-infobars --no-first-run `
     --user-data-dir="$data\chrome-profile" --use-fake-ui-for-media-stream `
     --autoplay-policy=no-user-gesture-required --overscroll-history-navigation=0 `
     --disable-pinch "http://localhost:$port/home.html"

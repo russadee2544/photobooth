@@ -1024,6 +1024,12 @@ const USBPrinter = {
 // When Chrome is launched with --kiosk-printing, window.print() sends directly
 // to the default printer WITHOUT showing the print dialog.
 function printCanvasViaSystemDialog(canvasOrDataUrl, paperMode = 'photo4x6_dual', copies = 1) {
+    // On a kiosk with the agent, printing goes silently through it. The Windows print dialog must never open in front
+    // of a customer, so if a flow still ends up here it fails instead of showing the dialog.
+    if (typeof window !== 'undefined' && window.PhotoboothPrinter && typeof window.PhotoboothPrinter.printAuthorizedPass === 'function') {
+        console.warn('[Print] system print dialog blocked on an agent kiosk');
+        return Promise.resolve({ status: 'failed', transport: 'agent_dialog_blocked', silent: true });
+    }
     return new Promise((resolve) => {
         let dataUrl = typeof canvasOrDataUrl === 'string' ? canvasOrDataUrl : canvasOrDataUrl.toDataURL('image/png');
         let iframe = document.getElementById('pb-silent-print-frame');
