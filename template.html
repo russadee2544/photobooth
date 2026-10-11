@@ -104,6 +104,7 @@
             const nextBtn = document.getElementById('tpl-next');
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+            await ThemePacks.installAll();
             globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
 
             const paperMode = Kiosk.paperMode || 'photo4x6_dual';

@@ -1673,6 +1673,7 @@
             if (!status.authenticated) { window.location.href = `admin.html${location.search}`; return; }
             
             ThemeSync.canPublish().then(ok => byId('publish-themes-btn').classList.toggle('hidden', !ok)).catch(() => {});
+            await ThemePacks.installAll();
             await ThemeSync.syncNow().catch(() => {});
 
             catalog = TemplateCatalog.load();

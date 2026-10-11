@@ -2600,6 +2600,33 @@ async function logSessionToCloud() {
     return true;
 }
 
+// ======================== BUILT-IN THEME PACKS ========================
+// Ready-made themes shipped with the app (images under /theme-packs/). Each pack is copied once into this
+// kiosk's own themes, so it can be edited, hidden or deleted like any other; a deleted theme stays deleted
+// until the pack's version changes.
+const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json'];
+const ThemePacks = {
+    async installAll() {
+        for (const url of THEME_PACK_URLS) {
+            try {
+                const response = await fetch(url, { cache: 'no-cache' });
+                if (!response.ok) continue;
+                const pack = await response.json();
+                if (!pack || !pack.packId || !Array.isArray(pack.templates)) continue;
+                const key = 'kiosk_theme_pack_' + pack.packId;
+                if (localStorage.getItem(key) === String(pack.version)) continue;
+                const ids = new Set(pack.templates.map(t => t && t.templateId));
+                const own = TemplateCatalog.loadStored().filter(t => !(t && ids.has(t.templateId)));
+                localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(own.concat(pack.templates)));
+                localStorage.setItem(key, String(pack.version));
+            } catch (error) {
+                console.warn('Theme pack not installed:', url, error);
+            }
+        }
+    }
+};
+if (typeof window !== 'undefined') window.ThemePacks = ThemePacks;
+
 // ======================== OFFICIAL THEME LIBRARY ========================
 // Only the main kiosk (set on the server) can publish; it sends the themes it made itself. Every other kiosk
 // keeps that set as its read-only official library, next to the themes it made itself (which are never touched).
