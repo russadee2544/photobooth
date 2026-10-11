@@ -460,22 +460,23 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
     <style>
-        /* Portrait / narrow screens stack the page, which pushed the Print button below the fold where nobody
-           saw it. Here the actions live in a bar pinned to the bottom edge, with a big print button. */
+        /* Portrait / narrow screens: one screen, no scrolling. The strip preview takes whatever height is left,
+           the QR codes and the buttons sit together underneath, so nothing is hidden and nothing overlaps. */
         @media (max-width: 1023px) {
-            /* The entrance animation leaves a transform on this panel, which turns position:fixed inside it into
-               "fixed to the panel". On these layouts the panel simply appears (no slide-up). */
+            body { height: 100dvh; min-height: 0; }
+            #print-preview { flex: 1 1 auto; min-height: 0 !important; padding-top: 4.5rem; padding-bottom: 1rem; }
+            #final-result { max-height: clamp(240px, calc(100dvh - 600px), 64vh); }
+            #print-panel { flex: 0 0 auto; padding-top: 1.25rem; padding-bottom: 1.25rem; justify-content: flex-start; }
+            #print-panel h1 { margin-bottom: .15rem; }
+            #print-panel > p { margin-bottom: .9rem; }
+            #upload-status { margin-bottom: .9rem; }
+            #qr-row { margin-bottom: 1rem; }
+            #print-actions { margin-top: 0; flex-direction: row; align-items: stretch; gap: .6rem; }
+            #print-actions #btn-print { flex: 1 1 auto; width: auto; padding: .8rem 1.25rem; font-size: 1rem; font-weight: 600; white-space: nowrap; }
+            #print-actions #btn-print .material-symbols-outlined { font-size: 1.35rem; }
+            #print-actions > button:not(#btn-print) { flex: 0 0 auto; width: auto; padding: .8rem 1.4rem; }
+            /* The slide-up entrance would leave a transform on the panel; the page simply appears here. */
             .fade-up-enter { animation: none !important; transform: none !important; opacity: 1 !important; }
-            body { padding-bottom: 11rem; }
-            #print-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; margin: 0; gap: .6rem;
-                flex-direction: column; padding: .9rem 1.1rem calc(.9rem + env(safe-area-inset-bottom));
-                background: rgba(255, 255, 255, .96); backdrop-filter: blur(8px); box-shadow: 0 -10px 28px rgba(10, 10, 10, .14); }
-            #print-actions #btn-print { width: 100%; padding: 1.15rem 1.5rem; font-size: 1.3rem; font-weight: 700; gap: .7rem; }
-            #print-actions #btn-print .material-symbols-outlined { font-size: 1.9rem; }
-            #print-actions > button:not(#btn-print) { width: 100%; padding: .7rem 1rem; }
-            #pass-after-print { position: fixed; left: 1rem; right: 1rem; bottom: 1rem; z-index: 46; margin: 0;
-                box-shadow: 0 14px 40px rgba(10, 10, 10, .22); }
-            body:has(#pass-after-print:not(.hidden)) #print-actions { display: none; }
         }
     </style>
 </head>
@@ -487,7 +488,7 @@
     </header>
 
     <!-- Left Side: Digital Downloads -->
-    <div class="w-full lg:w-1/2 flex flex-col justify-center px-6 py-8 md:px-12 lg:px-16 fade-up-enter z-10 pt-20 lg:pt-16">
+    <div id="print-panel" class="w-full lg:w-1/2 flex flex-col justify-center px-6 py-8 md:px-12 lg:px-16 fade-up-enter z-10 pt-20 lg:pt-16">
         <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-2" data-i18n="print_title">Your photos are ready.</h1>
         <p class="text-gray-500 text-xs md:text-sm mb-6 md:mb-10" data-i18n="print_desc">Your final photo is ready for printing.</p>
 
@@ -652,7 +653,7 @@
     </div>
 
     <!-- Right Side: The Print Preview -->
-    <div class="w-full lg:w-1/2 bg-gray-100 relative shadow-inner overflow-hidden flex items-center justify-center p-6 pt-20 lg:pt-24 no-print min-h-[45vh] lg:min-h-screen">
+    <div id="print-preview" class="w-full lg:w-1/2 bg-gray-100 relative shadow-inner overflow-hidden flex items-center justify-center p-6 pt-20 lg:pt-24 no-print min-h-[45vh] lg:min-h-screen">
         <!-- The actual print strip sliding down -->
         <div class="relative print-slide-down flex items-center justify-center max-h-full">
             <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-12 bg-white rounded-t-xl shadow-lg z-20 hidden"></div>
