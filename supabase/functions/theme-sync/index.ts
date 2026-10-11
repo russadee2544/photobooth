@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 
 // One theme set for every kiosk in a workspace. Device credential required for everything
 // (sent by the native bridge; the browser never holds it).
-//   {operation:'latest',  kioskId}                 -> { id, publishedAt } of the current bundle (or id: null)
+//   {operation:'latest',  kioskId}                 -> { id, publishedAt, canPublish, publishedBySelf } (id: null if none)
 //   {operation:'fetch',   kioskId}                 -> the current bundle itself
-//   {operation:'publish', kioskId, bundle}         -> admin only (x-admin-capability from the PIN session)
+//   {operation:'publish', kioskId, bundle}         -> main kiosk only (kiosks.theme_publisher) + its PIN session
 // A bundle is { catalog: [], customThemes: [], universalThemes: [] } exactly as stored in the kiosk browser.
 const BUCKET = 'theme-bundles';
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -33,7 +33,7 @@ function asBundle(value: unknown): Bundle | null {
 
 async function latest(workspaceId: string) {
   const { data } = await admin.from('theme_bundles')
-    .select('id, storage_path, created_at')
+    .select('id, storage_path, created_at, published_by_kiosk')
     .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -59,9 +59,15 @@ Deno.serve(async (request) => {
   const device = (deviceRows as Array<{ kiosk_id: string; workspace_id: string }> | null)?.[0];
   if (!device || device.kiosk_id !== kioskId) return json({ error: 'device_unauthorized' }, 401);
 
+  const { data: kiosk } = await admin.from('kiosks').select('theme_publisher').eq('id', kioskId).maybeSingle();
+  const canPublish = kiosk?.theme_publisher === true;
+
   if (operation === 'latest') {
     const row = await latest(device.workspace_id);
-    return json({ success: true, id: row?.id ?? null, publishedAt: row?.created_at ?? null });
+    return json({
+      success: true, id: row?.id ?? null, publishedAt: row?.created_at ?? null,
+      canPublish, publishedBySelf: !!row && row.published_by_kiosk === kioskId,
+    });
   }
 
   if (operation === 'fetch') {
@@ -75,7 +81,8 @@ Deno.serve(async (request) => {
     return json({ success: true, id: row.id, publishedAt: row.created_at, bundle });
   }
 
-  // publish: the PIN session of this kiosk is required as well.
+  // publish: only the main kiosk, and only inside its PIN session.
+  if (!canPublish) return json({ error: 'not_theme_publisher' }, 403);
   const capability = request.headers.get('x-admin-capability');
   if (!capability) return json({ error: 'admin_capability_required' }, 401);
   const { data: allowed } = await admin.rpc('verify_kiosk_admin_capability', {
