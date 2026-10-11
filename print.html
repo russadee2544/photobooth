@@ -56,7 +56,9 @@
     <!-- Printing animation styles in a SEPARATE tag so applyDynamicPrintStyles() won't wipe them -->
     <style id="printing-animation-style">
         /* ============================================
-           PREMIUM KIOSK PRINTER ANIMATION
+           PRINTING ANIMATION: minimal, white, same look as the rest of the kiosk.
+           A thin slot, the receipt slides out of it, a quiet progress bar below.
+           (Element ids are used by showPrintingAnimation / showPrintComplete.)
            ============================================ */
         #printing-overlay {
             position: fixed;
@@ -65,18 +67,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(10, 10, 12, 0.88);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.99);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.35s ease;
             padding: 20px;
+            color: #0A0A0A;
         }
-        #printing-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        #printing-overlay.active { opacity: 1; pointer-events: auto; }
 
         .kiosk-printer-stage {
             display: flex;
@@ -88,253 +88,66 @@
             position: relative;
         }
 
-        /* --- 3D Kiosk Printer Chassis --- */
+        /* The slot the paper comes out of */
         .kiosk-printer-device {
             position: relative;
-            width: 320px;
-            height: 140px;
-            background: linear-gradient(180deg, #2c2d30 0%, #1c1d20 50%, #141416 100%);
-            border-radius: 20px 20px 16px 16px;
-            box-shadow: 
-                0 30px 60px rgba(0,0,0,0.7),
-                0 10px 20px rgba(0,0,0,0.5),
-                inset 0 1px 1px rgba(255,255,255,0.18),
-                inset 0 -2px 4px rgba(0,0,0,0.8);
-            transform: scale(0.85);
+            width: 250px;
+            height: 5px;
+            background: #0A0A0A;
+            border-radius: 3px;
+            transform: scaleX(0.6);
             opacity: 0;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+            transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.3s ease;
             z-index: 10;
         }
-        .kiosk-printer-device.appear {
-            transform: scale(1);
-            opacity: 1;
-        }
-        .kiosk-printer-device.printing {
-            animation: printer-vibrate 0.08s infinite alternate ease-in-out;
-        }
+        .kiosk-printer-device.appear { transform: scaleX(1); opacity: 1; }
 
-        /* Top Lid Bevel */
-        .printer-lid-face {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 48px;
-            background: linear-gradient(180deg, #38393d 0%, #252629 100%);
-            border-radius: 20px 20px 0 0;
-            border-bottom: 2px solid #0e0e10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Printer Slot & Cutter Mouth */
-        .printer-slot-mouth {
-            position: absolute;
-            bottom: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 228px;
-            height: 12px;
-            background: #08080a;
-            border-radius: 4px;
-            box-shadow: 
-                inset 0 3px 6px rgba(0,0,0,0.9),
-                0 1px 0 rgba(255,255,255,0.08);
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .printer-cutter-teeth {
-            width: 95%;
-            height: 2px;
-            background: repeating-linear-gradient(
-                90deg,
-                #404044 0,
-                #404044 2px,
-                #18181a 2px,
-                #18181a 4px
-            );
-            opacity: 0.8;
-        }
-
-        /* Front Face Panel */
-        .printer-front-face {
-            position: absolute;
-            top: 48px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            padding: 16px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            z-index: 5;
-        }
-        .printer-brand-emboss {
-            display: flex;
-            flex-direction: column;
-        }
-        .printer-brand-emboss .brand-name {
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 4px;
-            color: rgba(255,255,255,0.22);
-            text-transform: uppercase;
-        }
-        .printer-brand-emboss .brand-tech {
-            font-size: 8px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            color: rgba(255,255,255,0.12);
-            text-transform: uppercase;
-        }
-
-        /* LED Group */
-        .printer-led-group {
-            display: flex;
-            gap: 14px;
-            align-items: center;
-        }
-        .printer-led-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        .printer-led-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #2a2a2c;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
-            transition: all 0.3s ease;
-        }
-        .printer-led-dot.led-pwr {
-            background: #22c55e;
-            box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
-        }
-        .printer-led-dot.led-busy.active {
-            background: #38bdf8;
-            box-shadow: 0 0 10px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.5);
-            animation: led-blink 0.5s infinite alternate ease-in-out;
-        }
-        .led-tag {
-            font-size: 7px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            color: rgba(255,255,255,0.25);
-        }
-
-        /* Decorative buttons */
-        .printer-deco-keys {
-            display: flex;
-            gap: 6px;
-        }
-        .printer-deco-btn {
-            width: 14px;
-            height: 8px;
-            border-radius: 2px;
-            background: #28292c;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.05), inset 0 1px 1px rgba(0,0,0,0.4);
-        }
-
-        /* --- THE PAPER DISPENSING CHUTE --- */
-        /* Emerges directly through the cutter slot mouth! */
+        /* Paper chute: grows from the slot, the sheet slides down inside it */
         .printer-paper-chute {
             position: absolute;
-            top: 44px; /* Exact mouth of the slot */
+            top: 5px;
             left: 50%;
             transform: translateX(-50%);
-            width: 210px;
+            width: 206px;
             height: 0px;
             overflow: hidden;
-            z-index: 15; /* Sits in front of the front face, underneath slot mouth */
-            transition: height 0.1s linear;
+            z-index: 5;
         }
-        .printer-paper-chute.sliding {
-            animation: paper-chute-grow 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-
+        .printer-paper-chute.sliding { animation: paper-chute-grow 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
         .printer-paper-sheet {
             width: 100%;
             background: #ffffff;
-            border-radius: 0 0 4px 4px;
-            box-shadow: 
-                0 20px 40px rgba(0,0,0,0.6),
-                0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 28px rgba(10, 10, 10, 0.16), 0 1px 4px rgba(10, 10, 10, 0.1);
             transform: translateY(-100%);
             will-change: transform;
         }
-        .printer-paper-sheet.sliding {
-            animation: paper-sheet-slide 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-        .printer-paper-sheet img {
-            width: 100%;
-            display: block;
-            border-radius: 0 0 3px 3px;
-        }
+        .printer-paper-sheet.sliding { animation: paper-sheet-slide 3.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .printer-paper-sheet img { width: 100%; display: block; }
 
-        /* Cut line at top of paper */
-        .paper-tear-edge {
-            height: 4px;
-            width: 100%;
-            background: repeating-linear-gradient(
-                90deg,
-                #e5e5e5 0px,
-                #e5e5e5 3px,
-                #ffffff 3px,
-                #ffffff 6px
-            );
-            border-bottom: 1px dashed rgba(0,0,0,0.15);
-        }
-
-        /* Bottom Curl Shadow */
-        .paper-curl-shadow {
-            height: 6px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0) 100%);
-        }
-
-        /* --- Completion Badge --- */
+        /* Done check: simple black circle above the slot */
         .print-done-badge {
             position: absolute;
-            top: -24px;
-            right: -24px;
-            width: 58px;
-            height: 58px;
-            background: #22c55e;
+            top: -64px;
+            left: 50%;
+            margin-left: -22px;
+            width: 44px;
+            height: 44px;
+            background: #0A0A0A;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 24px rgba(34, 197, 94, 0.6);
             transform: scale(0);
             z-index: 30;
         }
-        .print-done-badge.show {
-            animation: done-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        .print-done-badge svg {
-            width: 30px;
-            height: 30px;
-            stroke: white;
-            stroke-width: 3.5;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-        .print-done-badge svg path {
-            stroke-dasharray: 40;
-            stroke-dashoffset: 40;
-        }
-        .print-done-badge.show svg path {
-            animation: check-draw 0.4s 0.25s ease forwards;
-        }
+        .print-done-badge.show { animation: done-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .print-done-badge svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .print-done-badge svg path { stroke-dasharray: 40; stroke-dashoffset: 40; }
+        .print-done-badge.show svg path { animation: check-draw 0.4s 0.2s ease forwards; }
 
-        /* --- Status & Controls Panel --- */
+        /* Status & progress */
         .printer-status-panel {
-            margin-top: 360px; /* Space for the paper to slide down */
+            margin-top: 372px; /* room for the paper to slide down */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -342,7 +155,6 @@
             max-width: 300px;
             z-index: 25;
             text-align: center;
-            transition: margin-top 0.3s ease;
         }
         .print-status-title {
             display: flex;
@@ -350,55 +162,29 @@
             gap: 10px;
             font-size: 17px;
             font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #ffffff;
-            margin-bottom: 8px;
+            color: #0A0A0A;
+            margin-bottom: 6px;
         }
         .printer-spinner-icon {
-            width: 18px;
-            height: 18px;
-            border: 2.5px solid rgba(255,255,255,0.25);
-            border-top-color: #38bdf8;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #E5E7EB;
+            border-top-color: #0A0A0A;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-        .printer-spinner-icon.done {
-            display: none;
-        }
-        .print-status-sub {
-            font-size: 13px;
-            color: rgba(255,255,255,0.6);
-            margin-top: 6px;
-            font-weight: 400;
-        }
+        .printer-spinner-icon.done { display: none; }
+        .print-status-sub { font-size: 13px; color: #6B7280; margin-top: 6px; font-weight: 400; }
 
-        /* Progress Bar */
-        .print-progress-track {
-            width: 100%;
-            height: 6px;
-            background: rgba(255,255,255,0.12);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .print-progress-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
-            border-radius: 3px;
-            transition: width 0.35s ease;
-        }
+        .print-progress-track { width: 100%; height: 3px; background: #E5E7EB; border-radius: 2px; overflow: hidden; margin-top: 10px; }
+        .print-progress-bar-fill { height: 100%; width: 0%; background: #0A0A0A; border-radius: 2px; transition: width 0.35s ease; }
 
-        /* Action Buttons */
-        .print-finish-actions {
-            margin-top: 16px;
-            width: 100%;
-        }
+        .print-finish-actions { margin-top: 18px; width: 100%; }
         .btn-take-photo {
             width: 100%;
-            padding: 12px 20px;
-            background: #ffffff;
-            color: #0a0a0a;
+            padding: 13px 20px;
+            background: #0A0A0A;
+            color: #ffffff;
             border-radius: 9999px;
             font-size: 14px;
             font-weight: 700;
@@ -406,20 +192,13 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease, background 0.2s ease;
             cursor: pointer;
             border: none;
         }
-        .btn-take-photo:hover {
-            transform: scale(1.02);
-            background: #f0f0f0;
-        }
-        .btn-take-photo:active {
-            transform: scale(0.98);
-        }
+        .btn-take-photo:hover { background: #1f1f1f; }
+        .btn-take-photo:active { transform: scale(0.98); }
 
-        /* --- Keyframe Animations --- */
         @keyframes paper-chute-grow {
             0%   { height: 0px; }
             10%  { height: 30px; }
@@ -434,22 +213,11 @@
             70%  { transform: translateY(-20%); }
             100% { transform: translateY(0%); }
         }
-        @keyframes printer-vibrate {
-            0%   { transform: translate(0, 0); }
-            50%  { transform: translate(0.5px, -0.4px); }
-            100% { transform: translate(-0.5px, 0.4px); }
-        }
-        @keyframes led-blink {
-            0%   { opacity: 1; }
-            100% { opacity: 0.2; }
-        }
-        @keyframes done-pop {
-            0%   { transform: scale(0); }
-            60%  { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        @keyframes check-draw {
-            to { stroke-dashoffset: 0; }
+        @keyframes done-pop { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        @keyframes check-draw { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            .printer-paper-chute.sliding, .printer-paper-sheet.sliding { animation-duration: 0.01s; }
+            .printer-spinner-icon { animation-duration: 2s; }
         }
     </style>
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -716,49 +484,18 @@
     <div id="printing-overlay" class="no-print">
         <div class="kiosk-printer-stage">
             
-            <!-- Realistic 3D Thermal Printer Device -->
+            <!-- Slot + receipt (minimal) -->
             <div class="kiosk-printer-device" id="anim-printer">
-                <!-- Top Lid with Cutter Mouth -->
-                <div class="printer-lid-face">
-                    <div class="printer-slot-mouth">
-                        <div class="printer-cutter-teeth"></div>
-                    </div>
-                </div>
-
-                <!-- Paper Dispensing Chute (starts right behind the slot cutter) -->
                 <div class="printer-paper-chute" id="anim-chute">
                     <div class="printer-paper-sheet" id="anim-paper">
-                        <div class="paper-tear-edge"></div>
                         <img id="anim-photo" src="" alt="Printing Receipt" />
-                        <div class="paper-curl-shadow"></div>
                     </div>
                 </div>
-
-                <!-- Front Face Panel with Brand & Status LEDs -->
-                <div class="printer-front-face">
-                    <div class="printer-brand-emboss">
-                        <span class="brand-name">MEMORIES</span>
-                        <span class="brand-tech">THERMAL KIOSK</span>
-                    </div>
-                    <div class="printer-controls">
-                        <div class="printer-led-group">
-                            <div class="printer-led-item">
-                                <div class="printer-led-dot led-pwr"></div>
-                                <span class="led-tag">PWR</span>
-                            </div>
-                            <div class="printer-led-item">
-                                <div class="printer-led-dot led-busy" id="anim-led"></div>
-                                <span class="led-tag">BUSY</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Completion Checkmark Badge -->
                 <div class="print-done-badge" id="anim-done">
                     <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
                 </div>
             </div>
+            <span id="anim-led" hidden></span>
 
             <!-- Status & Progress Panel -->
             <div class="printer-status-panel">
