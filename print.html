@@ -459,6 +459,25 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
+    <style>
+        /* Portrait / narrow screens stack the page, which pushed the Print button below the fold where nobody
+           saw it. Here the actions live in a bar pinned to the bottom edge, with a big print button. */
+        @media (max-width: 1023px) {
+            /* The entrance animation leaves a transform on this panel, which turns position:fixed inside it into
+               "fixed to the panel". On these layouts the panel simply appears (no slide-up). */
+            .fade-up-enter { animation: none !important; transform: none !important; opacity: 1 !important; }
+            body { padding-bottom: 11rem; }
+            #print-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; margin: 0; gap: .6rem;
+                flex-direction: column; padding: .9rem 1.1rem calc(.9rem + env(safe-area-inset-bottom));
+                background: rgba(255, 255, 255, .96); backdrop-filter: blur(8px); box-shadow: 0 -10px 28px rgba(10, 10, 10, .14); }
+            #print-actions #btn-print { width: 100%; padding: 1.15rem 1.5rem; font-size: 1.3rem; font-weight: 700; gap: .7rem; }
+            #print-actions #btn-print .material-symbols-outlined { font-size: 1.9rem; }
+            #print-actions > button:not(#btn-print) { width: 100%; padding: .7rem 1rem; }
+            #pass-after-print { position: fixed; left: 1rem; right: 1rem; bottom: 1rem; z-index: 46; margin: 0;
+                box-shadow: 0 14px 40px rgba(10, 10, 10, .22); }
+            body:has(#pass-after-print:not(.hidden)) #print-actions { display: none; }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col-reverse lg:flex-row overflow-y-auto">
 
@@ -615,7 +634,7 @@
             </div>
         </div>
 
-        <div class="mt-2 flex flex-col sm:flex-row gap-3">
+        <div id="print-actions" class="mt-2 flex flex-col sm:flex-row gap-3">
             <button id="btn-print" onclick="handlePrint()" class="btn-modern btn-primary text-sm px-6 py-3 flex items-center justify-center gap-2 w-full sm:w-auto">
                 <span class="material-symbols-outlined text-sm">print</span>
                 <span id="btn-print-text" data-i18n="btn_print">Print Photo</span>
