@@ -38,7 +38,7 @@ public static class BoardingTheme
         for (int i = 0; i < 60; i++)
         {
             if (path != null) path.Dispose();
-            path = new GraphicsPath();
+            path = new GraphicsPath(FillMode.Winding);   // variable fonts overlap contours: fill non-zero, not even-odd
             path.AddString(text, fam, (int)style, size, PointF.Empty, StringFormat.GenericTypographic);
             b = path.GetBounds();
             if (b.Width <= box.Width && b.Height <= box.Height) break;
