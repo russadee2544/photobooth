@@ -12,39 +12,74 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
+    <style>
+        /* Card carousel: every card is the customer's own photos already in that frame.
+           The card in the middle is the selected one; swipe, tap a side card or use the arrows. */
+        :root { --card-h: clamp(260px, 52vh, 760px); }
+        @media (min-aspect-ratio: 1/1) { :root { --card-h: clamp(240px, 56vh, 640px); } }
+
+        .tpl-stage { position: relative; width: 100%; }
+        .tpl-track { display: flex; align-items: center; gap: clamp(.75rem, 2.5vw, 2rem); overflow-x: auto; overflow-y: hidden;
+            scroll-snap-type: x mandatory; scrollbar-width: none; padding: 1.5rem 50%; overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch; }
+        .tpl-track::-webkit-scrollbar { display: none; }
+
+        .tpl-card { flex: 0 0 auto; scroll-snap-align: center; height: var(--card-h); border: 0; padding: 0; background: none;
+            cursor: pointer; transform: scale(.8); opacity: .45; filter: saturate(.85);
+            transition: transform .35s cubic-bezier(.2,.7,.2,1), opacity .35s ease, filter .35s ease; }
+        .tpl-card.is-active { transform: none; opacity: 1; filter: none; cursor: default; }
+        .tpl-card:focus-visible { outline: 3px solid #0A0A0A; outline-offset: 6px; border-radius: 6px; }
+        .tpl-card canvas, .tpl-card .tpl-wait { height: 100%; width: auto; display: block; border-radius: 6px;
+            box-shadow: 0 18px 40px rgba(10,10,10,.18), 0 2px 6px rgba(10,10,10,.08); background: #fff; }
+        .tpl-card .tpl-wait { aspect-ratio: 1 / 2; display: flex; align-items: center; justify-content: center; }
+
+        .tpl-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; width: 3.25rem; height: 3.25rem;
+            border-radius: 9999px; background: rgba(255,255,255,.92); border: 1px solid #E5E7EB; color: #0A0A0A;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(10,10,10,.12);
+            transition: opacity .2s ease, transform .2s ease; }
+        .tpl-arrow:active { transform: translateY(-50%) scale(.94); }
+        .tpl-arrow[disabled] { opacity: 0; pointer-events: none; }
+        .tpl-arrow.prev { left: clamp(.5rem, 3vw, 2.5rem); }
+        .tpl-arrow.next { right: clamp(.5rem, 3vw, 2.5rem); }
+
+        .tpl-dots { display: flex; justify-content: center; gap: .5rem; margin-top: .25rem; }
+        .tpl-dots button { width: .55rem; height: .55rem; border-radius: 9999px; background: #D1D5DB; border: 0; padding: 0;
+            transition: width .25s ease, background .25s ease; }
+        .tpl-dots button.is-active { width: 1.6rem; background: #0A0A0A; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .tpl-card, .tpl-arrow, .tpl-dots button { transition: none; }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
-    
+
     <!-- Header -->
     <header class="kiosk-header">
         <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
     </header>
 
-    <main class="flex-grow pt-20 pb-28 px-4 sm:px-6 lg:px-12 flex flex-col lg:flex-row gap-6 lg:gap-12 max-w-7xl mx-auto w-full fade-up-enter">
-        
-        <!-- Live Preview Side -->
-        <div class="w-full lg:w-1/2 flex flex-col items-center justify-center bg-gray-100 rounded-2xl md:rounded-3xl p-4 md:p-6 lg:p-8 relative overflow-hidden min-h-[40vh] lg:min-h-[65vh] shrink-0">
-            <!-- Background element for contrast -->
-            <div class="absolute inset-0 bg-white/50 pointer-events-none"></div>
-            
-
-
-            <div id="preview-container" class="relative z-10 shadow-2xl transition-transform duration-500 hover:scale-[1.02] w-full h-full flex items-center justify-center">
-                <!-- Canvas will be injected here -->
-            </div>
+    <main class="flex-grow pt-20 pb-32 flex flex-col items-center justify-center w-full fade-up-enter">
+        <div class="text-center px-6">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 md:mb-2" data-i18n="tpl_title">Choose Frame</h1>
+            <p class="text-gray-500 text-xs md:text-sm" data-i18n="tpl_desc">Select a frame style that matches your mood.</p>
         </div>
 
-        <!-- Selection Side -->
-        <div class="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center">
-            <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 md:mb-2 shrink-0" data-i18n="tpl_title">Choose Frame</h1>
-            <p class="text-gray-500 text-xs md:text-sm mb-4 lg:mb-8 shrink-0" data-i18n="tpl_desc">Select a frame style that matches your mood.</p>
+        <section class="tpl-stage" aria-roledescription="carousel" aria-label="กรอบรูป">
+            <button type="button" class="tpl-arrow prev" id="tpl-prev" aria-label="กรอบก่อนหน้า">
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div class="tpl-track" id="tpl-track"></div>
+            <button type="button" class="tpl-arrow next" id="tpl-next" aria-label="กรอบถัดไป">
+                <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+        </section>
 
-            <div class="grid grid-cols-2 gap-3 lg:gap-4 pb-8 items-start">
-                
-                <!-- Frames are only the ones created in the admin theme/template editors. -->
-                <p id="no-frames" class="hidden col-span-2 text-center text-sm text-gray-500 py-10">ยังไม่มีกรอบรูป กรุณาเรียกพนักงาน</p>
-            </div>
+        <div class="text-center px-6 min-h-[3.5rem]" aria-live="polite">
+            <p id="tpl-name" class="text-base md:text-lg font-semibold text-gray-900"></p>
+            <div id="tpl-dots" class="tpl-dots"></div>
         </div>
+        <p id="no-frames" class="hidden text-center text-sm text-gray-500 py-10">ยังไม่มีกรอบรูป กรุณาเรียกพนักงาน</p>
     </main>
 
     <!-- Bottom Bar -->
@@ -59,11 +94,16 @@
     <script src="shared.js?v=2.9"></script>
     <script>
         let globalPhotos = [];
+        const CARD_RENDER_WIDTH = 380;  // enough for a sharp card; the full-size print is composed later
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const container = document.getElementById('preview-container');
-            const gridContainer = document.querySelector('.grid.grid-cols-2');
-            
+            const track = document.getElementById('tpl-track');
+            const nameEl = document.getElementById('tpl-name');
+            const dotsEl = document.getElementById('tpl-dots');
+            const prevBtn = document.getElementById('tpl-prev');
+            const nextBtn = document.getElementById('tpl-next');
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
             globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
 
             const paperMode = Kiosk.paperMode || 'photo4x6_dual';
@@ -71,144 +111,142 @@
             const currentLayoutSize = await fetchLayoutSizeFor(currentLayoutStr);
             const currentReqShots = window.PhotoTemplateEngine ? PhotoTemplateEngine.parseLayout(currentLayoutStr).count : 3;
 
-            // Load Custom Themes (Legacy Supabase)
-            const customThemes = await fetchCustomThemes();
-            customThemes.forEach(t => {
-                const icon = t.theme_type === 'png' ? 'image' : 'match_case';
-                
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'selection-card p-6 text-center';
-                cardDiv.dataset.template = t.id;
-                cardDiv.dataset.custom = "true";
-                cardDiv.innerHTML = `
-                        <div class="w-16 h-16 rounded-full mx-auto mb-4 bg-gray-900 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-accent-mint text-3xl">${icon}</span>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 line-clamp-1">${escapeHtml(t.name)}</h3>
-                        <p class="text-[10px] text-gray-500 uppercase tracking-widest">Custom Theme</p>
-                `;
-                gridContainer.appendChild(cardDiv);
-            });
+            // ---- the frames on offer (same rules as before) ----
+            const items = [];
+            const customThemes = await fetchCustomThemes();  // legacy themes stored in Supabase
+            customThemes.forEach((t) => items.push({ kind: 'theme', id: t.id, name: t.name, theme: t }));
 
-            // Load Custom Templates from Template Catalog (Created in Template Editor)
-            const catalog = TemplateCatalog.load();
-            const customTemplates = catalog.filter(t => {
+            TemplateCatalog.load().filter((t) => {
                 if (t.enabled === false) return false;
                 if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
-
-                // Include custom templates created by user or having custom artboard/overlay
                 const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
                 const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
                 return isCustom && matchesShots;
-            });
+            }).forEach((tpl) => items.push({ kind: 'schema', id: tpl.templateId, name: tpl.name, schema: tpl }));
 
-            customTemplates.forEach(tpl => {
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'selection-card p-6 text-center';
-                cardDiv.dataset.schemaId = tpl.templateId;
-                cardDiv.dataset.isSchema = "true";
-                
-                let thumbHtml = '';
-                if (tpl.overlay && tpl.overlay.url) {
-                    thumbHtml = `<img src="${tpl.overlay.url}" class="w-full h-full object-contain p-1" alt="">`;
-                } else if (tpl.artboard && tpl.artboard.length > 0 && tpl.artboard[0].url) {
-                    thumbHtml = `<img src="${tpl.artboard[0].url}" class="w-full h-full object-contain p-1" alt="">`;
-                } else if (tpl.canvas && tpl.canvas.backgroundImage) {
-                    thumbHtml = `<img src="${tpl.canvas.backgroundImage}" class="w-full h-full object-cover" alt="">`;
-                } else {
-                    thumbHtml = `<span class="material-symbols-outlined text-white text-3xl">palette</span>`;
-                }
-
-                const bgColor = (tpl.canvas && tpl.canvas.backgroundColor) ? tpl.canvas.backgroundColor : '#0A0A0A';
-                
-                cardDiv.innerHTML = `
-                    <div class="w-16 h-16 rounded-full mx-auto mb-4 border border-gray-200 shadow-sm flex items-center justify-center overflow-hidden" style="background-color: ${bgColor};">
-                        ${thumbHtml}
-                    </div>
-                    <h3 class="font-semibold text-gray-900 line-clamp-1">${escapeHtml(tpl.name)}</h3>
-                    <p class="text-[10px] text-accent-blue uppercase tracking-widest font-bold">Custom Template</p>
-                `;
-                gridContainer.appendChild(cardDiv);
-            });
-
-            async function updatePreview(templateId, isCustom, schemaId) {
-                container.innerHTML = '<div class="spinner border-gray-300 mx-auto"></div>';
-                let canvas;
-                if (schemaId) {
-                    const tpl = TemplateCatalog.find(schemaId);
-                    if (tpl) {
-                        canvas = await composeTemplateBySchema(globalPhotos, 'custom_schema', 460, null, tpl, paperMode);
-                    }
-                }
-                if (!canvas) {
-                    let themeObj = null;
-                    if (isCustom) {
-                        themeObj = customThemes.find(t => t.id === templateId);
-                    }
-                    canvas = await composePhotoByMode(globalPhotos, templateId, 460, themeObj, currentLayoutStr, currentLayoutSize);
-                }
-                canvas.className = 'rounded-md shadow-2xl max-w-full max-h-[50vh] lg:max-h-[62vh] object-contain transition-all duration-300';
-                container.innerHTML = '';
-                container.appendChild(canvas);
+            if (!items.length) {
+                document.getElementById('no-frames').classList.remove('hidden');
+                document.querySelector('.tpl-stage').classList.add('hidden');
+                Session.templateSchemaId = null;
+                new IdleTimer(120000, 'home.html').start();
+                return;
             }
 
-            // Init selection state: keep the previous pick if it is still offered,
-            // otherwise default to the first custom frame (there are no presets).
-            const firstCard = gridContainer.querySelector('.selection-card');
-            const pickedSchemaCard = Session.templateSchemaId
-                ? gridContainer.querySelector('.selection-card[data-schema-id="' + CSS.escape(Session.templateSchemaId) + '"]') : null;
-            const pickedThemeCard = !Session.templateSchemaId && Session.template
-                ? gridContainer.querySelector('.selection-card[data-custom="true"][data-template="' + CSS.escape(Session.template) + '"]') : null;
-            const startCard = pickedSchemaCard || pickedThemeCard || firstCard;
-            document.getElementById('no-frames').classList.toggle('hidden', !!firstCard);
-            if (startCard && startCard.dataset.isSchema === 'true') {
-                Session.templateSchemaId = startCard.dataset.schemaId;
-                Session.template = 'custom_schema';
-                SessionAsync.set('templateSchemaId', startCard.dataset.schemaId);
-                SessionAsync.set('template', 'custom_schema');
-                updatePreview(null, false, startCard.dataset.schemaId);
-            } else if (startCard) {
-                Session.templateSchemaId = null;
-                Session.template = startCard.dataset.template;
-                SessionAsync.set('templateSchemaId', null);
-                SessionAsync.set('template', startCard.dataset.template);
-                updatePreview(startCard.dataset.template, true, null);
-            } else {
-                Session.templateSchemaId = null;
-                container.innerHTML = '';
-            }
+            // ---- cards ----
+            const cards = items.map((item, i) => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'tpl-card';
+                card.setAttribute('aria-label', item.name || ('กรอบที่ ' + (i + 1)));
+                card.innerHTML = '<div class="tpl-wait"><div class="spinner border-gray-300"></div></div>';
+                card.addEventListener('click', () => { if (i !== active) goTo(i); });
+                track.appendChild(card);
 
-            // Selectors
-            const setupCards = () => {
-                const cards = document.querySelectorAll('.selection-card');
-                cards.forEach(card => {
-                    if (Session.templateSchemaId && card.dataset.schemaId === Session.templateSchemaId) {
-                        card.classList.add('selected');
-                    } else if (!Session.templateSchemaId && card.dataset.template === Session.template) {
-                        card.classList.add('selected');
-                    } else {
-                        card.classList.remove('selected');
-                    }
-                    card.addEventListener('click', () => {
-                        cards.forEach(c => c.classList.remove('selected'));
-                        card.classList.add('selected');
-                        if (card.dataset.isSchema === 'true') {
-                            Session.templateSchemaId = card.dataset.schemaId;
-                            Session.template = 'custom_schema';
-                            SessionAsync.set('templateSchemaId', card.dataset.schemaId);
-                            SessionAsync.set('template', 'custom_schema');
-                            updatePreview(null, false, card.dataset.schemaId);
-                        } else {
-                            Session.templateSchemaId = null;
-                            Session.template = card.dataset.template;
-                            SessionAsync.set('templateSchemaId', null);
-                            SessionAsync.set('template', card.dataset.template);
-                            updatePreview(card.dataset.template, card.dataset.custom === 'true', null);
-                        }
-                    });
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.setAttribute('aria-label', 'ไปที่กรอบที่ ' + (i + 1));
+                dot.addEventListener('click', () => goTo(i));
+                dotsEl.appendChild(dot);
+                return card;
+            });
+            const single = items.length === 1;
+            prevBtn.classList.toggle('hidden', single);
+            nextBtn.classList.toggle('hidden', single);
+            dotsEl.classList.toggle('hidden', single);
+
+            // ---- previews: the middle card first, then its neighbours, then the rest while idle ----
+            let lastInteraction = 0;
+            ['pointerdown', 'touchstart', 'wheel'].forEach((type) =>
+                track.addEventListener(type, () => { lastInteraction = Date.now(); }, { passive: true }));
+            const rendered = new Array(items.length).fill(false);
+            let rendering = Promise.resolve();
+            function renderCard(i) {
+                if (i < 0 || i >= items.length || rendered[i]) return rendering;
+                rendered[i] = true;
+                rendering = rendering.then(async () => {
+                    const item = items[i];
+                    let canvas = null;
+                    try {
+                        canvas = item.kind === 'schema'
+                            ? await composeTemplateBySchema(globalPhotos, 'custom_schema', CARD_RENDER_WIDTH, null, item.schema, paperMode)
+                            : await composePhotoByMode(globalPhotos, item.id, CARD_RENDER_WIDTH, item.theme, currentLayoutStr, currentLayoutSize);
+                    } catch (err) { console.warn('frame preview failed', item.id, err); }
+                    if (canvas) { cards[i].innerHTML = ''; cards[i].appendChild(canvas); }
+                    else cards[i].innerHTML = '<div class="tpl-wait text-xs text-gray-400 px-3 text-center">' + escapeHtml(item.name) + '</div>';
+                    // A drawn card can be wider or narrower than its placeholder, which would nudge the row.
+                    // Keep the selected card in the middle unless the customer is moving the row right now.
+                    if (active >= 0 && Date.now() - lastInteraction > 900) cards[active].scrollIntoView({ inline: 'center', block: 'nearest' });
                 });
-            };
-            setupCards();
+                return rendering;
+            }
+            function renderAround(i) {
+                [i, i + 1, i - 1].forEach(renderCard);
+                const rest = items.map((_, k) => k).filter((k) => !rendered[k]);
+                const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+                rest.forEach((k) => idle(() => renderCard(k)));
+            }
+
+            // ---- selection = the card in the middle ----
+            let active = -1;
+            function select(i) {
+                if (i === active) return;
+                active = i;
+                cards.forEach((c, k) => { c.classList.toggle('is-active', k === i); c.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+                [...dotsEl.children].forEach((d, k) => d.classList.toggle('is-active', k === i));
+                prevBtn.disabled = i === 0;
+                nextBtn.disabled = i === items.length - 1;
+                nameEl.textContent = items[i].name || '';
+                const item = items[i];
+                if (item.kind === 'schema') {
+                    Session.templateSchemaId = item.id;
+                    Session.template = 'custom_schema';
+                    SessionAsync.set('templateSchemaId', item.id);
+                    SessionAsync.set('template', 'custom_schema');
+                } else {
+                    Session.templateSchemaId = null;
+                    Session.template = item.id;
+                    SessionAsync.set('templateSchemaId', null);
+                    SessionAsync.set('template', item.id);
+                }
+                renderAround(i);
+            }
+            function goTo(i, instant = false) {
+                const card = cards[Math.max(0, Math.min(items.length - 1, i))];
+                if (!instant) lastInteraction = Date.now();
+                card.scrollIntoView({ inline: 'center', block: 'nearest', behavior: instant || reduceMotion ? 'auto' : 'smooth' });
+                select(cards.indexOf(card));
+            }
+            function centredIndex() {
+                const mid = track.getBoundingClientRect().left + track.clientWidth / 2;
+                let best = 0, bestDist = Infinity;
+                cards.forEach((c, k) => {
+                    const r = c.getBoundingClientRect();
+                    const d = Math.abs(r.left + r.width / 2 - mid);
+                    if (d < bestDist) { bestDist = d; best = k; }
+                });
+                return best;
+            }
+            // A handful of cards: measuring them on every scroll event is cheap and follows the finger exactly.
+            track.addEventListener('scroll', () => select(centredIndex()), { passive: true });
+
+            prevBtn.addEventListener('click', () => goTo(active - 1));
+            nextBtn.addEventListener('click', () => goTo(active + 1));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') goTo(active - 1);
+                else if (e.key === 'ArrowRight') goTo(active + 1);
+                else if (e.key === 'Enter' && document.activeElement === document.body) saveAndContinue();
+            });
+
+            // Start on the frame picked earlier in this session, if it is still offered.
+            let start = 0;
+            if (Session.templateSchemaId) start = Math.max(0, items.findIndex((it) => it.kind === 'schema' && it.id === Session.templateSchemaId));
+            else if (Session.template) start = Math.max(0, items.findIndex((it) => it.kind === 'theme' && it.id === Session.template));
+            select(start);
+            // Cards change width once their preview is drawn; keep the selected one centred.
+            await rendering;
+            goTo(start, true);
+            new ResizeObserver(() => { if (!track.matches(':active')) cards[active].scrollIntoView({ inline: 'center', block: 'nearest' }); })
+                .observe(track);
 
             new IdleTimer(120000, 'home.html').start(); // 2 mins idle
         });
