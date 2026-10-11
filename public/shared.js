@@ -2604,7 +2604,7 @@ async function logSessionToCloud() {
 // Ready-made themes shipped with the app (images under /theme-packs/). Each pack is copied once into this
 // kiosk's own themes, so it can be edited, hidden or deleted like any other; a deleted theme stays deleted
 // until the pack's version changes.
-const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json'];
+const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json', '/theme-packs/exhibition-58mm.json'];
 const ThemePacks = {
     async installAll() {
         for (const url of THEME_PACK_URLS) {
