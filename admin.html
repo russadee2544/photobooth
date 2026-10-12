@@ -857,8 +857,8 @@
         </div>
     </div>
 
-    <script src="template-engine.js?v=2.2"></script>
-    <script src="shared.js?v=3.3"></script>
+    <script src="template-engine.js?v=2.3"></script>
+    <script src="shared.js?v=3.4"></script>
     <script>
         function initAdmin() {
             updateUI();
@@ -1619,7 +1619,7 @@
                 } else if (c.isExpired) {
                     cls = 'bg-gray-700 text-gray-500 line-through opacity-50';
                     title = 'Expired';
-                } else if (c.printed_at || c.printedAt) {
+                } else if (c.printed_at || c.printedAt || printedCodeIds().has(c.id || c.pass_id)) {
                     cls = 'bg-accent-blue/20 text-accent-blue';
                     title = 'Printed — ready to redeem';
                 } else {
@@ -1657,11 +1657,93 @@
 
         let pendingRedeemPrintJob = null;
 
+        // ---- Redeem codes on the receipt printer (one slip per code, dashed cut lines between them) ----
+        // Only codes whose full value is known (made since the kiosk program last started) can be printed.
+        const PRINTED_CODES_KEY = 'kiosk_redeem_codes_printed';
+        function printedCodeIds() {
+            try { return new Set(JSON.parse(localStorage.getItem(PRINTED_CODES_KEY) || '[]')); } catch (_) { return new Set(); }
+        }
+        function rememberPrintedCodes(ids) {
+            const set = printedCodeIds();
+            ids.forEach(id => set.add(id));
+            try { localStorage.setItem(PRINTED_CODES_KEY, JSON.stringify([...set].slice(-2000))); } catch (_) { /* best effort */ }
+        }
+        function codeSheetCanvas(codes) {
+            const width = Kiosk.paperMode === 'thermal80' ? 576 : Kiosk.paperMode === 'thermal100' ? 832 : 384;
+            const k = width / 384;
+            const slip = 236 * k;
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = Math.round(slip * codes.length + 24 * k);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#000000';
+            const font = (weight, size, family) => `${weight} ${Math.round(size * k)}px ${family}`;
+            codes.forEach((c, i) => {
+                const y = i * slip + 12 * k;
+                const mid = width / 2;
+                ctx.font = font(800, 22, '"Prompt", sans-serif');
+                ctx.fillText('MEMORIES', mid, y + 30 * k);
+                ctx.font = font(500, 13, '"Prompt", sans-serif');
+                ctx.fillText('โค้ดสำหรับตู้ถ่ายรูป · REDEEM CODE', mid, y + 52 * k);
+                ctx.lineWidth = 3 * k;
+                ctx.strokeRect(40 * k, y + 64 * k, width - 80 * k, 70 * k);
+                ctx.font = font(700, 46, '"Courier New", monospace');
+                ctx.fillText(String(c.code).split('').join(' '), mid, y + 115 * k);
+                ctx.font = font(600, 15, '"Prompt", sans-serif');
+                ctx.fillText(c.quota_kind === 'unlimited' ? 'แพ็กเกจ Unlimited (ทั้งวันที่เริ่มใช้)'
+                    : `แพ็กเกจพิมพ์ ${c.print_limit || '?'} ครั้ง`, mid, y + 160 * k);
+                ctx.font = font(400, 12.5, '"Prompt", sans-serif');
+                ctx.fillText('แตะหน้าจอตู้ แล้วกรอกโค้ดนี้เพื่อเริ่มถ่าย', mid, y + 182 * k);
+                ctx.fillText(`ใช้ได้ถึง ${c.expires_at ? new Date(c.expires_at).toLocaleDateString('th-TH') : '30 วันหลังออกโค้ด'} · ใช้ได้ที่ตู้นี้เท่านั้น`, mid, y + 200 * k);
+                if (i < codes.length - 1) {
+                    ctx.setLineDash([8 * k, 6 * k]);
+                    ctx.lineWidth = 1.5 * k;
+                    ctx.beginPath();
+                    ctx.moveTo(8 * k, (i + 1) * slip + 4 * k);
+                    ctx.lineTo(width - 8 * k, (i + 1) * slip + 4 * k);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            });
+            return canvas;
+        }
+        async function printCodesOnReceipt(count) {
+            const printed = printedCodeIds();
+            const ready = allRedeemCodes.filter(c => !c.is_used && !c.isExpired && !c.printed_at
+                && PRINT_PASS_CODE.test(c.code || '') && !printed.has(c.id || c.pass_id));
+            if (!ready.length) {
+                showToast('ไม่มีโค้ดใหม่ที่พร้อมพิมพ์ (โค้ดที่สร้างก่อนตู้รีสตาร์ทจะเห็นเลขไม่ได้แล้ว ให้กด Generate Codes ใหม่)');
+                return;
+            }
+            const codes = ready.slice(0, count);
+            try { await document.fonts.load('800 22px "Prompt"'); await document.fonts.load('400 13px "Prompt"'); } catch (_) { /* fall back to system fonts */ }
+            const cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            showToast(`กำลังพิมพ์ ${codes.length} โค้ด...`);
+            const result = await window.PhotoboothPrinter.testPrint({
+                dataUrl: codeSheetCanvas(codes).toDataURL('image/png'),
+                printerName: cfg.systemPrinterName || ''
+            });
+            if (result && result.success) {
+                rememberPrintedCodes(codes.map(c => c.id || c.pass_id));
+                showToast(`พิมพ์โค้ดแล้ว ${codes.length} ใบ ✓`);
+                await loadRedeemData();
+            } else {
+                showToast('พิมพ์ไม่สำเร็จ: ' + ((result && result.error === 'admin_capability_required') ? 'กรุณาใส่ PIN ใหม่' : ((result && result.error) || 'ตรวจเครื่องพิมพ์')));
+            }
+        }
+
         async function handlePrintCodes() {
             const count = Math.max(1, Math.min(100, Number(document.getElementById('print-code-count').value) || 10));
             const result = await printRedeemCodeBatch(count);
             if (!result || result.status === 'empty') {
                 showToast('ไม่มีรหัสใหม่ที่พร้อมพิมพ์');
+                return;
+            }
+            if (result.status === 'unavailable' && window.PhotoboothPrinter && typeof window.PhotoboothPrinter.testPrint === 'function') {
+                await printCodesOnReceipt(count);
                 return;
             }
             if (result.status === 'unavailable') {

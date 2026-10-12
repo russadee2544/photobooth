@@ -181,8 +181,43 @@ const Kiosk = {
 // ============================================================
 const TEMPLATE_CATALOG_KEY = 'kiosk_template_catalog_v1';
 
+// Official themes: the theme library published by the main kiosk. Kept apart from the kiosk's own
+// themes so a new publish never touches what a kiosk made itself. Read-only here; a kiosk can hide
+// an official theme or copy it to make its own version.
+const OFFICIAL_THEME_KEYS = { catalog: 'kiosk_official_templates', customThemes: 'kiosk_official_custom_themes' };
+const OFFICIAL_HIDDEN_KEY = 'kiosk_official_hidden';
+const OfficialThemes = {
+    list(field) {
+        try {
+            const value = JSON.parse(localStorage.getItem(OFFICIAL_THEME_KEYS[field]) || '[]');
+            return Array.isArray(value) ? value.filter(item => item && typeof item === 'object') : [];
+        } catch (_) { return []; }
+    },
+    ids(field) {
+        return new Set(this.list(field).map(item => (field === 'catalog' ? item.templateId : item.id)).filter(Boolean));
+    },
+    hidden() {
+        try {
+            const value = JSON.parse(localStorage.getItem(OFFICIAL_HIDDEN_KEY) || '[]');
+            return new Set(Array.isArray(value) ? value : []);
+        } catch (_) { return new Set(); }
+    },
+    setHidden(id, hide) {
+        const set = this.hidden();
+        if (hide) set.add(id); else set.delete(id);
+        localStorage.setItem(OFFICIAL_HIDDEN_KEY, JSON.stringify([...set]));
+    },
+    isTemplate(id) { return !!id && this.ids('catalog').has(id); },
+    clear() {
+        Object.values(OFFICIAL_THEME_KEYS).forEach(key => localStorage.removeItem(key));
+    }
+};
+if (typeof window !== 'undefined') window.OfficialThemes = OfficialThemes;
+
 const TemplateCatalog = {
-    load() {
+    // Presets, then this kiosk's own templates, then the official library (official wins on the same id;
+    // official ones hidden on this kiosk are left out unless includeHidden).
+    load(options = {}) {
         const engine = window.PhotoTemplateEngine;
         if (!engine) return [];
         let stored = [];
@@ -199,8 +234,19 @@ const TemplateCatalog = {
                 byId.set(normalized.templateId, normalized);
             });
         }
+        const hidden = options.includeHidden ? new Set() : OfficialThemes.hidden();
+        this.loadOfficial().forEach(template => {
+            if (hidden.has(template.templateId)) byId.delete(template.templateId);
+            else byId.set(template.templateId, template);
+        });
         return Array.from(byId.values());
     },
+    loadOfficial() {
+        const engine = window.PhotoTemplateEngine;
+        if (!engine) return [];
+        return OfficialThemes.list('catalog').map(template => Object.assign(engine.normalizeTemplate(template), { official: true }));
+    },
+    isOfficial(templateId) { return OfficialThemes.isTemplate(templateId); },
     loadStored() {
         let stored = [];
         try {
@@ -210,12 +256,15 @@ const TemplateCatalog = {
         }
         return Array.isArray(stored) ? stored : [];
     },
+    // This kiosk's own templates only (never the official library).
     loadCustom() {
         const engine = window.PhotoTemplateEngine;
         const stored = this.loadStored();
+        const officialIds = OfficialThemes.ids('catalog');
         return stored
             .map(t => engine ? engine.normalizeTemplate(t) : t)
-            .filter(t => t.isCustom || (t.templateId && t.templateId.startsWith('custom_')));
+            .filter(t => t.isCustom || (t.templateId && t.templateId.startsWith('custom_')))
+            .filter(t => !officialIds.has(t.templateId));
     },
     loadPresets() {
         const engine = window.PhotoTemplateEngine;
@@ -224,7 +273,10 @@ const TemplateCatalog = {
     save(templates) {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('Template engine is unavailable.');
+        // Official templates are never written into this kiosk's own store.
+        const officialIds = OfficialThemes.ids('catalog');
         const normalized = (Array.isArray(templates) ? templates : [])
+            .filter(template => template && !template.official && !officialIds.has(template.templateId))
             .map(template => engine.normalizeTemplate(template));
         localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(normalized));
         return normalized;
@@ -241,6 +293,7 @@ const TemplateCatalog = {
         return value;
     },
     remove(templateId) {
+        if (this.isOfficial(templateId)) return this.load();  // the library is read-only on this kiosk
         const remaining = this.load().filter(template => template.templateId !== templateId);
         this.save(remaining);
         return remaining;
@@ -981,6 +1034,12 @@ const USBPrinter = {
 // When Chrome is launched with --kiosk-printing, window.print() sends directly
 // to the default printer WITHOUT showing the print dialog.
 function printCanvasViaSystemDialog(canvasOrDataUrl, paperMode = 'photo4x6_dual', copies = 1) {
+    // On a kiosk with the agent, printing goes silently through it. The Windows print dialog must never open in front
+    // of a customer, so if a flow still ends up here it fails instead of showing the dialog.
+    if (typeof window !== 'undefined' && window.PhotoboothPrinter && typeof window.PhotoboothPrinter.printAuthorizedPass === 'function') {
+        console.warn('[Print] system print dialog blocked on an agent kiosk');
+        return Promise.resolve({ status: 'failed', transport: 'agent_dialog_blocked', silent: true });
+    }
     return new Promise((resolve) => {
         let dataUrl = typeof canvasOrDataUrl === 'string' ? canvasOrDataUrl : canvasOrDataUrl.toDataURL('image/png');
         let iframe = document.getElementById('pb-silent-print-frame');
@@ -2613,6 +2672,117 @@ async function logSessionToCloud() {
     return true;
 }
 
+// ======================== BUILT-IN THEME PACKS ========================
+// Ready-made themes shipped with the app (images under /theme-packs/). Each pack is copied once into this
+// kiosk's own themes, so it can be edited, hidden or deleted like any other; a deleted theme stays deleted
+// until the pack's version changes.
+const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json', '/theme-packs/exhibition-58mm.json', '/theme-packs/boarding-58mm.json'];
+const ThemePacks = {
+    async installAll() {
+        for (const url of THEME_PACK_URLS) {
+            try {
+                const response = await fetch(url, { cache: 'no-cache' });
+                if (!response.ok) continue;
+                const pack = await response.json();
+                if (!pack || !pack.packId || !Array.isArray(pack.templates)) continue;
+                const key = 'kiosk_theme_pack_' + pack.packId;
+                if (localStorage.getItem(key) === String(pack.version)) continue;
+                const ids = new Set(pack.templates.map(t => t && t.templateId));
+                const own = TemplateCatalog.loadStored().filter(t => !(t && ids.has(t.templateId)));
+                localStorage.setItem(TEMPLATE_CATALOG_KEY, JSON.stringify(own.concat(pack.templates)));
+                localStorage.setItem(key, String(pack.version));
+            } catch (error) {
+                console.warn('Theme pack not installed:', url, error);
+            }
+        }
+    }
+};
+if (typeof window !== 'undefined') window.ThemePacks = ThemePacks;
+
+// ======================== OFFICIAL THEME LIBRARY ========================
+// Only the main kiosk (set on the server) can publish; it sends the themes it made itself. Every other kiosk
+// keeps that set as its read-only official library, next to the themes it made itself (which are never touched).
+// Talks to the server only through the native bridge.
+const THEME_BUNDLE_ID_KEY = 'kiosk_theme_bundle_id';
+const ThemeSync = {
+    available() {
+        return !!(window.PhotoboothDevice && typeof window.PhotoboothDevice.themeLatest === 'function');
+    },
+    // What this kiosk made itself (never the presets, never the official library).
+    collect() {
+        let universal = [];
+        try {
+            const value = JSON.parse(localStorage.getItem(UNIVERSAL_THEME_STORAGE_KEY) || '[]');
+            universal = Array.isArray(value) ? value : [];
+        } catch (_) { universal = []; }
+        const officialThemeIds = OfficialThemes.ids('customThemes');
+        return {
+            catalog: TemplateCatalog.loadCustom(),
+            customThemes: getLocalCustomThemes().filter(t => t && !officialThemeIds.has(t.id)),
+            universalThemes: universal
+        };
+    },
+    // Writes several keys together or not at all.
+    writeAll(values) {
+        const before = {};
+        for (const key of Object.keys(values)) before[key] = localStorage.getItem(key);
+        try {
+            for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value);
+            return true;
+        } catch (_) {
+            for (const [key, value] of Object.entries(before)) {
+                try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch (_) { /* best effort */ }
+            }
+            return false;
+        }
+    },
+    applyOfficial(id, bundle) {
+        return this.writeAll({
+            [OFFICIAL_THEME_KEYS.catalog]: JSON.stringify(Array.isArray(bundle.catalog) ? bundle.catalog : []),
+            [OFFICIAL_THEME_KEYS.customThemes]: JSON.stringify(Array.isArray(bundle.customThemes) ? bundle.customThemes : []),
+            [THEME_BUNDLE_ID_KEY]: id
+        });
+    },
+    // The main kiosk lost its browser data (reinstall): put its own published themes back as its own.
+    restoreOwn(id, bundle) {
+        return this.writeAll({
+            [TEMPLATE_CATALOG_KEY]: JSON.stringify(Array.isArray(bundle.catalog) ? bundle.catalog : []),
+            kiosk_local_custom_themes: JSON.stringify(Array.isArray(bundle.customThemes) ? bundle.customThemes : []),
+            [UNIVERSAL_THEME_STORAGE_KEY]: JSON.stringify(Array.isArray(bundle.universalThemes) ? bundle.universalThemes : []),
+            [THEME_BUNDLE_ID_KEY]: id
+        });
+    },
+    async canPublish() {
+        if (!this.available()) return false;
+        const latest = await window.PhotoboothDevice.themeLatest();
+        return !!(latest && latest.success && latest.canPublish);
+    },
+    async publish() {
+        if (!this.available()) return { success: false, error: 'not_on_kiosk' };
+        const result = await window.PhotoboothDevice.themePublish({ bundle: this.collect() });
+        if (result && result.success && result.id) {
+            // The publisher's themes are its own, not a library copy.
+            try { OfficialThemes.clear(); localStorage.setItem(THEME_BUNDLE_ID_KEY, result.id); } catch (_) { /* next sync fixes it */ }
+        }
+        return result || { success: false, error: 'no_response' };
+    },
+    async syncNow() {
+        if (!this.available()) return { status: 'unavailable' };
+        const latest = await window.PhotoboothDevice.themeLatest();
+        if (!latest || !latest.success) return { status: 'error', error: latest && latest.error };
+        if (!latest.id) return { status: 'none' };
+        if (latest.id === localStorage.getItem(THEME_BUNDLE_ID_KEY)) return { status: 'current' };
+        if (latest.publishedBySelf) {
+            const hasOwn = TemplateCatalog.loadCustom().length > 0 || getLocalCustomThemes().length > 0;
+            if (hasOwn) { localStorage.setItem(THEME_BUNDLE_ID_KEY, latest.id); return { status: 'current' }; }
+        }
+        const full = await window.PhotoboothDevice.themeFetch();
+        if (!full || !full.success || !full.bundle || !full.id) return { status: 'error', error: full && full.error };
+        const ok = latest.publishedBySelf ? this.restoreOwn(full.id, full.bundle) : this.applyOfficial(full.id, full.bundle);
+        return ok ? { status: latest.publishedBySelf ? 'restored' : 'updated', id: full.id } : { status: 'error', error: 'storage_full' };
+    }
+};
+
 // ======================== NAVIGATION GUARD ========================
 function preventBackNavigation() {
     history.pushState(null, '', window.location.href);
@@ -3704,13 +3874,23 @@ function saveLocalCustomThemes(themes) {
     localStorage.setItem('kiosk_local_custom_themes', JSON.stringify(themes));
 }
 
+// This kiosk's own legacy themes plus the official library (writes only ever touch the kiosk's own list).
+function allCustomThemes(includeHidden) {
+    const officialIds = OfficialThemes.ids('customThemes');
+    const hidden = includeHidden ? new Set() : OfficialThemes.hidden();
+    const own = getLocalCustomThemes().filter(t => t && !officialIds.has(t.id));
+    const official = OfficialThemes.list('customThemes')
+        .filter(t => !hidden.has(t.id))
+        .map(t => Object.assign({}, t, { official: true }));
+    return own.concat(official);
+}
+
 async function fetchCustomThemes() {
-    return getLocalCustomThemes();
+    return allCustomThemes(false);
 }
 
 async function fetchCustomThemeById(id) {
-    const list = getLocalCustomThemes();
-    return list.find(t => t.id === id) || null;
+    return allCustomThemes(true).find(t => t.id === id) || null;
 }
 
 async function insertCustomTheme(themeObj) {

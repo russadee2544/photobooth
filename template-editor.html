@@ -525,6 +525,9 @@
                     <button class="editor-button primary flex items-center gap-1.5 text-xs font-bold py-2 px-4 shadow-sm whitespace-nowrap" onclick="createNewThemeFromManager()">
                         <span class="material-symbols-outlined text-[18px]">add</span> + ออกแบบธีมใหม่
                     </button>
+                    <button id="publish-themes-btn" class="hidden editor-button flex items-center gap-1.5 text-xs font-bold py-2 px-3.5 whitespace-nowrap" onclick="publishThemesToAllKiosks()">
+                        <span class="material-symbols-outlined text-[17px] text-gray-600">cloud_sync</span> เผยแพร่เป็นธีม Official ให้ทุกตู้
+                    </button>
                     <button class="editor-button flex items-center gap-1.5 text-xs font-semibold py-2 px-3.5 whitespace-nowrap" onclick="exportCatalog()">
                         <span class="material-symbols-outlined text-[17px] text-gray-600">file_download</span> Export
                     </button>
@@ -1157,8 +1160,8 @@
         </div>
     </div>
 
-    <script src="template-engine.js?v=2.2"></script>
-    <script src="shared.js?v=3.3"></script>
+    <script src="template-engine.js?v=2.3"></script>
+    <script src="shared.js?v=3.4"></script>
     <script>
         const engine = window.PhotoTemplateEngine;
         let catalog = [];
@@ -1401,7 +1404,9 @@
         function renderThemeManager() {
             updateStockBadge();
             renderUniversalThemes();
-            const customThemes = TemplateCatalog.loadCustom();
+            const hiddenOfficial = OfficialThemes.hidden();
+            const customThemes = TemplateCatalog.loadCustom().concat(
+                TemplateCatalog.loadOfficial().map(t => Object.assign(t, { enabled: !hiddenOfficial.has(t.templateId) })));
             const searchVal = (byId('manager-search-input')?.value || '').trim().toLowerCase();
 
             let filtered = customThemes.filter(t => {
@@ -1449,6 +1454,7 @@
                 };
 
                 const typeLabel = typeMap[theme.type] || theme.type || 'Custom Format';
+                if (theme.official) { card.innerHTML = officialThemeCardHtml(theme, previewHtml, typeLabel, isEnabled); grid.appendChild(card); return; }
 
                 card.innerHTML = `
                     <div class="theme-thumb-wrap cursor-pointer" onclick="editTheme('${theme.templateId}')" title="คลิกเพื่อแก้ไขธีมนี้">
@@ -1493,6 +1499,45 @@
 
                 grid.appendChild(card);
             });
+        }
+
+        // Official library card: read-only here. Show/hide on this kiosk, or copy it to make an own version.
+        function officialThemeCardHtml(theme, previewHtml, typeLabel, isEnabled) {
+            return `
+                <div class="theme-thumb-wrap">${previewHtml}</div>
+                <div class="theme-card-body">
+                    <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-gray-900 text-sm line-clamp-1 flex-1 leading-snug" title="${escapeHtml(theme.name)}">${escapeHtml(theme.name)}</h3>
+                        <button type="button" onclick="toggleOfficialTheme('${theme.templateId}')" class="theme-toggle-btn ${isEnabled ? 'enabled' : 'disabled'} shrink-0" title="แสดงหรือซ่อนธีมนี้ในตู้นี้">
+                            <span class="material-symbols-outlined text-xs">${isEnabled ? 'check_circle' : 'radio_button_unchecked'}</span>
+                            <span>${isEnabled ? 'แสดงในตู้นี้' : 'ซ่อนในตู้นี้'}</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                        <span class="inline-flex items-center gap-1 bg-gray-900 text-white px-2 py-0.5 rounded text-[11px] font-bold">
+                            <span class="material-symbols-outlined text-[12px]">verified</span> Official
+                        </span>
+                        <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
+                            <span class="material-symbols-outlined text-[13px]">crop</span> ${typeLabel}
+                        </span>
+                        <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
+                            <span class="material-symbols-outlined text-[13px]">grid_view</span> ${theme.slots.length} รูป
+                        </span>
+                    </div>
+                    <div class="border-t border-gray-100 pt-2.5 mt-auto flex items-center justify-between gap-2">
+                        <span class="text-[11px] text-gray-500">จากเครื่องหลัก · แก้ไขไม่ได้</span>
+                        <button type="button" onclick="duplicateTheme('${theme.templateId}')" class="editor-button flex items-center gap-1 text-xs py-1 px-2.5" title="ทำสำเนาเป็นธีมของตู้นี้ แล้วแก้ได้">
+                            <span class="material-symbols-outlined text-sm">content_copy</span> ทำสำเนาเพื่อแก้ไข
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        function toggleOfficialTheme(templateId) {
+            const hide = !OfficialThemes.hidden().has(templateId);
+            OfficialThemes.setHidden(templateId, hide);
+            renderThemeManager();
+            toast(hide ? 'ซ่อนธีม Official นี้ในตู้นี้แล้ว' : 'แสดงธีม Official นี้ในตู้นี้แล้ว');
         }
 
         function buildThemeCardPreviewHtml(theme) {
@@ -1604,7 +1649,7 @@
         }
 
         function duplicateTheme(templateId) {
-            const catalog = TemplateCatalog.load();
+            const catalog = TemplateCatalog.load({ includeHidden: true });
             const found = catalog.find(t => t.templateId === templateId);
             if (found) {
                 const cloned = engine.clone(found);
@@ -1636,6 +1681,10 @@
             const status = await adminGetPinStatus();
             if (!status.authenticated) { window.location.href = `admin.html${location.search}`; return; }
             
+            ThemeSync.canPublish().then(ok => byId('publish-themes-btn').classList.toggle('hidden', !ok)).catch(() => {});
+            await ThemePacks.installAll();
+            await ThemeSync.syncNow().catch(() => {});
+
             catalog = TemplateCatalog.load();
             const presets = TemplateCatalog.loadPresets();
             const customThemes = TemplateCatalog.loadCustom();
@@ -2793,7 +2842,8 @@
             const result = engine.validateTemplate(draft);
             if (!result.valid) { renderValidation(); return; }
             
-            if (!draft.templateId || draft.templateId.startsWith('tpl_')) {
+            if (!draft.templateId || draft.templateId.startsWith('tpl_') || TemplateCatalog.isOfficial(draft.templateId)) {
+                if (TemplateCatalog.isOfficial(draft.templateId)) draft.name = `${draft.name} (สำเนา)`;
                 draft.templateId = `custom_${crypto.randomUUID().replace(/-/g,'').slice(0,12)}`;
             }
             draft.isCustom = true;
@@ -2824,6 +2874,7 @@
         }
 
         function deleteTemplate() {
+            if (TemplateCatalog.isOfficial(draft.templateId)) { toast('ธีม Official ลบไม่ได้ (ซ่อนได้ในหน้าจัดการธีม)'); return; }
             if (!draft.templateId || !draft.templateId.startsWith('custom_')) { 
                 toast('โครงร่างมาตรฐานลบไม่ได้ แต่ปรับแต่งและบันทึกเป็นธีมใหม่ได้'); 
                 return; 
@@ -2846,6 +2897,27 @@
             const reader = new FileReader(); reader.onload = () => { draft.overlay.url = reader.result; pushHistory(); renderAll(); }; reader.readAsDataURL(file);
         }
         function clearOverlay() { draft.overlay.url = ''; byId('overlay-file').value=''; pushHistory(); renderAll(); }
+
+        // Sends this kiosk's whole theme set to every kiosk (they pick it up on their welcome page).
+        async function publishThemesToAllKiosks() {
+            if (!ThemeSync.available()) { alert('ใช้ได้เฉพาะบนตู้ที่ติดตั้งโปรแกรมแล้ว'); return; }
+            const bundle = ThemeSync.collect();
+            const count = bundle.catalog.length + bundle.customThemes.length + bundle.universalThemes.length;
+            if (!confirm(`เผยแพร่ธีมของเครื่องนี้ (${count} รายการ) เป็นคลังธีม Official ให้ทุกตู้ใช่ไหม?\n\nตู้อื่นจะได้คลัง Official ชุดนี้แทนชุดเดิม ภายในไม่กี่นาทีเมื่ออยู่หน้าแรก ธีมที่ตู้อื่นสร้างเองจะไม่ถูกแตะ`)) return;
+            const button = byId('publish-themes-btn');
+            button.disabled = true;
+            const result = await ThemeSync.publish();
+            button.disabled = false;
+            const reasons = {
+                admin_capability_required: 'ต้องเข้าสู่ระบบ Admin (ใส่ PIN) ก่อน แล้วลองใหม่',
+                admin_capability_invalid: 'เซสชัน Admin หมดอายุ กรุณาใส่ PIN ใหม่ แล้วลองอีกครั้ง',
+                bundle_too_large: 'ธีมรวมกันใหญ่เกิน 20 MB ลองลดขนาดรูปในธีม',
+                not_theme_publisher: 'ตู้นี้ไม่ใช่เครื่องหลัก เผยแพร่ธีม Official ได้เฉพาะเครื่องหลัก',
+                network_error: 'ต่ออินเทอร์เน็ตไม่ได้'
+            };
+            alert(result.success ? 'เผยแพร่แล้ว ตู้อื่นจะได้คลังธีม Official ชุดนี้เมื่ออยู่หน้าแรก (ภายในไม่กี่นาที)'
+                : `เผยแพร่ไม่สำเร็จ: ${reasons[result.error] || result.error || 'ไม่ทราบสาเหตุ'}`);
+        }
 
         function exportCatalog() {
             const blob = new Blob([JSON.stringify(TemplateCatalog.load(), null, 2)], { type:'application/json' });

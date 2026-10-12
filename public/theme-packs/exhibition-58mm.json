@@ -1,0 +1,411 @@
+{
+  "packId": "exhibition-58mm",
+  "version": 1,
+  "name": "Exhibition Ticket (58mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_exhibition_58_1",
+      "layoutId": "1_4x3",
+      "name": "Exhibition Ticket · 58mm · 1 รูป",
+      "type": "thermal58",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 384,
+        "height": 522,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/exhibition/paper-1.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 8,
+          "bottom": 8,
+          "left": 8,
+          "right": 8
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stub",
+          "name": "Ticket stub · EXHIBITION",
+          "url": "/theme-packs/exhibition/stub.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 384,
+          "height": 144,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer · BAANMAI AI OON",
+          "url": "/theme-packs/exhibition/footer.png",
+          "placement": "front",
+          "x": 16,
+          "y": 446,
+          "width": 352,
+          "height": 40,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 16,
+          "y": 166,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "58mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_exhibition_58_2",
+      "layoutId": "2_4x3",
+      "name": "Exhibition Ticket · 58mm · 2 รูป",
+      "type": "thermal58",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 384,
+        "height": 796,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/exhibition/paper-2.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 8,
+          "bottom": 8,
+          "left": 8,
+          "right": 8
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stub",
+          "name": "Ticket stub · EXHIBITION",
+          "url": "/theme-packs/exhibition/stub.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 384,
+          "height": 144,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer · BAANMAI AI OON",
+          "url": "/theme-packs/exhibition/footer.png",
+          "placement": "front",
+          "x": 16,
+          "y": 720,
+          "width": 352,
+          "height": 40,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 16,
+          "y": 166,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 16,
+          "y": 440,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "58mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_exhibition_58_3",
+      "layoutId": "3_4x3",
+      "name": "Exhibition Ticket · 58mm · 3 รูป",
+      "type": "thermal58",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 384,
+        "height": 1070,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/exhibition/paper-3.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 8,
+          "bottom": 8,
+          "left": 8,
+          "right": 8
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stub",
+          "name": "Ticket stub · EXHIBITION",
+          "url": "/theme-packs/exhibition/stub.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 384,
+          "height": 144,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer · BAANMAI AI OON",
+          "url": "/theme-packs/exhibition/footer.png",
+          "placement": "front",
+          "x": 16,
+          "y": 994,
+          "width": 352,
+          "height": 40,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 16,
+          "y": 166,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 16,
+          "y": 440,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 16,
+          "y": 714,
+          "width": 352,
+          "height": 264,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "58mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_exhibition_58_4",
+      "layoutId": "4_3x4",
+      "name": "Exhibition Ticket · 58mm · 4 รูป",
+      "type": "thermal58",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 384,
+        "height": 724,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/exhibition/paper-4.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 8,
+          "bottom": 8,
+          "left": 8,
+          "right": 8
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stub",
+          "name": "Ticket stub · EXHIBITION",
+          "url": "/theme-packs/exhibition/stub.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 384,
+          "height": 144,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer · BAANMAI AI OON",
+          "url": "/theme-packs/exhibition/footer.png",
+          "placement": "front",
+          "x": 16,
+          "y": 648,
+          "width": 352,
+          "height": 40,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 16,
+          "y": 166,
+          "width": 171,
+          "height": 228,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 197,
+          "y": 166,
+          "width": 171,
+          "height": 228,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 16,
+          "y": 404,
+          "width": 171,
+          "height": 228,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 4,
+          "x": 197,
+          "y": 404,
+          "width": 171,
+          "height": 228,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "58mm"
+      }
+    }
+  ]
+}

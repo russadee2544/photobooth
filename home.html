@@ -230,7 +230,7 @@
         </div>
     </footer>
 
-    <script src="shared.js?v=3.3"></script>
+    <script src="shared.js?v=3.4"></script>
     <script>
         // ===== Welcome motion (Analog Film) =====
         (function initFilmWelcome() {
@@ -330,6 +330,11 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             refreshMinPrice();
+            // Themes published from the main kiosk: pull the newest set while nobody is using this one.
+            ThemePacks.installAll();
+            const syncThemes = () => ThemeSync.syncNow().catch(() => {});
+            setTimeout(syncThemes, 4000);
+            setInterval(syncThemes, 5 * 60 * 1000);
             await closePrintPassAndClearCustomer();
             Session.sessionId = crypto.randomUUID();
             snapshotGifSetting();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photobooth-v19';
+const CACHE_NAME = 'photobooth-v20';
 const ASSETS = [
     '/',
     '/index.html',
