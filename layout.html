@@ -66,8 +66,6 @@
                 : null;
             const allowedLayoutsSet = allowedLayoutsList ? new Set(allowedLayoutsList) : null;
 
-            // Themes synced from the central library (cached on this kiosk).
-            await ThemeLibrary.ready;
             let allTemplates = TemplateCatalog.load();
             
             // Filter strictly for the active paper mode!

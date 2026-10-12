@@ -777,7 +777,6 @@
             const qrContainer = document.getElementById('qr-container');
 
             const paperMode = (typeof Kiosk !== 'undefined' && Kiosk.paperMode) ? Kiosk.paperMode : 'photo4x6_dual';
-            if (window.ThemeLibrary) await ThemeLibrary.ready; // synced theme decides page orientation
             applyDynamicPrintStyles(paperMode);
 
             // Load composed results from IndexedDB (primary) / localStorage (legacy)

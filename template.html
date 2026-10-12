@@ -90,15 +90,14 @@
                 gridContainer.appendChild(cardDiv);
             });
 
-            // Load Custom Templates from Template Catalog (Created in Template Editor or synced)
-            await ThemeLibrary.ready;
+            // Load Custom Templates from Template Catalog (Created in Template Editor)
             const catalog = TemplateCatalog.load();
             const customTemplates = catalog.filter(t => {
                 if (t.enabled === false) return false;
                 if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
 
                 // Include custom templates created by user or having custom artboard/overlay
-                const isCustom = t.templateId.startsWith('custom_') || t.templateId.startsWith('synced_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
+                const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
                 const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
                 return isCustom && matchesShots;
             });
