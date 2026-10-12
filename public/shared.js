@@ -374,6 +374,14 @@ const UniversalThemeStore = {
      * @returns {Array<object>} Created templates
      */
     applyToLayouts(themeId, targetLayouts) {
+        return this.applyToLayoutsWithReport(themeId, targetLayouts).templates;
+    },
+    /**
+     * Same as applyToLayouts, plus the placement warnings for each layout
+     * (frames skipped on another paper shape, stickers moved off photos, ...).
+     * @returns {{ templates: Array<object>, warnings: Array<{ templateId: string, name: string, code: string, message: string }> }}
+     */
+    applyToLayoutsWithReport(themeId, targetLayouts) {
         const engine = window.PhotoTemplateEngine;
         if (!engine) throw new Error('PhotoTemplateEngine is unavailable');
         const uTheme = this.find(themeId);
@@ -404,13 +412,15 @@ const UniversalThemeStore = {
         }
 
         const generatedTemplates = [];
+        const warnings = [];
         targets.forEach(targetTpl => {
-            const applied = engine.applyUniversalTheme(uTheme, targetTpl);
-            TemplateCatalog.upsert(applied);
-            generatedTemplates.push(applied);
+            const report = engine.applyUniversalThemeWithReport(uTheme, targetTpl);
+            TemplateCatalog.upsert(report.template);
+            generatedTemplates.push(report.template);
+            report.warnings.forEach(w => warnings.push({ templateId: report.template.templateId, name: report.template.name, ...w }));
         });
 
-        return generatedTemplates;
+        return { templates: generatedTemplates, warnings };
     }
 };
 if (typeof window !== 'undefined') window.UniversalThemeStore = UniversalThemeStore;
@@ -2202,6 +2212,63 @@ function drawTemplateTheme(ctx, templateName, theme, width, height) {
     ctx.restore();
 }
 
+// Values for {event_name} / {date} / {time} in theme text layers.
+function templateTextVariables() {
+    const now = new Date();
+    let eventName = '';
+    try { eventName = Kiosk.eventName || ''; } catch (e) {}
+    return {
+        event_name: eventName,
+        date: now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+        time: now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    };
+}
+
+// Draws an image into a box, keeping nine-slice frame corners at their shape.
+function drawImageInBox(ctx, image, x, y, width, height, slice) {
+    const engine = window.PhotoTemplateEngine;
+    if (!slice || !engine || typeof engine.nineSlicePatches !== 'function') {
+        ctx.drawImage(image, x, y, width, height);
+        return;
+    }
+    const iw = image.naturalWidth || image.width || 1;
+    const ih = image.naturalHeight || image.height || 1;
+    engine.nineSlicePatches(iw, ih, slice, width, height).forEach((p) => {
+        ctx.drawImage(image, p.sx, p.sy, p.sw, p.sh, x + p.dx, y + p.dy, p.dw, p.dh);
+    });
+}
+
+async function drawTextLayer(ctx, layer, width, height, scale) {
+    const engine = window.PhotoTemplateEngine;
+    const text = engine.resolveTextVariables(layer.text, templateTextVariables());
+    if (!text.trim()) return;
+    const family = `"${layer.fontFamily || 'Prompt'}", "Prompt", sans-serif`;
+    const weight = layer.fontWeight || 600;
+    try {
+        if (document.fonts && document.fonts.load) await document.fonts.load(`${weight} 32px "${layer.fontFamily || 'Prompt'}"`, text);
+    } catch (e) {}
+    const measure = (value, size) => {
+        ctx.font = `${weight} ${size}px ${family}`;
+        return ctx.measureText(value).width;
+    };
+    const layout = engine.layoutText(text, measure, {
+        width, height,
+        fontSize: (layer.fontSize || 24) * scale,
+        lineHeight: layer.lineHeight || 1.2,
+        autoFit: layer.autoFit !== false
+    });
+    ctx.font = `${weight} ${layout.fontSize}px ${family}`;
+    ctx.fillStyle = layer.color || '#111111';
+    ctx.textBaseline = 'middle';
+    const align = layer.align || 'center';
+    ctx.textAlign = align;
+    const x = align === 'left' ? -width / 2 : align === 'right' ? width / 2 : 0;
+    const top = -(layout.lines.length * layout.lineHeight) / 2;
+    layout.lines.forEach((line, index) => {
+        ctx.fillText(line, x, top + layout.lineHeight * (index + 0.5));
+    });
+}
+
 async function drawTemplateUnit(ctx, schema, images, templateName, customThemeObj, target) {
     const engine = window.PhotoTemplateEngine;
     const scaleX = target.width / schema.canvas.width;
@@ -2251,10 +2318,12 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     const drawArtboardLayers = async (placement) => {
         if (!Array.isArray(schema.artboard)) return;
         for (const layer of schema.artboard.slice().sort((a, b) => a.zIndex - b.zIndex)) {
-            if (!layer || layer.visible === false || !layer.url) continue;
+            if (!layer || layer.visible === false) continue;
             if ((layer.placement || 'front') !== placement) continue;
-            const image = await loadTemplateImage(layer.url);
-            if (!image) continue;
+            const isText = layer.type === 'text';
+            if (!isText && !layer.url) continue;
+            const image = isText ? null : await loadTemplateImage(layer.url);
+            if (!isText && !image) continue;
             const lx = layer.x * scaleX;
             const ly = layer.y * scaleY;
             const lw = layer.width * scaleX;
@@ -2263,7 +2332,8 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
             ctx.globalAlpha = typeof layer.opacity === 'number' ? layer.opacity : 1;
             ctx.translate(lx + lw / 2, ly + lh / 2);
             ctx.rotate(((layer.rotation || 0) * Math.PI) / 180);
-            ctx.drawImage(image, -lw / 2, -lh / 2, lw, lh);
+            if (isText) await drawTextLayer(ctx, layer, lw, lh, scaleY);
+            else drawImageInBox(ctx, image, -lw / 2, -lh / 2, lw, lh, layer.slice);
             ctx.restore();
         }
     };
@@ -2283,17 +2353,11 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         let area = { x: -width / 2, y: -height / 2, w: width, h: height };
         const shape = slot.shape || 'rectangle';
         if (shape === 'stamp') {
-            // Real postage stamp: perforated white paper, photo inset inside it.
+            // Postage stamp: the photo is cut to the perforated outline, no border line.
             const stamp = engine.stampGeometry(width, height);
-            ctx.save();
             ctx.translate(-width / 2, -height / 2);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fill(new Path2D(stamp.path));
-            ctx.restore();
-            area = { x: -width / 2 + stamp.inset.x, y: -height / 2 + stamp.inset.y, w: stamp.inset.w, h: stamp.inset.h };
-            ctx.beginPath();
-            ctx.rect(area.x, area.y, area.w, area.h);
-            ctx.clip();
+            ctx.clip(new Path2D(stamp.path));
+            ctx.translate(width / 2, height / 2);
         } else if (shape !== 'rectangle') {
             ctx.translate(-width / 2, -height / 2);
             ctx.clip(new Path2D(engine.shapeSvgPath(shape, width, height)));
@@ -2344,7 +2408,9 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
     const schemaOverlay = await loadTemplateImage(schema.overlay && schema.overlay.url);
     if (schemaOverlay) {
         const fitMode = (schema.overlay && schema.overlay.fitMode) || 'cover';
-        if (fitMode === 'cover' || fitMode === 'contain') {
+        if (schema.overlay && schema.overlay.slice) {
+            drawImageInBox(ctx, schemaOverlay, 0, 0, target.width, target.height, schema.overlay.slice);
+        } else if (fitMode === 'cover' || fitMode === 'contain') {
             const ow = schemaOverlay.naturalWidth || schemaOverlay.width || 1;
             const oh = schemaOverlay.naturalHeight || schemaOverlay.height || 1;
             const hRatio = target.width / ow;

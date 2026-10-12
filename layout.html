@@ -53,10 +53,10 @@
         </button>
     </div>
 
-    <script src="template-engine.js?v=1.0"></script>
-    <script src="shared.js?v=2.9"></script>
+    <script src="template-engine.js?v=2.3"></script>
+    <script src="shared.js?v=3.4"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // First page of every session (event and redeem): get the GIF upload
             // ticket now, in the background, so it never delays the customer.
             void ensureGifUploadTicket();
