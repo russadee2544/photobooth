@@ -221,6 +221,22 @@ async function runKiosk(config) {
       }
     },
   };
+  // The printer chosen on the admin page: kept in the agent config too, so printing defaults and the
+  // owner dashboard's printer status follow the same printer.
+  modeHandlers.setPrinterName = async (a) => {
+    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    const name = String(a.printerName || '').trim().slice(0, 200);
+    if (!name) return { success: false, error: 'invalid_printer' };
+    try {
+      const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
+      await writeFile(CONFIG_FILE, JSON.stringify({ ...saved, printerName: name }, null, 2));
+      config.printerName = name;
+      printService.setPrinterName?.(name);
+      return { success: true, printerName: name };
+    } catch {
+      return { success: false, error: 'config_write_failed' };
+    }
+  };
   modeHandlers.reportPageStatus = async (a) => {
     const paper = Number(a.paper);
     if (Number.isInteger(paper) && paper >= 0 && paper <= 100000) runtime.paper = paper;

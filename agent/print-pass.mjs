@@ -86,5 +86,8 @@ export function createPrintService({ internal, journal, printImage, printerName 
     return { status: 'completed', remaining: reply.remaining ?? null, copiesCompleted: start.copies };
   }
 
-  return { printAuthorizedPass, flushUnreported };
+  // The admin page can switch the default printer without restarting the agent.
+  const setPrinterName = (name) => { printerName = String(name || ''); };
+
+  return { printAuthorizedPass, flushUnreported, setPrinterName };
 }

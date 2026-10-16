@@ -1909,11 +1909,27 @@
             }
         }
 
+        // Remembers the chosen Windows printer right away (every print path reads systemPrinterName),
+        // and tells the kiosk program too so the owner dashboard watches the same printer.
+        function rememberSystemPrinter(name) {
+            if (!name) return;
+            var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+            saved.conn = 'system';
+            currentPrinterConn = 'system';   // a later "save" must not switch the connection back
+            saved.systemPrinterName = name;
+            saved.deviceName = name;
+            localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+            if (window.PhotoboothDevice && typeof window.PhotoboothDevice.setPrinterName === 'function') {
+                window.PhotoboothDevice.setPrinterName({ printerName: name }).catch(function() {});
+            }
+        }
+
         function onSystemPrinterChanged() {
             var select = document.getElementById('system-printer-select');
             var hint = document.getElementById('system-printer-hint');
             var badge = document.getElementById('system-printer-badge');
             if (select && select.value) {
+                rememberSystemPrinter(select.value);
                 if (hint) {
                     hint.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span><span>พร้อมใช้งาน: <strong class="text-gray-900">' + select.value + '</strong></span>';
                 }
@@ -2099,7 +2115,7 @@
                         paperMode: Kiosk.paperMode,
                         connection: conn,
                         dataUrl: agentCanvas ? agentCanvas.toDataURL('image/png') : '',
-                        printerName: cfg.systemPrinterName || ''
+                        printerName: (document.getElementById('system-printer-select') || {}).value || cfg.systemPrinterName || ''
                     });
                     showToast(result && result.success ? 'ทดสอบเครื่องพิมพ์สำเร็จ ✓' : 'ทดสอบไม่สำเร็จ: ' + ((result && result.error) || 'เครื่องพิมพ์ยังไม่ยืนยันผล'));
                     return;
@@ -2328,6 +2344,12 @@
             if (currentPrinterConn === 'wifi') {
                 saved.wifiIp = (document.getElementById('printer-ip-input').value || '').trim();
                 saved.wifiPort = (document.getElementById('printer-port-input').value || '9100').trim();
+            }
+            var printerSelect = document.getElementById('system-printer-select');
+            if (currentPrinterConn === 'system' && printerSelect && printerSelect.value) {
+                saved.systemPrinterName = printerSelect.value;
+                saved.deviceName = printerSelect.value;
+                rememberSystemPrinter(printerSelect.value);
             }
 
             var elMode = document.getElementById('admin-default-quality-mode');
