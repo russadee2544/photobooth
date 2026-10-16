@@ -1,0 +1,831 @@
+{
+  "packId": "wanted-80mm",
+  "version": 1,
+  "name": "Wanted Poster (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_wanted_80_1",
+      "layoutId": "1_4x3",
+      "name": "Wanted Poster · 80mm · 1 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 999,
+        "dpi": 203,
+        "backgroundColor": "#F4E8CE",
+        "backgroundImage": "/theme-packs/wanted/paper-1.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "header",
+          "name": "Header · Criminal News",
+          "url": "/theme-packs/wanted/header.png",
+          "placement": "front",
+          "x": 18,
+          "y": 18,
+          "width": 540,
+          "height": 96,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "WANTED",
+          "url": "/theme-packs/wanted/title.png",
+          "placement": "front",
+          "x": 18,
+          "y": 117,
+          "width": 540,
+          "height": 108,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "wanted_for",
+          "name": "Wanted for",
+          "url": "/theme-packs/wanted/wanted-for.png",
+          "placement": "front",
+          "x": 18,
+          "y": 228,
+          "width": 540,
+          "height": 81,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_1",
+          "name": "Photo frame 1",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 315,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stamp",
+          "name": "Wanted stamp",
+          "url": "/theme-packs/wanted/stamp.png",
+          "placement": "front",
+          "x": 369,
+          "y": 309,
+          "width": 186,
+          "height": 152,
+          "rotation": 0,
+          "zIndex": 240,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "name_bar",
+          "name": "Name / reward",
+          "url": "/theme-packs/wanted/name-bar.png",
+          "placement": "front",
+          "x": 18,
+          "y": 735,
+          "width": 540,
+          "height": 54,
+          "rotation": 0,
+          "zIndex": 213,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "url": "/theme-packs/wanted/description.png",
+          "placement": "front",
+          "x": 18,
+          "y": 798,
+          "width": 540,
+          "height": 75,
+          "rotation": 0,
+          "zIndex": 214,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer",
+          "url": "/theme-packs/wanted/footer.png",
+          "placement": "front",
+          "x": 18,
+          "y": 876,
+          "width": 540,
+          "height": 72,
+          "rotation": 0,
+          "zIndex": 215,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 18,
+          "y": 318,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_wanted_80_2",
+      "layoutId": "2_4x3",
+      "name": "Wanted Poster · 80mm · 2 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1416,
+        "dpi": 203,
+        "backgroundColor": "#F4E8CE",
+        "backgroundImage": "/theme-packs/wanted/paper-2.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "header",
+          "name": "Header · Criminal News",
+          "url": "/theme-packs/wanted/header.png",
+          "placement": "front",
+          "x": 18,
+          "y": 18,
+          "width": 540,
+          "height": 96,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "WANTED",
+          "url": "/theme-packs/wanted/title.png",
+          "placement": "front",
+          "x": 18,
+          "y": 117,
+          "width": 540,
+          "height": 108,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "wanted_for",
+          "name": "Wanted for",
+          "url": "/theme-packs/wanted/wanted-for.png",
+          "placement": "front",
+          "x": 18,
+          "y": 228,
+          "width": 540,
+          "height": 81,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_1",
+          "name": "Photo frame 1",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 315,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Photo frame 2",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 732,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stamp",
+          "name": "Wanted stamp",
+          "url": "/theme-packs/wanted/stamp.png",
+          "placement": "front",
+          "x": 369,
+          "y": 309,
+          "width": 186,
+          "height": 152,
+          "rotation": 0,
+          "zIndex": 240,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "name_bar",
+          "name": "Name / reward",
+          "url": "/theme-packs/wanted/name-bar.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1152,
+          "width": 540,
+          "height": 54,
+          "rotation": 0,
+          "zIndex": 213,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "url": "/theme-packs/wanted/description.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1215,
+          "width": 540,
+          "height": 75,
+          "rotation": 0,
+          "zIndex": 214,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer",
+          "url": "/theme-packs/wanted/footer.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1293,
+          "width": 540,
+          "height": 72,
+          "rotation": 0,
+          "zIndex": 215,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 18,
+          "y": 318,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 18,
+          "y": 735,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_wanted_80_3",
+      "layoutId": "3_4x3",
+      "name": "Wanted Poster · 80mm · 3 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1833,
+        "dpi": 203,
+        "backgroundColor": "#F4E8CE",
+        "backgroundImage": "/theme-packs/wanted/paper-3.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "header",
+          "name": "Header · Criminal News",
+          "url": "/theme-packs/wanted/header.png",
+          "placement": "front",
+          "x": 18,
+          "y": 18,
+          "width": 540,
+          "height": 96,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "WANTED",
+          "url": "/theme-packs/wanted/title.png",
+          "placement": "front",
+          "x": 18,
+          "y": 117,
+          "width": 540,
+          "height": 108,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "wanted_for",
+          "name": "Wanted for",
+          "url": "/theme-packs/wanted/wanted-for.png",
+          "placement": "front",
+          "x": 18,
+          "y": 228,
+          "width": 540,
+          "height": 81,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_1",
+          "name": "Photo frame 1",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 315,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Photo frame 2",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 732,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_3",
+          "name": "Photo frame 3",
+          "url": "/theme-packs/wanted/frame-wide.png",
+          "placement": "front",
+          "x": 15,
+          "y": 1149,
+          "width": 546,
+          "height": 411,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stamp",
+          "name": "Wanted stamp",
+          "url": "/theme-packs/wanted/stamp.png",
+          "placement": "front",
+          "x": 369,
+          "y": 309,
+          "width": 186,
+          "height": 152,
+          "rotation": 0,
+          "zIndex": 240,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "name_bar",
+          "name": "Name / reward",
+          "url": "/theme-packs/wanted/name-bar.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1569,
+          "width": 540,
+          "height": 54,
+          "rotation": 0,
+          "zIndex": 213,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "url": "/theme-packs/wanted/description.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1632,
+          "width": 540,
+          "height": 75,
+          "rotation": 0,
+          "zIndex": 214,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer",
+          "url": "/theme-packs/wanted/footer.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1710,
+          "width": 540,
+          "height": 72,
+          "rotation": 0,
+          "zIndex": 215,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 18,
+          "y": 318,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 18,
+          "y": 735,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 18,
+          "y": 1152,
+          "width": 540,
+          "height": 405,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_wanted_80_4",
+      "layoutId": "4_3x4",
+      "name": "Wanted Poster · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1311,
+        "dpi": 203,
+        "backgroundColor": "#F4E8CE",
+        "backgroundImage": "/theme-packs/wanted/paper-4.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "header",
+          "name": "Header · Criminal News",
+          "url": "/theme-packs/wanted/header.png",
+          "placement": "front",
+          "x": 18,
+          "y": 18,
+          "width": 540,
+          "height": 96,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "WANTED",
+          "url": "/theme-packs/wanted/title.png",
+          "placement": "front",
+          "x": 18,
+          "y": 117,
+          "width": 540,
+          "height": 108,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "wanted_for",
+          "name": "Wanted for",
+          "url": "/theme-packs/wanted/wanted-for.png",
+          "placement": "front",
+          "x": 18,
+          "y": 228,
+          "width": 540,
+          "height": 81,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_1",
+          "name": "Photo frame 1",
+          "url": "/theme-packs/wanted/frame-tall.png",
+          "placement": "front",
+          "x": 15,
+          "y": 315,
+          "width": 270,
+          "height": 359,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Photo frame 2",
+          "url": "/theme-packs/wanted/frame-tall.png",
+          "placement": "front",
+          "x": 291,
+          "y": 315,
+          "width": 270,
+          "height": 359,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_3",
+          "name": "Photo frame 3",
+          "url": "/theme-packs/wanted/frame-tall.png",
+          "placement": "front",
+          "x": 15,
+          "y": 680,
+          "width": 270,
+          "height": 359,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_4",
+          "name": "Photo frame 4",
+          "url": "/theme-packs/wanted/frame-tall.png",
+          "placement": "front",
+          "x": 291,
+          "y": 680,
+          "width": 270,
+          "height": 359,
+          "rotation": 0,
+          "zIndex": 223,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stamp",
+          "name": "Wanted stamp",
+          "url": "/theme-packs/wanted/stamp.png",
+          "placement": "front",
+          "x": 369,
+          "y": 309,
+          "width": 186,
+          "height": 152,
+          "rotation": 0,
+          "zIndex": 240,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "name_bar",
+          "name": "Name / reward",
+          "url": "/theme-packs/wanted/name-bar.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1047,
+          "width": 540,
+          "height": 54,
+          "rotation": 0,
+          "zIndex": 213,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "description",
+          "name": "Description",
+          "url": "/theme-packs/wanted/description.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1110,
+          "width": 540,
+          "height": 75,
+          "rotation": 0,
+          "zIndex": 214,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "footer",
+          "name": "Footer",
+          "url": "/theme-packs/wanted/footer.png",
+          "placement": "front",
+          "x": 18,
+          "y": 1188,
+          "width": 540,
+          "height": 72,
+          "rotation": 0,
+          "zIndex": 215,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 18,
+          "y": 318,
+          "width": 264,
+          "height": 353,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 294,
+          "y": 318,
+          "width": 264,
+          "height": 353,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 18,
+          "y": 683,
+          "width": 264,
+          "height": 353,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 4,
+          "x": 294,
+          "y": 683,
+          "width": 264,
+          "height": 353,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}

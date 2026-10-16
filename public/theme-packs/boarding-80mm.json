@@ -1,0 +1,467 @@
+{
+  "packId": "boarding-80mm",
+  "version": 1,
+  "name": "Boarding Pass (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_boarding_80_1",
+      "layoutId": "1_4x3",
+      "name": "Boarding Pass · 80mm · 1 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 963,
+        "dpi": 203,
+        "backgroundColor": "#1B2470",
+        "backgroundImage": "/theme-packs/boarding/paper-1.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "ticket",
+          "name": "Ticket · route and passenger",
+          "url": "/theme-packs/boarding/ticket.png",
+          "placement": "front",
+          "x": 24,
+          "y": 21,
+          "width": 528,
+          "height": 318,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_header",
+          "name": "Stub · route and seat",
+          "url": "/theme-packs/boarding/stub-header.png",
+          "placement": "front",
+          "x": 24,
+          "y": 384,
+          "width": 528,
+          "height": 60,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_footer",
+          "name": "Stub · barcode",
+          "url": "/theme-packs/boarding/stub-footer.png",
+          "placement": "front",
+          "x": 24,
+          "y": 870,
+          "width": 528,
+          "height": 51,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 24,
+          "y": 453,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_boarding_80_2",
+      "layoutId": "2_4x3",
+      "name": "Boarding Pass · 80mm · 2 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1374,
+        "dpi": 203,
+        "backgroundColor": "#1B2470",
+        "backgroundImage": "/theme-packs/boarding/paper-2.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "ticket",
+          "name": "Ticket · route and passenger",
+          "url": "/theme-packs/boarding/ticket.png",
+          "placement": "front",
+          "x": 24,
+          "y": 21,
+          "width": 528,
+          "height": 318,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_header",
+          "name": "Stub · route and seat",
+          "url": "/theme-packs/boarding/stub-header.png",
+          "placement": "front",
+          "x": 24,
+          "y": 384,
+          "width": 528,
+          "height": 60,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_footer",
+          "name": "Stub · barcode",
+          "url": "/theme-packs/boarding/stub-footer.png",
+          "placement": "front",
+          "x": 24,
+          "y": 1281,
+          "width": 528,
+          "height": 51,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 24,
+          "y": 453,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 24,
+          "y": 864,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_boarding_80_3",
+      "layoutId": "3_4x3",
+      "name": "Boarding Pass · 80mm · 3 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1785,
+        "dpi": 203,
+        "backgroundColor": "#1B2470",
+        "backgroundImage": "/theme-packs/boarding/paper-3.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "ticket",
+          "name": "Ticket · route and passenger",
+          "url": "/theme-packs/boarding/ticket.png",
+          "placement": "front",
+          "x": 24,
+          "y": 21,
+          "width": 528,
+          "height": 318,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_header",
+          "name": "Stub · route and seat",
+          "url": "/theme-packs/boarding/stub-header.png",
+          "placement": "front",
+          "x": 24,
+          "y": 384,
+          "width": 528,
+          "height": 60,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_footer",
+          "name": "Stub · barcode",
+          "url": "/theme-packs/boarding/stub-footer.png",
+          "placement": "front",
+          "x": 24,
+          "y": 1692,
+          "width": 528,
+          "height": 51,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 24,
+          "y": 453,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 24,
+          "y": 864,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 3,
+          "x": 24,
+          "y": 1275,
+          "width": 528,
+          "height": 396,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_boarding_80_4",
+      "layoutId": "4_3x4",
+      "name": "Boarding Pass · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1266,
+        "dpi": 203,
+        "backgroundColor": "#1B2470",
+        "backgroundImage": "/theme-packs/boarding/paper-4.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "ticket",
+          "name": "Ticket · route and passenger",
+          "url": "/theme-packs/boarding/ticket.png",
+          "placement": "front",
+          "x": 24,
+          "y": 21,
+          "width": 528,
+          "height": 318,
+          "rotation": 0,
+          "zIndex": 210,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_header",
+          "name": "Stub · route and seat",
+          "url": "/theme-packs/boarding/stub-header.png",
+          "placement": "front",
+          "x": 24,
+          "y": 384,
+          "width": 528,
+          "height": 60,
+          "rotation": 0,
+          "zIndex": 211,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "stub_footer",
+          "name": "Stub · barcode",
+          "url": "/theme-packs/boarding/stub-footer.png",
+          "placement": "front",
+          "x": 24,
+          "y": 1173,
+          "width": 528,
+          "height": 51,
+          "rotation": 0,
+          "zIndex": 212,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 24,
+          "y": 453,
+          "width": 257,
+          "height": 342,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 296,
+          "y": 453,
+          "width": 257,
+          "height": 342,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 3,
+          "x": 24,
+          "y": 810,
+          "width": 257,
+          "height": 342,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 4,
+          "x": 296,
+          "y": 810,
+          "width": 257,
+          "height": 342,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}
