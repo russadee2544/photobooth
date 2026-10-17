@@ -1,0 +1,775 @@
+{
+  "packId": "goodvibes-80mm",
+  "version": 1,
+  "name": "Good Vibes (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_goodvibes_80_1",
+      "layoutId": "1_4x3",
+      "name": "Good Vibes · 80mm · 1 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 739,
+        "dpi": 203,
+        "backgroundColor": "#F23B2F",
+        "backgroundImage": "/theme-packs/goodvibes/paper-1.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "frame_1",
+          "name": "Cloud frame 1",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 28,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "pink_flower",
+          "name": "Pink flower",
+          "url": "/theme-packs/goodvibes/pink-flower.png",
+          "placement": "front",
+          "x": 426,
+          "y": 14,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_big",
+          "name": "Sparkle",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 4,
+          "y": 274,
+          "width": 78,
+          "height": 78,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_small",
+          "name": "Sparkle small",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 52,
+          "y": 367,
+          "width": 44,
+          "height": 44,
+          "rotation": 0,
+          "zIndex": 223,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "daisy",
+          "name": "Daisy",
+          "url": "/theme-packs/goodvibes/daisy.png",
+          "placement": "front",
+          "x": 396,
+          "y": 220,
+          "width": 170,
+          "height": 170,
+          "rotation": 0,
+          "zIndex": 224,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "hearts",
+          "name": "Hearts",
+          "url": "/theme-packs/goodvibes/hearts.png",
+          "placement": "front",
+          "x": 6,
+          "y": 313,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 225,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "GOOD VIBES",
+          "url": "/theme-packs/goodvibes/title.png",
+          "placement": "front",
+          "x": 30,
+          "y": 445,
+          "width": 516,
+          "height": 250,
+          "rotation": 0,
+          "zIndex": 226,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 30,
+          "y": 34,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_goodvibes_80_2",
+      "layoutId": "2_4x3",
+      "name": "Good Vibes · 80mm · 2 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1148,
+        "dpi": 203,
+        "backgroundColor": "#F23B2F",
+        "backgroundImage": "/theme-packs/goodvibes/paper-2.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "frame_1",
+          "name": "Cloud frame 1",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 28,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Cloud frame 2",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 437,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "pink_flower",
+          "name": "Pink flower",
+          "url": "/theme-packs/goodvibes/pink-flower.png",
+          "placement": "front",
+          "x": 426,
+          "y": 14,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_big",
+          "name": "Sparkle",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 4,
+          "y": 274,
+          "width": 78,
+          "height": 78,
+          "rotation": 0,
+          "zIndex": 223,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_small",
+          "name": "Sparkle small",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 52,
+          "y": 367,
+          "width": 44,
+          "height": 44,
+          "rotation": 0,
+          "zIndex": 224,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "daisy",
+          "name": "Daisy",
+          "url": "/theme-packs/goodvibes/daisy.png",
+          "placement": "front",
+          "x": 396,
+          "y": 629,
+          "width": 170,
+          "height": 170,
+          "rotation": 0,
+          "zIndex": 225,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "hearts",
+          "name": "Hearts",
+          "url": "/theme-packs/goodvibes/hearts.png",
+          "placement": "front",
+          "x": 6,
+          "y": 722,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 226,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "GOOD VIBES",
+          "url": "/theme-packs/goodvibes/title.png",
+          "placement": "front",
+          "x": 30,
+          "y": 854,
+          "width": 516,
+          "height": 250,
+          "rotation": 0,
+          "zIndex": 227,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 30,
+          "y": 34,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 30,
+          "y": 443,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_goodvibes_80_3",
+      "layoutId": "3_4x3",
+      "name": "Good Vibes · 80mm · 3 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1557,
+        "dpi": 203,
+        "backgroundColor": "#F23B2F",
+        "backgroundImage": "/theme-packs/goodvibes/paper-3.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "frame_1",
+          "name": "Cloud frame 1",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 28,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Cloud frame 2",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 437,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_3",
+          "name": "Cloud frame 3",
+          "url": "/theme-packs/goodvibes/frame-wide.png",
+          "placement": "front",
+          "x": 24,
+          "y": 846,
+          "width": 528,
+          "height": 399,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "pink_flower",
+          "name": "Pink flower",
+          "url": "/theme-packs/goodvibes/pink-flower.png",
+          "placement": "front",
+          "x": 426,
+          "y": 14,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 223,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_big",
+          "name": "Sparkle",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 4,
+          "y": 274,
+          "width": 78,
+          "height": 78,
+          "rotation": 0,
+          "zIndex": 224,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_small",
+          "name": "Sparkle small",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 52,
+          "y": 367,
+          "width": 44,
+          "height": 44,
+          "rotation": 0,
+          "zIndex": 225,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "daisy",
+          "name": "Daisy",
+          "url": "/theme-packs/goodvibes/daisy.png",
+          "placement": "front",
+          "x": 396,
+          "y": 1038,
+          "width": 170,
+          "height": 170,
+          "rotation": 0,
+          "zIndex": 226,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "hearts",
+          "name": "Hearts",
+          "url": "/theme-packs/goodvibes/hearts.png",
+          "placement": "front",
+          "x": 6,
+          "y": 1131,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 227,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "GOOD VIBES",
+          "url": "/theme-packs/goodvibes/title.png",
+          "placement": "front",
+          "x": 30,
+          "y": 1263,
+          "width": 516,
+          "height": 250,
+          "rotation": 0,
+          "zIndex": 228,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 30,
+          "y": 34,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 30,
+          "y": 443,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 30,
+          "y": 852,
+          "width": 516,
+          "height": 387,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_goodvibes_80_4",
+      "layoutId": "4_3x4",
+      "name": "Good Vibes · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1032,
+        "dpi": 203,
+        "backgroundColor": "#F23B2F",
+        "backgroundImage": "/theme-packs/goodvibes/paper-4.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 12,
+          "bottom": 12,
+          "left": 12,
+          "right": 12
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "frame_1",
+          "name": "Cloud frame 1",
+          "url": "/theme-packs/goodvibes/frame-tall.png",
+          "placement": "front",
+          "x": 24,
+          "y": 28,
+          "width": 259,
+          "height": 341,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_2",
+          "name": "Cloud frame 2",
+          "url": "/theme-packs/goodvibes/frame-tall.png",
+          "placement": "front",
+          "x": 293,
+          "y": 28,
+          "width": 259,
+          "height": 341,
+          "rotation": 0,
+          "zIndex": 221,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_3",
+          "name": "Cloud frame 3",
+          "url": "/theme-packs/goodvibes/frame-tall.png",
+          "placement": "front",
+          "x": 24,
+          "y": 379,
+          "width": 259,
+          "height": 341,
+          "rotation": 0,
+          "zIndex": 222,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "frame_4",
+          "name": "Cloud frame 4",
+          "url": "/theme-packs/goodvibes/frame-tall.png",
+          "placement": "front",
+          "x": 293,
+          "y": 379,
+          "width": 259,
+          "height": 341,
+          "rotation": 0,
+          "zIndex": 223,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "pink_flower",
+          "name": "Pink flower",
+          "url": "/theme-packs/goodvibes/pink-flower.png",
+          "placement": "front",
+          "x": 426,
+          "y": 14,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 224,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_big",
+          "name": "Sparkle",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 4,
+          "y": 238,
+          "width": 78,
+          "height": 78,
+          "rotation": 0,
+          "zIndex": 225,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "sparkle_small",
+          "name": "Sparkle small",
+          "url": "/theme-packs/goodvibes/sparkle.png",
+          "placement": "front",
+          "x": 52,
+          "y": 317,
+          "width": 44,
+          "height": 44,
+          "rotation": 0,
+          "zIndex": 226,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "daisy",
+          "name": "Daisy",
+          "url": "/theme-packs/goodvibes/daisy.png",
+          "placement": "front",
+          "x": 396,
+          "y": 543,
+          "width": 170,
+          "height": 170,
+          "rotation": 0,
+          "zIndex": 227,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "hearts",
+          "name": "Hearts",
+          "url": "/theme-packs/goodvibes/hearts.png",
+          "placement": "front",
+          "x": 6,
+          "y": 606,
+          "width": 130,
+          "height": 130,
+          "rotation": 0,
+          "zIndex": 228,
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "id": "title",
+          "name": "GOOD VIBES",
+          "url": "/theme-packs/goodvibes/title.png",
+          "placement": "front",
+          "x": 30,
+          "y": 738,
+          "width": 516,
+          "height": 250,
+          "rotation": 0,
+          "zIndex": 229,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 30,
+          "y": 34,
+          "width": 247,
+          "height": 329,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 299,
+          "y": 34,
+          "width": 247,
+          "height": 329,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 30,
+          "y": 385,
+          "width": 247,
+          "height": 329,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 4,
+          "x": 299,
+          "y": 385,
+          "width": 247,
+          "height": 329,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}

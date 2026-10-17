@@ -17,6 +17,7 @@ interface AdminRedeemRequest {
 
 interface DeviceRow {
   kiosk_id: string;
+  workspace_id?: string;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -61,7 +62,14 @@ export default {
     }
 
     if (operation === 'generate' || operation === 'generatePass') {
-      const packageId = typeof body.packageId === 'string' ? body.packageId : '';
+      let packageId = typeof body.packageId === 'string' ? body.packageId : '';
+      // A kiosk set up without a package id: use the shop's package when it has exactly one enabled.
+      if (!UUID.test(packageId) && device.workspace_id) {
+        const { data: packages } = await context.supabaseAdmin.from('booth_packages')
+          .select('id').eq('workspace_id', device.workspace_id).eq('enabled', true).limit(2);
+        if (packages?.length === 1) packageId = packages[0].id;
+        else return Response.json({ error: packages?.length ? 'package_not_selected' : 'no_package' }, { status: 400 });
+      }
       const count = Number(body.count);
       const expiresDays = Number(body.expiresDays);
       if (!UUID.test(packageId) || !Number.isSafeInteger(count) || count < 1 || count > 500 ||
