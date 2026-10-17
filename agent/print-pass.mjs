@@ -54,18 +54,19 @@ export function createPrintService({ internal, journal, printImage, printerName 
     const start = await internal.startPrint(jobId, sessionToken).catch(() => ({ error: 'network_error' }));
     if (start?.error || start?.status !== 'printing') return { status: 'failed', error: start?.error || 'start_failed' };
 
-    // Copies and asset come from the server's reservation, never from the browser.
-    if (start.assetSha256 !== sha256Hex(dataUrl) || start.copies !== copies) {
+    // The asset comes from the server's reservation, never from the browser; the browser may only ask
+    // for fewer copies than the pass allows (the kiosk's "copies per print" setting).
+    if (start.assetSha256 !== sha256Hex(dataUrl) || !(copies >= 1 && copies <= start.copies)) {
       await journal.set(jobId, { state: 'failed', copies: start.copies });
       await report(jobId, 'failed');
       return { status: 'failed', error: 'asset_mismatch' };
     }
 
     // Persist BEFORE touching the printer so a crash cannot cause a re-send.
-    await journal.set(jobId, { state: 'printing', copies: start.copies, sha: start.assetSha256 });
+    await journal.set(jobId, { state: 'printing', copies, sha: start.assetSha256 });
     try {
       const chosen = typeof requested === 'string' ? requested.trim().slice(0, 200) : '';
-      await printImage({ ...image, printerName: chosen || printerName, copies: start.copies, paperMode });
+      await printImage({ ...image, printerName: chosen || printerName, copies, paperMode });
     } catch (error) {
       if (error?.notPrinted) {
         await journal.set(jobId, { state: 'failed' });
@@ -83,7 +84,7 @@ export function createPrintService({ internal, journal, printImage, printerName 
       return { status: 'ambiguous' };
     }
     await journal.set(jobId, { state: 'completed', remaining: reply.remaining ?? null });
-    return { status: 'completed', remaining: reply.remaining ?? null, copiesCompleted: start.copies };
+    return { status: 'completed', remaining: reply.remaining ?? null, copiesCompleted: copies };
   }
 
   // The admin page can switch the default printer without restarting the agent.

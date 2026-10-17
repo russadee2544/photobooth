@@ -1222,7 +1222,7 @@
 
         function handlePrint() {
             if (Kiosk.mode === 'redeem') {
-                void executeLockedReceiptPrint(Session.authorization?.copiesPerPrint || 2);
+                void executeLockedReceiptPrint();
                 return;
             }
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
@@ -1552,7 +1552,9 @@
 
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             const defaultCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
-            const copies = Kiosk.mode === 'redeem' ? Session.authorization?.copiesPerPrint || 2
+            // A redeem pass allows up to copiesPerPrint (2 for receipt packages); the kiosk's own
+            // 'copies per print' setting can lower that, e.g. to 1 slip per print.
+            const copies = Kiosk.mode === 'redeem' ? Math.max(1, Math.min(Session.authorization?.copiesPerPrint || 2, defaultCopies))
                 : (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
             
             // Check paper, reset for demo if needed
@@ -1582,7 +1584,7 @@
                 }
                 try {
                     const reservation = await reservePrintPass(animPhoto, jobId);
-                    if (reservation.status !== 'reserved' || reservation.copies !== copies) {
+                    if (reservation.status !== 'reserved' || !(copies >= 1 && copies <= reservation.copies)) {
                         throw new Error('งานพิมพ์เดิมกำลังตรวจสอบ กรุณาเรียกพนักงาน');
                     }
                     const outcome = await printAuthorizedPass({ dataUrl: animPhoto,
