@@ -12,7 +12,7 @@ import { APP_ROOT, CONFIG_FILE, DATA_DIR, JOBS_FILE, WEB_ROOT } from './paths.mj
 import { protect, unprotect } from './dpapi.mjs';
 import { createJournal } from './jobs.mjs';
 import { createPrintService } from './print-pass.mjs';
-import { listPrinters, printerHealth, printImage } from './printer-win.mjs';
+import { listPrinters, printerHealth, printImage as printViaDriver, printImageEscPos, RECEIPT_DOTS } from './printer-win.mjs';
 import { createHeartbeat } from './heartbeat.mjs';
 import { ensureResetShortcut } from './shortcut.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
@@ -181,6 +181,12 @@ async function runKiosk(config) {
 
   const journal = createJournal(JOBS_FILE);
   await journal.load();
+  // Receipt paper: ESC/POS raw by default (some receipt drivers feed a blank slip for pictures).
+  // config.printTransport = 'driver' switches back to printing through the Windows driver.
+  const printImage = (opts) => {
+    const dots = RECEIPT_DOTS[opts.paperMode];
+    return dots && config.printTransport !== 'driver' ? printImageEscPos({ ...opts, dots }) : printViaDriver(opts);
+  };
   const printService = createPrintService({ internal, journal, printImage, printerName: config.printerName || '' });
 
   // Only the page-facing PhotoboothPrinter surface; start/report stay internal.
@@ -197,7 +203,7 @@ async function runKiosk(config) {
       if (!match) return { success: false, error: 'invalid_image' };
       try {
         const result = await printImage({ bytes: Buffer.from(match[2], 'base64'), ext: match[1] === 'jpeg' ? 'jpg' : 'png',
-          printerName: String(a.printerName || config.printerName || '').slice(0, 200), copies: 1 });
+          printerName: String(a.printerName || config.printerName || '').slice(0, 200), copies: 1, paperMode: String(a.paperMode || '') });
         return { success: true, printer: result.printer };
       } catch (error) {
         noteError(`test print: ${error instanceof Error ? error.message : 'failed'}`);
@@ -237,6 +243,19 @@ async function runKiosk(config) {
       return { success: false, error: 'config_write_failed' };
     }
   };
+  modeHandlers.setPrintTransport = async (a) => {
+    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    const transport = a.transport === 'driver' ? 'driver' : 'escpos';
+    try {
+      const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
+      await writeFile(CONFIG_FILE, JSON.stringify({ ...saved, printTransport: transport }, null, 2));
+      config.printTransport = transport;
+      return { success: true, transport };
+    } catch {
+      return { success: false, error: 'config_write_failed' };
+    }
+  };
+  modeHandlers.getPrintTransport = async () => ({ success: true, transport: config.printTransport === 'driver' ? 'driver' : 'escpos' });
   modeHandlers.reportPageStatus = async (a) => {
     const paper = Number(a.paper);
     if (Number.isInteger(paper) && paper >= 0 && paper <= 100000) runtime.paper = paper;
@@ -291,7 +310,7 @@ async function runKiosk(config) {
         if (!match) return json(res, 400, { success: false, error: 'invalid_image' });
         const copies = Math.min(10, Math.max(1, parseInt(body.copies, 10) || 1));
         const result = await printImage({ bytes: Buffer.from(match[2], 'base64'), ext: match[1] === 'jpeg' ? 'jpg' : 'png',
-          printerName: String(body.printerName || config.printerName || ''), copies });
+          printerName: String(body.printerName || config.printerName || ''), copies, paperMode: String(body.paperMode || '') });
         return json(res, 200, { success: true, printer: result.printer, copies });
       } catch (error) {
         noteError(`direct print: ${error instanceof Error ? error.message : 'failed'}`);

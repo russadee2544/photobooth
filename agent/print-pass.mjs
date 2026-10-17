@@ -36,7 +36,7 @@ export function createPrintService({ internal, journal, printImage, printerName 
     for (const [jobId, job] of journal.unreported()) await report(jobId, job.unreported);
   }
 
-  async function printAuthorizedPass({ sessionToken, jobId, dataUrl, copies, printerName: requested }) {
+  async function printAuthorizedPass({ sessionToken, jobId, dataUrl, copies, printerName: requested, paperMode = '' }) {
     if (!UUID.test(jobId || '') || !/^[0-9a-f]{64}$/.test(sessionToken || '')) return { status: 'failed', error: 'invalid_request' };
     const image = decodeDataUrl(dataUrl || '');
     if (!image) return { status: 'failed', error: 'invalid_image' };
@@ -65,7 +65,7 @@ export function createPrintService({ internal, journal, printImage, printerName 
     await journal.set(jobId, { state: 'printing', copies: start.copies, sha: start.assetSha256 });
     try {
       const chosen = typeof requested === 'string' ? requested.trim().slice(0, 200) : '';
-      await printImage({ ...image, printerName: chosen || printerName, copies: start.copies });
+      await printImage({ ...image, printerName: chosen || printerName, copies: start.copies, paperMode });
     } catch (error) {
       if (error?.notPrinted) {
         await journal.set(jobId, { state: 'failed' });

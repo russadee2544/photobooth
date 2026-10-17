@@ -113,3 +113,39 @@ export async function printerHealth(printerName = '') {
   try { raw = JSON.parse(stdout.trim() || 'null'); } catch { raw = null; }
   return { name: raw?.Name || printerName || '', ...mapPrinterHealth(raw) };
 }
+
+// ---- ESC/POS raw printing (receipt printers) ------------------------------------------
+// The image is turned into ESC/POS raster data and handed to the spooler as RAW bytes, so the
+// driver's picture handling (blank slips on some receipt drivers) is bypassed. Every copy is cut.
+const ESCPOS_CS = join(import.meta.dirname, 'escpos-raw.cs');
+const ESCPOS_SCRIPT = `
+$ErrorActionPreference = 'Stop'
+try { Add-Type -ReferencedAssemblies System.Drawing -Path $env:PB_CS } catch { exit 2 }
+$target = $env:PB_PRINTER
+if (-not $target) {
+  $def = Get-CimInstance Win32_Printer | Where-Object { $_.Default -eq $true } | Select-Object -First 1
+  if ($def) { $target = $def.Name }
+}
+if (-not $target) { exit 2 }
+try { $payload = [EscPosRaw]::Build($env:PB_FILE, [int]$env:PB_DOTS, [int]$env:PB_COPIES, $true) } catch { exit 2 }
+$code = [EscPosRaw]::Send($target, $payload)
+if ($code -eq 0) { Write-Output "PRINT_SUCCESS:$target" }
+exit $code
+`;
+export const RECEIPT_DOTS = { thermal58: 384, thermal80: 576, thermal100: 832 };
+
+export async function printImageEscPos({ bytes, ext = 'png', printerName = '', copies = 1, dots = 576 }) {
+  const file = join(tmpdir(), `pb_print_${randomUUID()}.${ext}`);
+  await writeFile(file, bytes);
+  try {
+    const { code, stdout } = await runPowerShell(ESCPOS_SCRIPT,
+      { PB_CS: ESCPOS_CS, PB_FILE: file, PB_PRINTER: printerName, PB_COPIES: String(copies), PB_DOTS: String(dots) }, PRINT_TIMEOUT_MS);
+    const match = stdout.match(/PRINT_SUCCESS:(.+)/);
+    if (code === 0 && match) return { spooled: true, printer: match[1].trim() };
+    const err = new Error(code === 2 ? 'printer_unavailable' : 'print_unconfirmed');
+    err.notPrinted = code === 2;
+    throw err;
+  } finally {
+    unlink(file).catch(() => {});
+  }
+}

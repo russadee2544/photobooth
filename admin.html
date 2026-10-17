@@ -440,6 +440,14 @@
                             <span class="text-[11px] font-semibold">พิมพ์ตรงอัตโนมัติ (ไม่ขึ้นหน้าต่าง Print Dialog)</span>
                         </div>
                     </div>
+                    <label id="print-transport-row" class="hidden mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1 text-xs text-gray-600">
+                        <span class="font-semibold text-gray-800">วิธีส่งงานพิมพ์ใบเสร็จ</span>
+                        <select id="print-transport" onchange="onPrintTransportChanged()" class="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm text-gray-900">
+                            <option value="escpos">ส่งตรง ESC/POS + ตัดกระดาษทุกใบ (แนะนำ)</option>
+                            <option value="driver">ผ่านไดรเวอร์ Windows</option>
+                        </select>
+                        <span>ถ้าเครื่องพิมพ์ออกมาเป็นกระดาษเปล่า ให้ใช้แบบ ESC/POS · ใช้กับกระดาษใบเสร็จ 58 / 80 / 100mm</span>
+                    </label>
                 </div>
             </div>
 
@@ -1924,6 +1932,23 @@
             }
         }
 
+        // Receipt printers: ESC/POS raw (default) or the Windows driver. Lives in the kiosk program's config.
+        async function loadPrintTransport() {
+            var row = document.getElementById('print-transport-row');
+            if (!row || !window.PhotoboothDevice || typeof window.PhotoboothDevice.getPrintTransport !== 'function') return;
+            try {
+                var r = await window.PhotoboothDevice.getPrintTransport();
+                document.getElementById('print-transport').value = r && r.transport === 'driver' ? 'driver' : 'escpos';
+                row.classList.remove('hidden');
+            } catch (_) { /* older kiosk program */ }
+        }
+        async function onPrintTransportChanged() {
+            var value = document.getElementById('print-transport').value;
+            var r = await window.PhotoboothDevice.setPrintTransport({ transport: value });
+            showToast(r && r.success ? (value === 'driver' ? 'ใช้การพิมพ์ผ่านไดรเวอร์ Windows' : 'ใช้การส่งตรง ESC/POS + ตัดกระดาษทุกใบ')
+                : 'บันทึกไม่สำเร็จ: ' + ((r && r.error === 'admin_capability_required') ? 'กรุณาใส่ PIN ใหม่' : ((r && r.error) || '')));
+        }
+
         function onSystemPrinterChanged() {
             var select = document.getElementById('system-printer-select');
             var hint = document.getElementById('system-printer-hint');
@@ -1958,6 +1983,7 @@
             }
             setPrinterStatusConnected(currentPrinterConn, saved.systemPrinterName || saved.deviceName || 'Windows / System Print');
             loadInstalledPrinters();
+            loadPrintTransport();
 
             // Load quality defaults
             var qMode = saved.defaultPrintQualityMode || 'hd';

@@ -1247,7 +1247,8 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies
             body: JSON.stringify({
                 image: dataUrl,
                 copies: copyCount,
-                printerName: selectedPrinter
+                printerName: selectedPrinter,
+                paperMode
             })
         });
         if (resp.ok) {
