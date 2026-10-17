@@ -559,8 +559,8 @@
                 return;
             }
 
-            // Check paper
-            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            // Check paper (receipt rolls are not limited by the sheet counter, see paperLeft)
+            let paperCount = paperLeft();
             if (paperCount <= 0) {
                 const printBtn = document.getElementById('btn-print');
                 printBtn.disabled = true;
@@ -1229,7 +1229,7 @@
             const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
             const allowChoice = printerConfig.allowCopyChoice === true;
 
-            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            let paperCount = paperLeft();
             if (paperCount < 1) return;
 
             if (allowChoice) {
@@ -1257,11 +1257,18 @@
 
         function confirmAndExecutePrint() {
             closeCopyModal();
-            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            let paperCount = paperLeft();
             const printerConfig = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             const maxCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
             const countToPrint = Math.min(currentSelectedCopies, Math.min(maxCopies, paperCount));
             executeLockedReceiptPrint(countToPrint);
+        }
+
+        // The sheet counter (Admin: refill = 100) only fits sheet photo paper. A receipt roll prints hundreds of
+        // slips and the printer reports a real paper-out itself, so receipt paper is never blocked by the counter.
+        function paperLeft() {
+            if (String(Kiosk.paperMode || '').startsWith('thermal')) return Infinity;
+            return parseInt(localStorage.getItem('kiosk_paper') || '100');
         }
 
         function markPrinted(copies) {
@@ -1549,7 +1556,7 @@
                 : (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
             
             // Check paper, reset for demo if needed
-            let paperCount = parseInt(localStorage.getItem('kiosk_paper') || '100');
+            let paperCount = paperLeft();
             if (paperCount < copies && Kiosk.mode === 'redeem') {
                 const toast = document.getElementById('toast');
                 if (toast) { toast.textContent = 'กระดาษไม่พอ กรุณาเรียกพนักงาน'; toast.classList.remove('opacity-0'); }
