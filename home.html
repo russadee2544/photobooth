@@ -99,15 +99,16 @@
         .frame .img { position: absolute; inset: 0; opacity: 0;
             background: radial-gradient(ellipse at var(--hx, 50%) 40%, #F6EEE1 0 18%, transparent 19%),
                         radial-gradient(ellipse at var(--hx, 50%) 118%, #3B2F27 0 46%, transparent 47%),
-                        linear-gradient(160deg, #CDB59A, #8A6B52); transition: none; }
+                        linear-gradient(160deg, #CDB59A, #8A6B52);
+            transition: opacity 1.3s cubic-bezier(.4, 0, .2, 1); will-change: opacity; backface-visibility: hidden; }
         .frame .img.two { background: radial-gradient(ellipse at 36% 42%, #F6EEE1 0 15%, transparent 16%),
                         radial-gradient(ellipse at 66% 46%, #F6EEE1 0 14%, transparent 15%),
                         radial-gradient(ellipse at 36% 120%, #3B2F27 0 34%, transparent 35%),
                         radial-gradient(ellipse at 68% 122%, #2A221C 0 32%, transparent 33%),
                         linear-gradient(160deg, #CDB59A, #8A6B52); }
-        .frame.is-developing .img { animation: frameFade 1.4s ease-out forwards; }
+        /* Frames fade in one by one and fade out together; opacity only, so even a slow tablet stays smooth. */
         .frame.is-done .img { opacity: 1; }
-        @keyframes frameFade { from { opacity: 0; } to { opacity: 1; } }
+        .strip.is-clearing .frame .img { transition-duration: 1s; }
         .frame-no { position: absolute; left: -3.1rem; top: 50%; transform: translateY(-50%) rotate(-90deg);
             font: 400 .62rem/1 'Cantarell', 'Prompt', sans-serif; letter-spacing: .25em; opacity: .4; white-space: nowrap; }
 
@@ -274,9 +275,19 @@
                 }
                 frames.forEach((frame, i) => {
                     if (typeof photos[i] !== 'string' || !photos[i].startsWith('data:image/')) return;
-                    const img = frame.querySelector('.img');
-                    img.classList.remove('two');
-                    img.style.background = 'url("' + photos[i] + '") center / cover no-repeat';
+                    // A full-size photo is far bigger than the frame; a small copy keeps the fades smooth.
+                    const src = new Image();
+                    src.onload = () => {
+                        const w = Math.min(560, src.naturalWidth), h = Math.round(src.naturalHeight * w / src.naturalWidth);
+                        const c = document.createElement('canvas'); c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(src, 0, 0, w, h);
+                        c.toBlob((blob) => {
+                            const img = frame.querySelector('.img');
+                            img.classList.remove('two');
+                            img.style.background = 'url("' + (blob ? URL.createObjectURL(blob) : photos[i]) + '") center / cover no-repeat';
+                        }, 'image/jpeg', 0.85);
+                    };
+                    src.src = photos[i];
                 });
             });
             const counter = document.getElementById('film-counter');
@@ -286,20 +297,18 @@
                 setCounter(4);
                 return;
             }
-            // Fade in one frame every 1.6s, hold the finished strip, then start over.
-            const SHOT_MS = 1600, HOLD_MS = 3800;
-            const shoot = (i) => {
-                const frame = frames[i];
-                setCounter(i + 1);
-                frame.classList.add('is-developing');
-                setTimeout(() => { frame.classList.remove('is-developing'); frame.classList.add('is-done'); }, 1450);
-            };
+            // Fade in one frame every 1.6s, hold the finished strip, fade it all out softly, start over.
+            const SHOT_MS = 1600, HOLD_MS = 3800, CLEAR_MS = 1100;
             const roll = () => {
-                frames.forEach((f) => f.classList.remove('is-developing', 'is-done'));
                 setCounter(1);
-                frames.forEach((_, i) => setTimeout(() => shoot(i), 600 + i * SHOT_MS));
+                frames.forEach((frame, i) => setTimeout(() => { setCounter(i + 1); frame.classList.add('is-done'); }, 400 + i * SHOT_MS));
+                setTimeout(() => {
+                    strip?.classList.add('is-clearing');
+                    frames.forEach((f) => f.classList.remove('is-done'));
+                    setTimeout(() => { strip?.classList.remove('is-clearing'); roll(); }, CLEAR_MS);
+                }, 400 + frames.length * SHOT_MS + HOLD_MS);
             };
-            setTimeout(() => { roll(); setInterval(roll, 600 + frames.length * SHOT_MS + HOLD_MS); }, 1400);
+            setTimeout(roll, 1400);
         })();
 
         // "Starting at ฿19": the cheapest package the kiosk actually sells (not shown in free event mode).
