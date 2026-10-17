@@ -646,58 +646,86 @@
                 </div>
             </div>
 
-            <!-- Stats -->
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Total Codes</span>
-                    <span id="rc-total" class="text-3xl font-bold text-white">-</span>
-                </div>
-                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Available (Unused)</span>
-                    <span id="rc-available" class="text-3xl font-bold text-accent-mint">-</span>
-                </div>
-                <div class="bg-gray-900 p-4 rounded-lg flex flex-col">
-                    <span class="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Used (All-time)</span>
-                    <span id="rc-used" class="text-3xl font-bold text-accent-coral">-</span>
-                </div>
+            <!-- One column per package: create, see and print its own codes -->
+            <p id="rc-summary" class="text-xs text-gray-400 mb-3"></p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <section class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">พิมพ์ 2 ครั้ง</h3>
+                            <p class="text-[11px] text-gray-400">ต่อ 1 โค้ด</p>
+                        </div>
+                        <span id="rc-2-available" class="text-2xl font-bold text-accent-mint">-</span>
+                    </div>
+                    <p id="rc-2-stats" class="text-[11px] text-gray-400">-</p>
+                    <div class="flex gap-2">
+                        <input id="rc-2-make" type="number" min="1" max="500" value="20" aria-label="จำนวนโค้ดที่จะสร้าง" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-2-make-btn" onclick="handleGenerateKind('2')" class="flex-1 bg-accent-mint text-gray-900 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-400 transition-colors">
+                            <span class="material-symbols-outlined text-base">add_circle</span> สร้างโค้ด
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="rc-2-print" type="number" min="1" max="100" value="5" aria-label="จำนวนโค้ดที่จะพิมพ์" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-2-print-btn" onclick="handlePrintKind('2')" class="flex-1 bg-gray-700 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-gray-600 transition-colors">
+                            <span class="material-symbols-outlined text-base">print</span> พิมพ์โค้ดใหม่
+                        </button>
+                    </div>
+                    <div id="rc-2-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-center max-h-56 overflow-y-auto no-scrollbar bg-gray-950/40 rounded-lg p-2">
+                        <span class="text-gray-500 text-xs col-span-full">Loading...</span>
+                    </div>
+                </section>
+                <section class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">พิมพ์ 5 ครั้ง</h3>
+                            <p class="text-[11px] text-gray-400">ต่อ 1 โค้ด</p>
+                        </div>
+                        <span id="rc-5-available" class="text-2xl font-bold text-accent-mint">-</span>
+                    </div>
+                    <p id="rc-5-stats" class="text-[11px] text-gray-400">-</p>
+                    <div class="flex gap-2">
+                        <input id="rc-5-make" type="number" min="1" max="500" value="20" aria-label="จำนวนโค้ดที่จะสร้าง" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-5-make-btn" onclick="handleGenerateKind('5')" class="flex-1 bg-accent-mint text-gray-900 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-400 transition-colors">
+                            <span class="material-symbols-outlined text-base">add_circle</span> สร้างโค้ด
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="rc-5-print" type="number" min="1" max="100" value="5" aria-label="จำนวนโค้ดที่จะพิมพ์" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-5-print-btn" onclick="handlePrintKind('5')" class="flex-1 bg-gray-700 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-gray-600 transition-colors">
+                            <span class="material-symbols-outlined text-base">print</span> พิมพ์โค้ดใหม่
+                        </button>
+                    </div>
+                    <div id="rc-5-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-center max-h-56 overflow-y-auto no-scrollbar bg-gray-950/40 rounded-lg p-2">
+                        <span class="text-gray-500 text-xs col-span-full">Loading...</span>
+                    </div>
+                </section>
+                <section class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Unlimited</h3>
+                            <p class="text-[11px] text-gray-400">พิมพ์ไม่จำกัดทั้งวันที่เริ่มใช้</p>
+                        </div>
+                        <span id="rc-unlimited-available" class="text-2xl font-bold text-accent-mint">-</span>
+                    </div>
+                    <p id="rc-unlimited-stats" class="text-[11px] text-gray-400">-</p>
+                    <div class="flex gap-2">
+                        <input id="rc-unlimited-make" type="number" min="1" max="500" value="20" aria-label="จำนวนโค้ดที่จะสร้าง" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-unlimited-make-btn" onclick="handleGenerateKind('unlimited')" class="flex-1 bg-accent-mint text-gray-900 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-400 transition-colors">
+                            <span class="material-symbols-outlined text-base">add_circle</span> สร้างโค้ด
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="rc-unlimited-print" type="number" min="1" max="100" value="5" aria-label="จำนวนโค้ดที่จะพิมพ์" class="w-20 bg-gray-800 border border-gray-600 rounded-lg p-2 text-white text-sm">
+                        <button id="rc-unlimited-print-btn" onclick="handlePrintKind('unlimited')" class="flex-1 bg-gray-700 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-1 hover:bg-gray-600 transition-colors">
+                            <span class="material-symbols-outlined text-base">print</span> พิมพ์โค้ดใหม่
+                        </button>
+                    </div>
+                    <div id="rc-unlimited-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 text-center max-h-56 overflow-y-auto no-scrollbar bg-gray-950/40 rounded-lg p-2">
+                        <span class="text-gray-500 text-xs col-span-full">Loading...</span>
+                    </div>
+                </section>
             </div>
-
-            <!-- Generate many, print only the amount needed now -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <label class="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-gray-400">
-                    แพ็กเกจต่อรหัส
-                    <select id="generate-quota-kind" class="mt-2 w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white">
-                        <option value="2">พิมพ์ 2 ครั้ง</option>
-                        <option value="5">พิมพ์ 5 ครั้ง</option>
-                        <option value="unlimited">Unlimited ภายในวันเปิดใช้</option>
-                    </select>
-                </label>
-                <label class="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-gray-400">
-                    จำนวนที่สร้าง
-                    <input id="generate-code-count" type="number" min="1" max="500" value="50" class="mt-2 w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white">
-                </label>
-                <label class="bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-gray-400">
-                    จำนวนที่จะพิมพ์รอบนี้
-                    <input id="print-code-count" type="number" min="1" max="100" value="10" class="mt-2 w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white">
-                </label>
-            </div>
-            <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                <button id="gen-btn" onclick="handleGenerateCodes()" class="flex-1 bg-accent-mint text-gray-900 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-green-400 transition-colors">
-                    <span class="material-symbols-outlined">add_circle</span>
-                    Generate Codes
-                </button>
-                <button onclick="handlePrintCodes()" class="flex-1 bg-gray-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-gray-600 transition-colors">
-                    <span class="material-symbols-outlined">print</span>
-                    Preview / Print Selected
-                </button>
-            </div>
-
-            <!-- Code Table -->
-            <div class="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto no-scrollbar">
-                <div id="code-grid" class="grid grid-cols-5 md:grid-cols-10 gap-2 text-center">
-                    <span class="text-gray-500 text-sm col-span-full">Loading...</span>
-                </div>
-            </div>
+            <p class="text-[11px] text-gray-500 mt-3">สีเขียว = ยังไม่ได้พิมพ์ · สีฟ้า = พิมพ์แล้ว รอลูกค้าใช้ · ขีดฆ่า = ใช้ครบ/หมดอายุ · โค้ดที่ขึ้น ••••• สร้างก่อนตู้เปิดโปรแกรมครั้งล่าสุด จึงพิมพ์ซ้ำไม่ได้</p>
         </div>
 
         <!-- Replacement entitlement -->
@@ -1593,74 +1621,72 @@
         let allRedeemCodes = [];
         let lastBatchId = null;
 
+        const REDEEM_KINDS = ['2', '5', 'unlimited'];
+        const kindOf = (c) => (c.quota_kind === 'unlimited' ? 'unlimited' : String(c.print_limit || ''));
+        const isUsedUp = (c) => c.is_used || (c.quota_kind !== 'unlimited' && c.used_prints >= c.print_limit);
+
         async function loadRedeemData() {
             allRedeemCodes = await fetchRedeemCodes();
-            
-            const total = allRedeemCodes.length;
-            const now = new Date();
-            const usedCount = allRedeemCodes.filter(c => c.is_used ||
-                (c.quota_kind !== 'unlimited' && c.used_prints >= c.print_limit)).length;
-            const expiredCount = allRedeemCodes.filter(c => c.isExpired && !c.is_used).length;
-            const availableCount = total - usedCount - expiredCount;
+            if (allRedeemCodes.length > 0) lastBatchId = allRedeemCodes[0].batch_id;
+            const printed = printedCodeIds();
+            const summary = document.getElementById('rc-summary');
+            if (summary) summary.textContent = `ทั้งหมด ${allRedeemCodes.length} โค้ด · ใช้แล้ว ${allRedeemCodes.filter(isUsedUp).length}`;
 
-            document.getElementById('rc-total').innerText = total;
-            document.getElementById('rc-available').innerText = availableCount;
-            document.getElementById('rc-used').innerText = usedCount;
+            for (const kind of REDEEM_KINDS) {
+                const list = allRedeemCodes.filter((c) => kindOf(c) === kind);
+                const used = list.filter(isUsedUp).length;
+                const expired = list.filter((c) => c.isExpired && !isUsedUp(c)).length;
+                const isPrinted = (c) => c.printed_at || c.printedAt || printed.has(c.id || c.pass_id);
+                const ready = list.filter((c) => !isUsedUp(c) && !c.isExpired);
+                document.getElementById(`rc-${kind}-available`).innerText = ready.length;
+                document.getElementById(`rc-${kind}-stats`).innerText =
+                    `พร้อมใช้ ${ready.length} (ยังไม่พิมพ์ ${ready.filter((c) => !isPrinted(c)).length}) · ใช้แล้ว ${used} · หมดอายุ ${expired} · ทั้งหมด ${list.length}`;
 
-            if (allRedeemCodes.length > 0) {
-                lastBatchId = allRedeemCodes[0].batch_id;
+                const grid = document.getElementById(`rc-${kind}-grid`);
+                if (!list.length) { grid.innerHTML = '<span class="text-gray-500 text-xs col-span-full py-2">ยังไม่มีโค้ด กด "สร้างโค้ด"</span>'; continue; }
+                grid.innerHTML = '';
+                list.forEach((c) => {
+                    const chip = document.createElement('div');
+                    let cls, title;
+                    if (isUsedUp(c)) { cls = 'bg-accent-coral/20 text-accent-coral line-through opacity-60'; title = `ใช้แล้ว ${c.used_at ? new Date(c.used_at).toLocaleString('th-TH') : ''}`; }
+                    else if (c.isExpired) { cls = 'bg-gray-700 text-gray-500 line-through opacity-50'; title = 'หมดอายุ'; }
+                    else if (isPrinted(c)) { cls = 'bg-accent-blue/20 text-accent-blue'; title = 'พิมพ์แล้ว รอลูกค้าใช้'; }
+                    else { cls = 'bg-accent-mint/20 text-accent-mint'; title = `ยังไม่พิมพ์ · ใช้ได้ถึง ${c.expires_at ? new Date(c.expires_at).toLocaleDateString('th-TH') : '?'}`; }
+                    chip.className = `px-1.5 py-1.5 rounded text-xs font-mono font-bold tracking-wide cursor-default ${cls}`;
+                    chip.title = `${title} · ใช้ไปแล้ว ${c.used_prints || 0} ครั้ง`;
+                    chip.innerText = c.code || c.code_hint || c.codeHint || '•••••';
+                    grid.appendChild(chip);
+                });
             }
-
-            const grid = document.getElementById('code-grid');
-            if (total === 0) {
-                grid.innerHTML = '<span class="text-gray-500 text-sm col-span-full">No codes yet. Click "Generate 50 Codes" to create your first batch.</span>';
-                return;
-            }
-
-            grid.innerHTML = '';
-            allRedeemCodes.forEach(c => {
-                const chip = document.createElement('div');
-                let cls, title;
-                if (c.is_used || (c.quota_kind !== 'unlimited' && c.used_prints >= c.print_limit)) {
-                    cls = 'bg-accent-coral/20 text-accent-coral line-through opacity-60';
-                    title = `Used on ${c.used_at ? new Date(c.used_at).toLocaleString('th-TH') : '?'}`;
-                } else if (c.isExpired) {
-                    cls = 'bg-gray-700 text-gray-500 line-through opacity-50';
-                    title = 'Expired';
-                } else if (c.printed_at || c.printedAt || printedCodeIds().has(c.id || c.pass_id)) {
-                    cls = 'bg-accent-blue/20 text-accent-blue';
-                    title = 'Printed — ready to redeem';
-                } else {
-                    const expStr = c.expires_at ? new Date(c.expires_at).toLocaleDateString('th-TH') : '?';
-                    cls = 'bg-accent-mint/20 text-accent-mint';
-                    title = `Expires: ${expStr}`;
-                }
-                chip.className = `px-2 py-1.5 rounded text-xs font-mono font-bold tracking-wide cursor-default ${cls}`;
-                chip.title = `${title} · ${c.quota_kind === 'unlimited' ? 'Unlimited' : `${c.print_limit || '?'} ครั้ง`} · ใช้แล้ว ${c.used_prints || 0}`;
-                chip.innerText = c.code || c.code_hint || c.codeHint || '•••••';
-                grid.appendChild(chip);
-            });
         }
 
-        async function handleGenerateCodes() {
-            const btn = document.getElementById('gen-btn');
+        async function handleGenerateKind(kind) {
+            const btn = document.getElementById(`rc-${kind}-make-btn`);
+            const html = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Generating...';
-
-            const requestedCount = Math.max(1, Math.min(500, Number(document.getElementById('generate-code-count').value) || 50));
-            const quotaKind = document.getElementById('generate-quota-kind').value;
-            const result = await generateRedeemCodes(requestedCount, 30, quotaKind);
-            
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-base">progress_activity</span> กำลังสร้าง...';
+            const count = Math.max(1, Math.min(500, Number(document.getElementById(`rc-${kind}-make`).value) || 20));
+            const result = await generateRedeemCodes(count, 30, kind);
             if (result.success) {
                 lastBatchId = result.batchId;
-                showToast(`✅ Generated ${result.codes.length} new codes!`);
+                showToast(`สร้างโค้ดแล้ว ${result.codes.length} โค้ด · พิมพ์เก็บไว้ตอนนี้เลย (ตู้รีสตาร์ทแล้วจะเห็นเลขไม่ได้)`);
                 await loadRedeemData();
             } else {
-                showToast('❌ Failed to generate codes');
+                showToast('สร้างโค้ดไม่สำเร็จ: ' + (result.error === 'admin_capability_required' ? 'กรุณาใส่ PIN ใหม่' : (result.error || 'ลองใหม่')));
             }
-
             btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Generate Codes';
+            btn.innerHTML = html;
+        }
+
+        async function handlePrintKind(kind) {
+            const count = Math.max(1, Math.min(100, Number(document.getElementById(`rc-${kind}-print`).value) || 5));
+            if (!window.PhotoboothPrinter || typeof window.PhotoboothPrinter.testPrint !== 'function') {
+                showToast('พิมพ์โค้ดได้เฉพาะบนตู้ที่ติดตั้งโปรแกรมแล้ว');
+                return;
+            }
+            const btn = document.getElementById(`rc-${kind}-print-btn`);
+            btn.disabled = true;
+            try { await printCodesOnReceipt(count, kind); } finally { btn.disabled = false; }
         }
 
         let pendingRedeemPrintJob = null;
@@ -1718,9 +1744,10 @@
             });
             return canvas;
         }
-        async function printCodesOnReceipt(count) {
+        async function printCodesOnReceipt(count, kind) {
             const printed = printedCodeIds();
             const ready = allRedeemCodes.filter(c => !c.is_used && !c.isExpired && !c.printed_at
+                && (!kind || kindOf(c) === kind)
                 && PRINT_PASS_CODE.test(c.code || '') && !printed.has(c.id || c.pass_id));
             if (!ready.length) {
                 showToast('ไม่มีโค้ดใหม่ที่พร้อมพิมพ์ (โค้ดที่สร้างก่อนตู้รีสตาร์ทจะเห็นเลขไม่ได้แล้ว ให้กด Generate Codes ใหม่)');
@@ -1732,7 +1759,8 @@
             showToast(`กำลังพิมพ์ ${codes.length} โค้ด...`);
             const result = await window.PhotoboothPrinter.testPrint({
                 dataUrl: codeSheetCanvas(codes).toDataURL('image/png'),
-                printerName: cfg.systemPrinterName || ''
+                printerName: cfg.systemPrinterName || '',
+                paperMode: String(Kiosk.paperMode || '').startsWith('thermal') ? Kiosk.paperMode : 'thermal80'
             });
             if (result && result.success) {
                 rememberPrintedCodes(codes.map(c => c.id || c.pass_id));
@@ -1744,7 +1772,7 @@
         }
 
         async function handlePrintCodes() {
-            const count = Math.max(1, Math.min(100, Number(document.getElementById('print-code-count').value) || 10));
+            const count = Math.max(1, Math.min(100, Number((document.getElementById('print-code-count') || {}).value) || 10));
             const result = await printRedeemCodeBatch(count);
             if (!result || result.status === 'empty') {
                 showToast('ไม่มีรหัสใหม่ที่พร้อมพิมพ์');
@@ -1864,7 +1892,8 @@
             document.getElementById('replacement-expiry').textContent = `หมดอายุ ${new Date(result.expiresAt).toLocaleString('th-TH')}`;
             document.getElementById('replacement-original-code').value = '';
             document.getElementById('replacement-reason').value = '';
-            document.getElementById('print-code-count').value = '1';
+            const printCount = document.getElementById('print-code-count');
+            if (printCount) printCount.value = '1';
             showToast('ออกสิทธิ์ทดแทนแล้ว และเพิ่มเข้าคิวพิมพ์ 1 ใบ');
             await loadRedeemData();
         }
