@@ -1437,68 +1437,109 @@
             grid.classList.remove('hidden');
             grid.innerHTML = '';
 
-            filtered.forEach(theme => {
-                const isEnabled = theme.enabled !== false;
+            // One card per theme: the same design made for several layouts / paper sizes shows once,
+            // with a chip for every layout it is made for (green = on in this kiosk).
+            managerFamilies = groupThemeFamilies(filtered);
+            managerFamilies.forEach((family, index) => {
                 const card = document.createElement('div');
-                card.className = `theme-card ${isEnabled ? 'border-green-200' : ''}`;
-
-                const previewHtml = buildThemeCardPreviewHtml(theme);
-
-                const typeMap = {
-                    '2x6': '2×6 Photo Strip',
-                    '4x6': theme.orientation === 'landscape' ? '4×6 Landscape' : '4×6 Portrait',
-                    'thermal58': 'Thermal 58mm',
-                    'thermal80': 'Thermal 80mm',
-                    'thermal100': 'Thermal 100mm',
-                    'photo5x7': '5×7 Photo Card'
-                };
-
-                const typeLabel = typeMap[theme.type] || theme.type || 'Custom Format';
-                if (theme.official) { card.innerHTML = officialThemeCardHtml(theme, previewHtml, typeLabel, isEnabled); grid.appendChild(card); return; }
-
+                const anyOn = family.items.some(t => t.enabled !== false);
+                const allOn = family.items.every(t => t.enabled !== false);
+                const official = family.items.every(t => t.official);
+                card.className = `theme-card ${anyOn ? 'border-green-200' : ''}`;
+                const cover = family.items.find(t => t.enabled !== false) || family.items[0];
+                const chips = family.items.map(t => {
+                    const on = t.enabled !== false;
+                    const toggle = t.official ? `toggleOfficialTheme('${t.templateId}')` : `toggleThemeEnabled('${t.templateId}')`;
+                    const open = t.official ? '' : `onclick="editTheme('${t.templateId}')"`;
+                    return `<span class="inline-flex items-stretch rounded-md border text-[11px] font-semibold overflow-hidden ${on ? 'border-green-300 bg-green-50 text-green-800' : 'border-gray-200 bg-gray-50 text-gray-400'}">
+                        <button type="button" onclick="${toggle}" class="px-1.5 hover:bg-white/70" title="${on ? 'เปิดใช้อยู่ · คลิกเพื่อปิด' : 'ปิดอยู่ · คลิกเพื่อเปิด'}">${on ? '●' : '○'}</button>
+                        <button type="button" ${open} class="pr-2 pl-0.5 ${t.official ? 'cursor-default' : 'hover:underline'}" title="${t.official ? 'ธีม Official (แก้ไม่ได้)' : 'คลิกเพื่อแก้ไขแบบนี้'}">${variantLabel(t)}</button>
+                    </span>`;
+                }).join('');
                 card.innerHTML = `
-                    <div class="theme-thumb-wrap cursor-pointer" onclick="editTheme('${theme.templateId}')" title="คลิกเพื่อแก้ไขธีมนี้">
-                        ${previewHtml}
+                    <div class="theme-thumb-wrap ${official ? '' : 'cursor-pointer'}" ${official ? '' : `onclick="editTheme('${cover.templateId}')"`} title="${official ? '' : 'คลิกเพื่อแก้ไข'}">
+                        ${buildThemeCardPreviewHtml(cover)}
                     </div>
                     <div class="theme-card-body">
                         <div class="flex items-start justify-between gap-2">
-                            <h3 class="font-bold text-gray-900 text-sm line-clamp-1 flex-1 leading-snug cursor-pointer hover:text-accent-blue" onclick="editTheme('${theme.templateId}')" title="${escapeHtml(theme.name)}">${escapeHtml(theme.name)}</h3>
-                            <button type="button" onclick="toggleThemeEnabled('${theme.templateId}')" class="theme-toggle-btn ${isEnabled ? 'enabled' : 'disabled'} shrink-0" title="คลิกเพื่อสลับเปิด/ปิดใช้งานในตู้">
-                                <span class="material-symbols-outlined text-xs">${isEnabled ? 'check_circle' : 'radio_button_unchecked'}</span>
-                                <span>${isEnabled ? 'เปิดใช้ในตู้' : 'สต็อก/ปิด'}</span>
+                            <h3 class="font-bold text-gray-900 text-sm line-clamp-1 flex-1 leading-snug" title="${escapeHtml(family.name)}">${escapeHtml(family.name)}</h3>
+                            <button type="button" onclick="toggleThemeFamily(${index})" class="theme-toggle-btn ${anyOn ? 'enabled' : 'disabled'} shrink-0" title="เปิดหรือปิดทุกเลย์เอาต์ของธีมนี้">
+                                <span class="material-symbols-outlined text-xs">${allOn ? 'check_circle' : anyOn ? 'contrast' : 'radio_button_unchecked'}</span>
+                                <span>${allOn ? 'เปิดทุกแบบ' : anyOn ? 'เปิดบางแบบ' : 'ปิดอยู่'}</span>
                             </button>
                         </div>
-                        <div class="flex items-center gap-2 flex-wrap text-xs text-gray-500">
-                            <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
-                                <span class="material-symbols-outlined text-[13px]">crop</span> ${typeLabel}
-                            </span>
-                            <span class="inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-[11px] font-medium text-gray-700">
-                                <span class="material-symbols-outlined text-[13px]">grid_view</span> ${theme.slots.length} รูป
-                            </span>
-                            ${theme.universalThemeId ? `
-                                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/70 px-2 py-0.5 rounded text-[11px] font-bold">
-                                    <span class="material-symbols-outlined text-[12px] text-amber-600">auto_awesome</span> Universal
-                                </span>
-                            ` : ''}
+                        <div class="flex items-center gap-1.5 flex-wrap text-xs text-gray-500">
+                            ${official ? '<span class="inline-flex items-center gap-1 bg-gray-900 text-white px-2 py-0.5 rounded text-[11px] font-bold"><span class="material-symbols-outlined text-[12px]">verified</span> Official</span>' : ''}
+                            ${family.items.some(t => t.universalThemeId) ? '<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/70 px-2 py-0.5 rounded text-[11px] font-bold"><span class="material-symbols-outlined text-[12px] text-amber-600">auto_awesome</span> Universal</span>' : ''}
+                            <span class="text-[11px] text-gray-500">ใช้กับ ${family.items.length} เลย์เอาต์ · เปิดอยู่ ${family.items.filter(t => t.enabled !== false).length}</span>
                         </div>
+                        <div class="flex flex-wrap gap-1">${chips}</div>
                         <div class="border-t border-gray-100 pt-2.5 mt-auto flex items-center justify-between gap-2">
-                            <button type="button" onclick="editTheme('${theme.templateId}')" class="editor-button flex items-center gap-1 text-xs py-1 px-2.5">
-                                <span class="material-symbols-outlined text-sm">edit</span> แก้ไขใน Editor
-                            </button>
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="duplicateTheme('${theme.templateId}')" class="editor-button text-xs p-1.5" title="คัดลอกเป็นธีมใหม่">
-                                    <span class="material-symbols-outlined text-sm text-gray-600">content_copy</span>
-                                </button>
-                                <button type="button" onclick="deleteTheme('${theme.templateId}')" class="editor-button danger text-xs p-1.5" title="ลบออกจากสต็อก">
-                                    <span class="material-symbols-outlined text-sm">delete</span>
-                                </button>
-                            </div>
+                            ${official
+                                ? `<span class="text-[11px] text-gray-500">จากเครื่องหลัก · แก้ไขไม่ได้</span>
+                                   <button type="button" onclick="duplicateTheme('${cover.templateId}')" class="editor-button flex items-center gap-1 text-xs py-1 px-2.5"><span class="material-symbols-outlined text-sm">content_copy</span> ทำสำเนาเพื่อแก้ไข</button>`
+                                : `<button type="button" onclick="editTheme('${cover.templateId}')" class="editor-button flex items-center gap-1 text-xs py-1 px-2.5"><span class="material-symbols-outlined text-sm">edit</span> แก้ไขใน Editor</button>
+                                   <div class="flex items-center gap-1">
+                                     <button type="button" onclick="duplicateTheme('${cover.templateId}')" class="editor-button text-xs p-1.5" title="คัดลอกเป็นธีมใหม่"><span class="material-symbols-outlined text-sm text-gray-600">content_copy</span></button>
+                                     <button type="button" onclick="deleteThemeFamily(${index})" class="editor-button danger text-xs p-1.5" title="ลบธีมนี้ทุกเลย์เอาต์"><span class="material-symbols-outlined text-sm">delete</span></button>
+                                   </div>`}
                         </div>
-                    </div>
-                `;
-
+                    </div>`;
                 grid.appendChild(card);
             });
+        }
+
+        // ---- theme families: the same design across layouts / paper sizes ----
+        let managerFamilies = [];
+        const PAPER_SHORT = { '2x6': '2×6', '4x6': '4×6', photo5x7: '5×7', thermal58: '58mm', thermal80: '80mm', thermal100: '100mm' };
+        function variantLabel(t) {
+            return `${PAPER_SHORT[t.type] || t.type || ''}${t.type === '4x6' && t.orientation === 'landscape' ? ' แนวนอน' : ''} · ${(t.slots || []).length} รูป`;
+        }
+        function themeFamilyOf(t) {
+            const base = String(t.name || '').split(' · ')[0].trim() || t.templateId;
+            const pack = /^custom_pack_(.+)_(58|80|100)_\d+$/.exec(t.templateId || '');
+            if (pack) return { key: 'pack:' + pack[1], name: base };
+            if (t.universalThemeId) return { key: 'u:' + t.universalThemeId, name: base };
+            return { key: (t.official ? 'o:' : 'c:') + base.toLowerCase(), name: base };
+        }
+        function groupThemeFamilies(list) {
+            const order = Object.keys(PAPER_SHORT);
+            const map = new Map();
+            const seen = new Set();   // a stored catalog can hold the same template twice
+            list.forEach(t => {
+                if (seen.has(t.templateId)) return;
+                seen.add(t.templateId);
+                const f = themeFamilyOf(t);
+                if (!map.has(f.key)) map.set(f.key, { name: f.name, items: [] });
+                map.get(f.key).items.push(t);
+            });
+            const families = [...map.values()];
+            families.forEach(f => f.items.sort((x, y) => (order.indexOf(x.type) - order.indexOf(y.type)) || ((x.slots || []).length - (y.slots || []).length)));
+            return families;
+        }
+        function toggleThemeFamily(index) {
+            const family = managerFamilies[index];
+            if (!family) return;
+            const turnOn = !family.items.every(t => t.enabled !== false);
+            const own = family.items.filter(t => !t.official);
+            if (own.length) {
+                const ids = new Set(own.map(t => t.templateId));
+                TemplateCatalog.save(TemplateCatalog.load().map(t => (ids.has(t.templateId) ? Object.assign(t, { enabled: turnOn }) : t)));
+            }
+            family.items.filter(t => t.official).forEach(t => OfficialThemes.setHidden(t.templateId, !turnOn));
+            renderThemeManager();
+            toast(turnOn ? `เปิดใช้ "${family.name}" ทุกเลย์เอาต์แล้ว` : `ปิด "${family.name}" ทุกเลย์เอาต์แล้ว`);
+        }
+        function deleteThemeFamily(index) {
+            const family = managerFamilies[index];
+            if (!family) return;
+            const own = family.items.filter(t => !t.official);
+            if (!own.length) return;
+            if (!confirm(`ลบธีม "${family.name}" ทั้ง ${own.length} เลย์เอาต์ใช่ไหม?`)) return;
+            const ids = new Set(own.map(t => t.templateId));
+            TemplateCatalog.save(TemplateCatalog.load().filter(t => !ids.has(t.templateId)));
+            renderThemeManager();
+            toast(`ลบธีม "${family.name}" แล้ว`);
         }
 
         // Official library card: read-only here. Show/hide on this kiosk, or copy it to make an own version.

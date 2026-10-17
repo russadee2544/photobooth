@@ -112,9 +112,9 @@
                 ใช้รหัส (Redeem)
                 <span class="material-symbols-outlined ml-2">east</span>
             </button>
-            <div id="pass-ready" class="hidden mt-5 text-center" aria-live="polite">
+            <div id="pass-ready" class="hidden mt-2 text-center" style="width:100%" aria-live="polite">
                 <p id="pass-summary" class="text-xl font-bold text-gray-900 mb-4"></p>
-                <button type="button" onclick="window.location.href='layout.html'" class="btn-modern btn-primary w-full text-lg py-5">เริ่มถ่าย →</button>
+                <button type="button" id="start-btn" onclick="window.location.href='layout.html'" class="btn-modern btn-primary text-xl py-6 shadow-xl" style="width:100%;font-weight:700">เริ่มถ่าย <span class="material-symbols-outlined">east</span></button>
             </div>
 
             <!-- Loading state -->
@@ -251,7 +251,7 @@
             const code = input.value.toUpperCase().trim();
 
             // Show loading
-            btn.classList.add('hidden');
+            btn.style.display = 'none';   // .btn-modern's inline-flex beats .hidden
             loading.classList.remove('hidden');
             clearError();
 
@@ -265,7 +265,7 @@
 
             if (!result.success) {
                 // Show error
-                btn.classList.remove('hidden');
+                btn.style.display = '';
                 loading.classList.add('hidden');
                 showError(result.error);
                 isProcessing = false;
@@ -277,10 +277,11 @@
             loading.classList.add('hidden');
             triggerFlash();
 
-            btn.classList.add('hidden');
+            btn.style.display = 'none';   // .btn-modern's inline-flex beats .hidden
             input.disabled = true;
             document.getElementById('pass-summary').textContent = printPassMessage(result.pass);
             document.getElementById('pass-ready').classList.remove('hidden');
+            document.getElementById('start-btn').focus();
         }
     </script>
 </body>
