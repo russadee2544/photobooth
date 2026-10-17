@@ -68,6 +68,19 @@ public static class EscPosRaw
         return outp.ToArray();
     }
 
+    // Several images in one job, one after another, each one cut off (e.g. a strip of redeem code slips).
+    public static byte[] BuildMany(string imageFiles, int dots, bool cut)
+    {
+        var all = new MemoryStream();
+        foreach (var f in imageFiles.Split('|'))
+        {
+            if (f.Length == 0) continue;
+            var one = Build(f, dots, 1, cut);
+            all.Write(one, 0, one.Length);
+        }
+        return all.ToArray();
+    }
+
     static bool[,] Dither(Bitmap bmp)
     {
         int w = bmp.Width, h = bmp.Height;

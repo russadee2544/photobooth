@@ -1757,11 +1757,19 @@
             try { await document.fonts.load('800 22px "Prompt"'); await document.fonts.load('400 13px "Prompt"'); } catch (_) { /* fall back to system fonts */ }
             const cfg = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
             showToast(`กำลังพิมพ์ ${codes.length} โค้ด...`);
-            const result = await window.PhotoboothPrinter.testPrint({
-                dataUrl: codeSheetCanvas(codes).toDataURL('image/png'),
-                printerName: cfg.systemPrinterName || '',
-                paperMode: String(Kiosk.paperMode || '').startsWith('thermal') ? Kiosk.paperMode : 'thermal80'
-            });
+            const slipPaper = String(Kiosk.paperMode || '').startsWith('thermal') ? Kiosk.paperMode : 'thermal80';
+            // One slip per code, each cut off, all in one print job. Older kiosk programs: one long sheet.
+            const result = typeof window.PhotoboothPrinter.printSlips === 'function'
+                ? await window.PhotoboothPrinter.printSlips({
+                    dataUrls: codes.map(c => codeSheetCanvas([c]).toDataURL('image/png')),
+                    printerName: cfg.systemPrinterName || '',
+                    paperMode: slipPaper
+                })
+                : await window.PhotoboothPrinter.testPrint({
+                    dataUrl: codeSheetCanvas(codes).toDataURL('image/png'),
+                    printerName: cfg.systemPrinterName || '',
+                    paperMode: slipPaper
+                });
             if (result && result.success) {
                 rememberPrintedCodes(codes.map(c => c.id || c.pass_id));
                 showToast(`พิมพ์โค้ดแล้ว ${codes.length} ใบ ✓`);

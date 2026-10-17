@@ -149,3 +149,26 @@ export async function printImageEscPos({ bytes, ext = 'png', printerName = '', c
     unlink(file).catch(() => {});
   }
 }
+
+// Several slips in one print job, each one cut (redeem code slips).
+const ESCPOS_MANY_SCRIPT = ESCPOS_SCRIPT.replace('[EscPosRaw]::Build($env:PB_FILE, [int]$env:PB_DOTS, [int]$env:PB_COPIES, $true)',
+  '[EscPosRaw]::BuildMany($env:PB_FILES, [int]$env:PB_DOTS, $true)');
+export async function printImagesEscPos({ images, printerName = '', dots = 576 }) {
+  const files = [];
+  try {
+    for (const image of images) {
+      const file = join(tmpdir(), `pb_slip_${randomUUID()}.${image.ext || 'png'}`);
+      await writeFile(file, image.bytes);
+      files.push(file);
+    }
+    const { code, stdout } = await runPowerShell(ESCPOS_MANY_SCRIPT,
+      { PB_CS: ESCPOS_CS, PB_FILES: files.join('|'), PB_PRINTER: printerName, PB_DOTS: String(dots) }, PRINT_TIMEOUT_MS);
+    const match = stdout.match(/PRINT_SUCCESS:(.+)/);
+    if (code === 0 && match) return { spooled: true, printer: match[1].trim() };
+    const err = new Error(code === 2 ? 'printer_unavailable' : 'print_unconfirmed');
+    err.notPrinted = code === 2;
+    throw err;
+  } finally {
+    for (const f of files) unlink(f).catch(() => {});
+  }
+}

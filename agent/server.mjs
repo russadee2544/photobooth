@@ -12,7 +12,7 @@ import { APP_ROOT, CONFIG_FILE, DATA_DIR, JOBS_FILE, WEB_ROOT } from './paths.mj
 import { protect, unprotect } from './dpapi.mjs';
 import { createJournal } from './jobs.mjs';
 import { createPrintService } from './print-pass.mjs';
-import { listPrinters, printerHealth, printImage as printViaDriver, printImageEscPos, RECEIPT_DOTS } from './printer-win.mjs';
+import { listPrinters, printerHealth, printImage as printViaDriver, printImageEscPos, printImagesEscPos, RECEIPT_DOTS } from './printer-win.mjs';
 import { createHeartbeat } from './heartbeat.mjs';
 import { ensureResetShortcut } from './shortcut.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
@@ -195,6 +195,25 @@ async function runKiosk(config) {
       const result = await printService.printAuthorizedPass(a);
       if (result && result.status !== 'completed') noteError(`print ${result.status}${result.error ? ': ' + result.error : ''}`);
       return result;
+    },
+    // Admin: several slips (redeem codes) in one job, each cut off. Receipt paper only.
+    printSlips: async (a) => {
+      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+      const dots = RECEIPT_DOTS[String(a.paperMode || '')] || 576;
+      const images = [];
+      for (const url of Array.isArray(a.dataUrls) ? a.dataUrls.slice(0, 100) : []) {
+        const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(url || '');
+        if (!m) return { success: false, error: 'invalid_image' };
+        images.push({ bytes: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' });
+      }
+      if (!images.length) return { success: false, error: 'invalid_image' };
+      try {
+        const result = await printImagesEscPos({ images, dots, printerName: String(a.printerName || config.printerName || '').slice(0, 200) });
+        return { success: true, printer: result.printer, slips: images.length };
+      } catch (error) {
+        noteError(`slip print: ${error instanceof Error ? error.message : 'failed'}`);
+        return { success: false, error: error instanceof Error ? error.message : 'print_failed' };
+      }
     },
     // Admin test page: one copy, PIN session required, no entitlement involved.
     testPrint: async (a) => {
