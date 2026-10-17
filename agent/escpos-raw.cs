@@ -25,6 +25,10 @@ public static class EscPosRaw
     [DllImport("winspool.drv", SetLastError = true)] static extern bool EndDocPrinter(IntPtr handle);
     [DllImport("winspool.drv", SetLastError = true)] static extern bool ClosePrinter(IntPtr handle);
 
+    // Thermal dots bleed into each other, so a straight dither prints too dark. Grey levels are lifted
+    // by this curve first (1 = as is, lower = lighter mid-tones; whites and blacks stay put).
+    public static double Gamma = 0.72;
+
     // Image -> ESC/POS bytes for `copies` slips, `dots` wide (58 mm: 384, 80 mm: 576).
     public static byte[] Build(string imageFile, int dots, int copies, bool cut)
     {
@@ -95,6 +99,12 @@ public static class EscPosRaw
                 int i = y * data.Stride + x * 3;
                 gray[y * w + x] = bytes[i + 2] * 0.299f + bytes[i + 1] * 0.587f + bytes[i] * 0.114f;
             }
+        if (Gamma > 0 && Math.Abs(Gamma - 1) > 0.001)
+        {
+            var lut = new float[256];
+            for (int v = 0; v < 256; v++) lut[v] = (float)(255 * Math.Pow(v / 255.0, Gamma));
+            for (int i = 0; i < gray.Length; i++) gray[i] = lut[(int)Math.Max(0, Math.Min(255, gray[i]))];
+        }
         var black = new bool[w, h];
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)

@@ -127,6 +127,7 @@ if (-not $target) {
   if ($def) { $target = $def.Name }
 }
 if (-not $target) { exit 2 }
+if ($env:PB_GAMMA) { [EscPosRaw]::Gamma = [double]::Parse($env:PB_GAMMA, [Globalization.CultureInfo]::InvariantCulture) }
 try { $payload = [EscPosRaw]::Build($env:PB_FILE, [int]$env:PB_DOTS, [int]$env:PB_COPIES, $true) } catch { exit 2 }
 $code = [EscPosRaw]::Send($target, $payload)
 if ($code -eq 0) { Write-Output "PRINT_SUCCESS:$target" }
@@ -134,12 +135,16 @@ exit $code
 `;
 export const RECEIPT_DOTS = { thermal58: 384, thermal80: 576, thermal100: 832 };
 
-export async function printImageEscPos({ bytes, ext = 'png', printerName = '', copies = 1, dots = 576 }) {
+// Lightness levels for the admin page: 0 = as the image is ... 4 = lightest. Default 2.
+export const RECEIPT_LIGHTNESS = [1, 0.85, 0.72, 0.6, 0.5];
+const gammaOf = (level) => String(RECEIPT_LIGHTNESS[Number.isInteger(level) ? level : 2] ?? 0.72);
+
+export async function printImageEscPos({ bytes, ext = 'png', printerName = '', copies = 1, dots = 576, lightness }) {
   const file = join(tmpdir(), `pb_print_${randomUUID()}.${ext}`);
   await writeFile(file, bytes);
   try {
     const { code, stdout } = await runPowerShell(ESCPOS_SCRIPT,
-      { PB_CS: ESCPOS_CS, PB_FILE: file, PB_PRINTER: printerName, PB_COPIES: String(copies), PB_DOTS: String(dots) }, PRINT_TIMEOUT_MS);
+      { PB_CS: ESCPOS_CS, PB_FILE: file, PB_PRINTER: printerName, PB_COPIES: String(copies), PB_DOTS: String(dots), PB_GAMMA: gammaOf(lightness) }, PRINT_TIMEOUT_MS);
     const match = stdout.match(/PRINT_SUCCESS:(.+)/);
     if (code === 0 && match) return { spooled: true, printer: match[1].trim() };
     const err = new Error(code === 2 ? 'printer_unavailable' : 'print_unconfirmed');
@@ -153,7 +158,7 @@ export async function printImageEscPos({ bytes, ext = 'png', printerName = '', c
 // Several slips in one print job, each one cut (redeem code slips).
 const ESCPOS_MANY_SCRIPT = ESCPOS_SCRIPT.replace('[EscPosRaw]::Build($env:PB_FILE, [int]$env:PB_DOTS, [int]$env:PB_COPIES, $true)',
   '[EscPosRaw]::BuildMany($env:PB_FILES, [int]$env:PB_DOTS, $true)');
-export async function printImagesEscPos({ images, printerName = '', dots = 576 }) {
+export async function printImagesEscPos({ images, printerName = '', dots = 576, lightness }) {
   const files = [];
   try {
     for (const image of images) {
@@ -162,7 +167,7 @@ export async function printImagesEscPos({ images, printerName = '', dots = 576 }
       files.push(file);
     }
     const { code, stdout } = await runPowerShell(ESCPOS_MANY_SCRIPT,
-      { PB_CS: ESCPOS_CS, PB_FILES: files.join('|'), PB_PRINTER: printerName, PB_DOTS: String(dots) }, PRINT_TIMEOUT_MS);
+      { PB_CS: ESCPOS_CS, PB_FILES: files.join('|'), PB_PRINTER: printerName, PB_DOTS: String(dots), PB_GAMMA: gammaOf(lightness) }, PRINT_TIMEOUT_MS);
     const match = stdout.match(/PRINT_SUCCESS:(.+)/);
     if (code === 0 && match) return { spooled: true, printer: match[1].trim() };
     const err = new Error(code === 2 ? 'printer_unavailable' : 'print_unconfirmed');

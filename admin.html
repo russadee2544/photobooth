@@ -447,6 +447,15 @@
                             <option value="driver">ผ่านไดรเวอร์ Windows</option>
                         </select>
                         <span>ถ้าเครื่องพิมพ์ออกมาเป็นกระดาษเปล่า ให้ใช้แบบ ESC/POS · ใช้กับกระดาษใบเสร็จ 58 / 80 / 100mm</span>
+                        <span class="font-semibold text-gray-800 mt-2">ความสว่างของรูปบนใบเสร็จ</span>
+                        <select id="print-lightness" onchange="onPrintLightnessChanged()" class="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm text-gray-900">
+                            <option value="0">ตามภาพจริง (เข้มสุด)</option>
+                            <option value="1">สว่างขึ้นเล็กน้อย</option>
+                            <option value="2">สว่างขึ้น (ค่าเริ่มต้น)</option>
+                            <option value="3">สว่างมาก</option>
+                            <option value="4">สว่างที่สุด</option>
+                        </select>
+                        <span>ใช้กับการส่งตรง ESC/POS · ค่า Contrast/Brightness ในไดรเวอร์ Windows จะไม่มีผลกับโหมดนี้</span>
                     </label>
                 </div>
             </div>
@@ -1976,8 +1985,16 @@
             try {
                 var r = await window.PhotoboothDevice.getPrintTransport();
                 document.getElementById('print-transport').value = r && r.transport === 'driver' ? 'driver' : 'escpos';
+                document.getElementById('print-lightness').value = String(r && Number.isInteger(r.lightness) ? r.lightness : 2);
                 row.classList.remove('hidden');
             } catch (_) { /* older kiosk program */ }
+        }
+        async function onPrintLightnessChanged() {
+            var select = document.getElementById('print-lightness');
+            if (typeof window.PhotoboothDevice.setPrintLightness !== 'function') { showToast('โปรแกรมตู้ยังไม่รองรับ กรุณาอัปเดต'); return; }
+            var r = await window.PhotoboothDevice.setPrintLightness({ lightness: Number(select.value) });
+            showToast(r && r.success ? 'บันทึกความสว่างแล้ว: ' + select.options[select.selectedIndex].text
+                : 'บันทึกไม่สำเร็จ: ' + ((r && r.error === 'admin_capability_required') ? 'กรุณาใส่ PIN ใหม่' : ((r && r.error) || '')));
         }
         async function onPrintTransportChanged() {
             var value = document.getElementById('print-transport').value;

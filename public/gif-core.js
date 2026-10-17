@@ -15,6 +15,16 @@ export function fitWithin(width, height, maxEdge = GIF_MAX_EDGE) {
     };
 }
 
+// Big frames: pick the palette from every 4th pixel (same colours, a fraction of the work).
+export function paletteSample(data) {
+    if (data.length <= 4 * 640 * 640) return data;
+    const out = new Uint8ClampedArray(Math.ceil(data.length / 16) * 4);
+    for (let i = 0, o = 0; i < data.length; i += 16, o += 4) {
+        out[o] = data[i]; out[o + 1] = data[i + 1]; out[o + 2] = data[i + 2]; out[o + 3] = data[i + 3];
+    }
+    return out;
+}
+
 // Encode frames in the given order: one GIF frame per photo, fixed delay,
 // loop forever (repeat 0), no reverse pass. `gifenc` is the encoder module.
 export function encodeGif(frames, gifenc, { delayMs = GIF_FRAME_DELAY_MS } = {}) {
@@ -23,7 +33,7 @@ export function encodeGif(frames, gifenc, { delayMs = GIF_FRAME_DELAY_MS } = {})
     const encoder = gifenc.GIFEncoder();
     frames.forEach((frame, index) => {
         if (frame.width !== width || frame.height !== height) throw new Error('frame_size_mismatch');
-        const palette = gifenc.quantize(frame.data, 256);
+        const palette = gifenc.quantize(paletteSample(frame.data), 256);
         const indexed = gifenc.applyPalette(frame.data, palette);
         encoder.writeFrame(indexed, width, height, {
             palette,

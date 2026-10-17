@@ -1,5 +1,5 @@
 // Builds the session GIF off the main thread (module worker).
-// In:  { photos: string[] }  data URLs, already filtered, in capture order.
+// In:  { photos: string[], maxEdge? }  data URLs, already filtered (or framed), in capture order.
 // Out: { ok: true, blob } or { ok: false, error }.
 import * as gifenc from './vendor/gifenc.esm.js';
 import { encodeGif, fitWithin, GIF_MAX_BYTES } from './gif-core.js';
@@ -19,7 +19,8 @@ self.onmessage = async (event) => {
         for (const src of photos) bitmaps.push(await decode(src));
         // Every frame shares the first photo's fitted size; others are
         // letterboxed (contain) onto white so mixed aspect ratios never crop.
-        const { width, height } = fitWithin(bitmaps[0].width, bitmaps[0].height);
+        const maxEdge = Math.min(1920, Number(event.data?.maxEdge) || 640);
+        const { width, height } = fitWithin(bitmaps[0].width, bitmaps[0].height, maxEdge);
         const canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 

@@ -1,0 +1,97 @@
+{
+  "packId": "boarding-story",
+  "version": 1,
+  "template": {
+    "schemaVersion": 1,
+    "templateId": "custom_pack_boarding_story_1",
+    "layoutId": "1_story",
+    "name": "Boarding Pass · GIF 1080×1920",
+    "type": "story",
+    "orientation": "portrait",
+    "enabled": true,
+    "isCustom": true,
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "dpi": 300,
+      "backgroundColor": "#1B2470",
+      "backgroundImage": "/theme-packs/boarding/story-paper.jpg",
+      "backgroundFitMode": "stretch",
+      "safeMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      },
+      "bleedMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    "overlay": {
+      "url": "",
+      "zIndex": 100,
+      "fitMode": "cover"
+    },
+    "artboard": [
+      {
+        "id": "ticket",
+        "name": "ticket",
+        "url": "/theme-packs/boarding/ticket.png",
+        "placement": "front",
+        "x": 45,
+        "y": 39,
+        "width": 990,
+        "height": 596,
+        "rotation": 0,
+        "zIndex": 210,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "stub_header",
+        "name": "stub_header",
+        "url": "/theme-packs/boarding/stub-header.png",
+        "placement": "front",
+        "x": 45,
+        "y": 720,
+        "width": 990,
+        "height": 113,
+        "rotation": 0,
+        "zIndex": 211,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "stub_footer",
+        "name": "stub_footer",
+        "url": "/theme-packs/boarding/stub-footer.png",
+        "placement": "front",
+        "x": 45,
+        "y": 1747,
+        "width": 990,
+        "height": 96,
+        "rotation": 0,
+        "zIndex": 212,
+        "opacity": 1,
+        "visible": true
+      }
+    ],
+    "slots": [
+      {
+        "index": 1,
+        "x": 45,
+        "y": 849,
+        "width": 990,
+        "height": 858,
+        "rotation": 0,
+        "zIndex": 1,
+        "focusX": 0.5,
+        "focusY": 0.42,
+        "shape": "rounded"
+      }
+    ]
+  }
+}

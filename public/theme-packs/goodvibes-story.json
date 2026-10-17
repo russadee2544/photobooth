@@ -1,0 +1,153 @@
+{
+  "packId": "goodvibes-story",
+  "version": 1,
+  "template": {
+    "schemaVersion": 1,
+    "templateId": "custom_pack_goodvibes_story_1",
+    "layoutId": "1_story",
+    "name": "Good Vibes · GIF 1080×1920",
+    "type": "story",
+    "orientation": "portrait",
+    "enabled": true,
+    "isCustom": true,
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "dpi": 300,
+      "backgroundColor": "#F23B2F",
+      "backgroundImage": "/theme-packs/goodvibes/story-paper.jpg",
+      "backgroundFitMode": "stretch",
+      "safeMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      },
+      "bleedMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    "overlay": {
+      "url": "",
+      "zIndex": 100,
+      "fitMode": "cover"
+    },
+    "artboard": [
+      {
+        "id": "frame",
+        "name": "frame",
+        "url": "/theme-packs/goodvibes/story-frame.png",
+        "placement": "front",
+        "x": 45,
+        "y": 199,
+        "width": 990,
+        "height": 990,
+        "rotation": 0,
+        "zIndex": 210,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "pink_flower",
+        "name": "pink_flower",
+        "url": "/theme-packs/goodvibes/pink-flower.png",
+        "placement": "front",
+        "x": 799,
+        "y": 173,
+        "width": 244,
+        "height": 244,
+        "rotation": 0,
+        "zIndex": 211,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "sparkle_big",
+        "name": "sparkle_big",
+        "url": "/theme-packs/goodvibes/sparkle.png",
+        "placement": "front",
+        "x": 8,
+        "y": 616,
+        "width": 146,
+        "height": 146,
+        "rotation": 0,
+        "zIndex": 212,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "sparkle_small",
+        "name": "sparkle_small",
+        "url": "/theme-packs/goodvibes/sparkle.png",
+        "placement": "front",
+        "x": 98,
+        "y": 771,
+        "width": 83,
+        "height": 83,
+        "rotation": 0,
+        "zIndex": 213,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "daisy",
+        "name": "daisy",
+        "url": "/theme-packs/goodvibes/daisy.png",
+        "placement": "front",
+        "x": 743,
+        "y": 887,
+        "width": 319,
+        "height": 319,
+        "rotation": 0,
+        "zIndex": 214,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "hearts",
+        "name": "hearts",
+        "url": "/theme-packs/goodvibes/hearts.png",
+        "placement": "front",
+        "x": 11,
+        "y": 975,
+        "width": 244,
+        "height": 244,
+        "rotation": 0,
+        "zIndex": 215,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "title",
+        "name": "title",
+        "url": "/theme-packs/goodvibes/title.png",
+        "placement": "front",
+        "x": 56,
+        "y": 1290,
+        "width": 968,
+        "height": 469,
+        "rotation": 0,
+        "zIndex": 216,
+        "opacity": 1,
+        "visible": true
+      }
+    ],
+    "slots": [
+      {
+        "index": 1,
+        "x": 56,
+        "y": 210,
+        "width": 968,
+        "height": 968,
+        "rotation": 0,
+        "zIndex": 1,
+        "focusX": 0.5,
+        "focusY": 0.42,
+        "shape": "rectangle"
+      }
+    ]
+  }
+}

@@ -185,7 +185,7 @@ async function runKiosk(config) {
   // config.printTransport = 'driver' switches back to printing through the Windows driver.
   const printImage = (opts) => {
     const dots = RECEIPT_DOTS[opts.paperMode];
-    return dots && config.printTransport !== 'driver' ? printImageEscPos({ ...opts, dots }) : printViaDriver(opts);
+    return dots && config.printTransport !== 'driver' ? printImageEscPos({ ...opts, dots, lightness: config.printLightness }) : printViaDriver(opts);
   };
   const printService = createPrintService({ internal, journal, printImage, printerName: config.printerName || '' });
 
@@ -208,7 +208,7 @@ async function runKiosk(config) {
       }
       if (!images.length) return { success: false, error: 'invalid_image' };
       try {
-        const result = await printImagesEscPos({ images, dots, printerName: String(a.printerName || config.printerName || '').slice(0, 200) });
+        const result = await printImagesEscPos({ images, dots, lightness: config.printLightness, printerName: String(a.printerName || config.printerName || '').slice(0, 200) });
         return { success: true, printer: result.printer, slips: images.length };
       } catch (error) {
         noteError(`slip print: ${error instanceof Error ? error.message : 'failed'}`);
@@ -274,7 +274,22 @@ async function runKiosk(config) {
       return { success: false, error: 'config_write_failed' };
     }
   };
-  modeHandlers.getPrintTransport = async () => ({ success: true, transport: config.printTransport === 'driver' ? 'driver' : 'escpos' });
+  modeHandlers.getPrintTransport = async () => ({ success: true, transport: config.printTransport === 'driver' ? 'driver' : 'escpos',
+    lightness: Number.isInteger(config.printLightness) ? config.printLightness : 2 });
+  // How much lighter receipt photos are printed (ESC/POS only): 0 = as is ... 4 = lightest.
+  modeHandlers.setPrintLightness = async (a) => {
+    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    const level = Math.max(0, Math.min(4, Math.round(Number(a.lightness))));
+    if (!Number.isFinite(level)) return { success: false, error: 'invalid_lightness' };
+    try {
+      const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
+      await writeFile(CONFIG_FILE, JSON.stringify({ ...saved, printLightness: level }, null, 2));
+      config.printLightness = level;
+      return { success: true, lightness: level };
+    } catch {
+      return { success: false, error: 'config_write_failed' };
+    }
+  };
   modeHandlers.reportPageStatus = async (a) => {
     const paper = Number(a.paper);
     if (Number.isInteger(paper) && paper >= 0 && paper <= 100000) runtime.paper = paper;

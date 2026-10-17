@@ -1,0 +1,167 @@
+{
+  "packId": "wanted-story",
+  "version": 1,
+  "template": {
+    "schemaVersion": 1,
+    "templateId": "custom_pack_wanted_story_1",
+    "layoutId": "1_story",
+    "name": "Wanted Poster · GIF 1080×1920",
+    "type": "story",
+    "orientation": "portrait",
+    "enabled": true,
+    "isCustom": true,
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "dpi": 300,
+      "backgroundColor": "#F4E8CE",
+      "backgroundImage": "/theme-packs/wanted/story-paper.jpg",
+      "backgroundFitMode": "stretch",
+      "safeMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      },
+      "bleedMargin": {
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    "overlay": {
+      "url": "",
+      "zIndex": 100,
+      "fitMode": "cover"
+    },
+    "artboard": [
+      {
+        "id": "header",
+        "name": "header",
+        "url": "/theme-packs/wanted/header.png",
+        "placement": "front",
+        "x": 34,
+        "y": 34,
+        "width": 1013,
+        "height": 180,
+        "rotation": 0,
+        "zIndex": 210,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "title",
+        "name": "title",
+        "url": "/theme-packs/wanted/title.png",
+        "placement": "front",
+        "x": 34,
+        "y": 219,
+        "width": 1013,
+        "height": 203,
+        "rotation": 0,
+        "zIndex": 211,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "wanted_for",
+        "name": "wanted_for",
+        "url": "/theme-packs/wanted/wanted-for.png",
+        "placement": "front",
+        "x": 34,
+        "y": 428,
+        "width": 1013,
+        "height": 152,
+        "rotation": 0,
+        "zIndex": 212,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "frame",
+        "name": "frame",
+        "url": "/theme-packs/wanted/story-frame.png",
+        "placement": "front",
+        "x": 28,
+        "y": 591,
+        "width": 1024,
+        "height": 818,
+        "rotation": 0,
+        "zIndex": 213,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "stamp",
+        "name": "stamp",
+        "url": "/theme-packs/wanted/stamp.png",
+        "placement": "front",
+        "x": 692,
+        "y": 579,
+        "width": 349,
+        "height": 284,
+        "rotation": 0,
+        "zIndex": 214,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "name_bar",
+        "name": "name_bar",
+        "url": "/theme-packs/wanted/name-bar.png",
+        "placement": "front",
+        "x": 34,
+        "y": 1426,
+        "width": 1013,
+        "height": 101,
+        "rotation": 0,
+        "zIndex": 215,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "description",
+        "name": "description",
+        "url": "/theme-packs/wanted/description.png",
+        "placement": "front",
+        "x": 34,
+        "y": 1544,
+        "width": 1013,
+        "height": 141,
+        "rotation": 0,
+        "zIndex": 216,
+        "opacity": 1,
+        "visible": true
+      },
+      {
+        "id": "footer",
+        "name": "footer",
+        "url": "/theme-packs/wanted/footer.png",
+        "placement": "front",
+        "x": 34,
+        "y": 1690,
+        "width": 1013,
+        "height": 135,
+        "rotation": 0,
+        "zIndex": 217,
+        "opacity": 1,
+        "visible": true
+      }
+    ],
+    "slots": [
+      {
+        "index": 1,
+        "x": 34,
+        "y": 596,
+        "width": 1013,
+        "height": 807,
+        "rotation": 0,
+        "zIndex": 1,
+        "focusX": 0.5,
+        "focusY": 0.42,
+        "shape": "rectangle"
+      }
+    ]
+  }
+}

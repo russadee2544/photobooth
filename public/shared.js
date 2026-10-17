@@ -2511,6 +2511,35 @@ async function fetchLayoutSizeFor(layoutStr) {
 const GIF_BLOB_KEY = 'gif_blob';
 const GIF_MAX_BYTES = 20 * 1024 * 1024;
 const GIF_BUILD_TIMEOUT_MS = 20000;
+const GIF_STORY_TIMEOUT_MS = 60000;      // phone-size framed GIF: bigger frames, slower tablets
+
+// Theme packs that come with a phone-size (1080 x 1920) one-photo frame for the GIF:
+// public/theme-packs/<pack>-story.json, made by scripts/theme-packs/build-story.mjs.
+const GIF_STORY_PACKS = ['wanted', 'exhibition', 'boarding', 'goodvibes'];
+async function gifStoryFrameFor(template) {
+    const match = /^custom_pack_(.+?)_(58|80|100)_\d+$/.exec(template?.templateId || '');
+    if (!match || !GIF_STORY_PACKS.includes(match[1])) return null;
+    try {
+        const response = await fetch(`/theme-packs/${match[1]}-story.json`, { cache: 'no-cache' });
+        if (!response.ok) return null;
+        const pack = await response.json();
+        return pack?.template?.slots?.length ? pack.template : null;
+    } catch (_) { return null; }
+}
+// Every photo placed alone in the story frame, so the GIF swaps photos inside the theme's frame.
+async function framePhotosForGif(photos) {
+    let template = null;
+    try { template = TemplateCatalog.current(); } catch (_) {}
+    const story = await gifStoryFrameFor(template);
+    if (!story) return null;
+    const framed = [];
+    for (const photo of photos) {
+        const canvas = await composeTemplateBySchema([photo], null, story.canvas.width, null, story, 'story');
+        framed.push(canvas.toDataURL('image/jpeg', 0.92));
+        await new Promise((resolve) => setTimeout(resolve, 0));   // let the screen breathe between frames
+    }
+    return { photos: framed, maxEdge: Math.max(story.canvas.width, story.canvas.height) };
+}
 
 // Called once when a session starts so a mid-session admin change cannot flip it.
 function snapshotGifSetting() {
@@ -2552,12 +2581,14 @@ async function buildSessionGif(photos) {
     if (!Array.isArray(photos) || photos.length < 2) return (Session.gifStatus = 'skipped');
     let worker;
     try {
+        let framed = null;
+        try { framed = await framePhotosForGif(photos); } catch (e) { console.warn('GIF frame skipped:', e); }
         worker = new Worker('/gif-worker.js', { type: 'module' });
         const reply = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error('timeout')), GIF_BUILD_TIMEOUT_MS);
+            const timer = setTimeout(() => reject(new Error('timeout')), framed ? GIF_STORY_TIMEOUT_MS : GIF_BUILD_TIMEOUT_MS);
             worker.onmessage = (e) => { clearTimeout(timer); resolve(e.data); };
             worker.onerror = (e) => { clearTimeout(timer); reject(new Error(e.message || 'worker_error')); };
-            worker.postMessage({ photos });
+            worker.postMessage(framed || { photos });
         });
         if (!reply?.ok) {
             return (Session.gifStatus = reply?.error === 'too_large' ? 'too_large' : 'failed');
