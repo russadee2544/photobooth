@@ -2511,7 +2511,10 @@ async function fetchLayoutSizeFor(layoutStr) {
 const GIF_BLOB_KEY = 'gif_blob';
 const GIF_MAX_BYTES = 20 * 1024 * 1024;
 const GIF_BUILD_TIMEOUT_MS = 20000;
-const GIF_STORY_TIMEOUT_MS = 60000;      // phone-size framed GIF: bigger frames, slower tablets
+const GIF_STORY_TIMEOUT_MS = 60000;
+// The framed GIF is made at 720 x 1280 (same 9:16 shape as the 1080 x 1920 frame): a phone shows it
+// ~400 px wide, and real photos at 1080 x 1920 came to several MB, too slow to load from the QR code.
+const GIF_STORY_WIDTH = 720;      // phone-size framed GIF: bigger frames, slower tablets
 
 // Theme packs that come with a phone-size (1080 x 1920) one-photo frame for the GIF:
 // public/theme-packs/<pack>-story.json, made by scripts/theme-packs/build-story.mjs.
@@ -2534,11 +2537,11 @@ async function framePhotosForGif(photos) {
     if (!story) return null;
     const framed = [];
     for (const photo of photos) {
-        const canvas = await composeTemplateBySchema([photo], null, story.canvas.width, null, story, 'story');
+        const canvas = await composeTemplateBySchema([photo], null, GIF_STORY_WIDTH, null, story, 'story');
         framed.push(canvas.toDataURL('image/jpeg', 0.92));
         await new Promise((resolve) => setTimeout(resolve, 0));   // let the screen breathe between frames
     }
-    return { photos: framed, maxEdge: Math.max(story.canvas.width, story.canvas.height) };
+    return { photos: framed, maxEdge: Math.round(GIF_STORY_WIDTH * story.canvas.height / story.canvas.width) };
 }
 
 // Called once when a session starts so a mid-session admin change cannot flip it.

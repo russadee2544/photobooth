@@ -141,7 +141,7 @@ async function download(url: URL): Promise<Response> {
   const { data: storageKey, error } = await admin.rpc('get_gif_asset_for_download', { p_asset_id: assetId });
   if (error || typeof storageKey !== 'string') return gone();
   const { data: signed, error: signError } = await admin.storage.from(BUCKET)
-    .createSignedUrl(storageKey, SIGNED_REDIRECT_SECONDS, { download: 'photobooth.gif' });
+    .createSignedUrl(storageKey, SIGNED_REDIRECT_SECONDS);   // inline: the GIF plays in the phone's browser (long-press to save)
   if (signError || !signed?.signedUrl) return gone();
   return new Response(null, { status: 302, headers: { Location: signed.signedUrl, 'Cache-Control': 'no-store' } });
 }
