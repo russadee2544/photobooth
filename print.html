@@ -1554,7 +1554,7 @@
             const defaultCopies = Math.max(1, parseInt(printerConfig.maxCopies || '2', 10) || 2);
             // A redeem pass allows up to copiesPerPrint (2 for receipt packages); the kiosk's own
             // 'copies per print' setting can lower that, e.g. to 1 slip per print.
-            const copies = Kiosk.mode === 'redeem' ? Math.max(1, Math.min(Session.authorization?.copiesPerPrint || 2, defaultCopies))
+            const copies = Kiosk.mode === 'redeem' ? Math.max(1, Math.min(Session.authorization?.copiesPerPrint || 1, defaultCopies))
                 : (typeof copiesToPrint === 'number' && copiesToPrint > 0) ? copiesToPrint : defaultCopies;
             
             // Check paper, reset for demo if needed

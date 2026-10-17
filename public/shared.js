@@ -2861,9 +2861,9 @@ const PRINT_PASS_CODE = /^(?=.*[0-9])(?=.*[A-Z])[0-9A-HJKMNP-TV-Z]{5}$/;
 // Edge Function; Stripe secrets never reach the browser. A paid order yields a
 // normal 5-character pass code that is then claimed with claimPrintPass().
 const DEMO_PASS_OFFERS = [
-    { packageId: 'demo-receipt', quotaKind: '2', priceMinor: 1900, currency: 'THB', copies: 2 },
-    { packageId: 'demo-receipt', quotaKind: '5', priceMinor: 3500, currency: 'THB', copies: 2 },
-    { packageId: 'demo-receipt', quotaKind: 'unlimited', priceMinor: 14900, currency: 'THB', copies: 2 }
+    { packageId: 'demo-receipt', quotaKind: '2', priceMinor: 1900, currency: 'THB', copies: 1 },
+    { packageId: 'demo-receipt', quotaKind: '5', priceMinor: 3500, currency: 'THB', copies: 1 },
+    { packageId: 'demo-receipt', quotaKind: 'unlimited', priceMinor: 14900, currency: 'THB', copies: 1 }
 ];
 
 function paymentBridge(method) {
@@ -3008,7 +3008,7 @@ async function claimPrintPass(rawCode) {
         const pass = { passId: row.id, sessionToken: row.session_token, quotaKind: row.quota_kind,
             printLimit: row.print_limit ?? null, usedPrints: row.used_prints,
             remaining: row.quota_kind === 'unlimited' ? null : row.print_limit - row.used_prints - (row.reserved_prints || 0),
-            copiesPerPrint: 2, validUntil: row.valid_until, demo: true };
+            copiesPerPrint: 1, validUntil: row.valid_until, demo: true };
         Session.authorization = pass;
         return { success: true, pass };
     }
