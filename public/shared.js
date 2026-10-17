@@ -68,6 +68,19 @@ const Kiosk = {
     set boothKind(v) { localStorage.setItem('kiosk_booth_kind', v); },
     get filterEnabled() { return localStorage.getItem('kiosk_filter_enabled') !== 'false'; },
     set filterEnabled(v) { localStorage.setItem('kiosk_filter_enabled', v ? 'true' : 'false'); },
+    // Live camera lenses (see LENS_PRESETS). Each one can be switched off in admin; 'normal' is always on.
+    get lensesEnabled() {
+        let off = [];
+        try { off = JSON.parse(localStorage.getItem('kiosk_lenses_off') || '[]'); } catch (_) {}
+        return LENS_PRESETS.filter(l => l.id === 'normal' || !off.includes(l.id));
+    },
+    setLensEnabled(id, on) {
+        let off = [];
+        try { off = JSON.parse(localStorage.getItem('kiosk_lenses_off') || '[]'); } catch (_) {}
+        off = off.filter(x => x !== id);
+        if (!on && id !== 'normal') off.push(id);
+        localStorage.setItem('kiosk_lenses_off', JSON.stringify(off));
+    },
     get qrEnabled() { return localStorage.getItem('kiosk_qr_enabled') !== 'false'; },
     set qrEnabled(v) { localStorage.setItem('kiosk_qr_enabled', v ? 'true' : 'false'); },
     // Redeem mode: offer PromptPay purchase alongside code entry (default on).
@@ -3770,6 +3783,22 @@ function adminLogout() {
 }
 
 // ======================== FILTER SYSTEM ========================
+
+// Live camera lenses on the capture page (shaders in lens-fx.js).
+const LENS_PRESETS = [
+    { id: 'normal',    icon: 'photo_camera',   th: 'ปกติ',        en: 'Normal' },
+    { id: 'fisheye',   icon: 'panorama_fish_eye', th: 'ฟิชอาย',   en: 'Fisheye' },
+    { id: 'wide',      icon: 'panorama_wide_angle', th: 'ไวด์',   en: 'Wide' },
+    { id: 'bulge',     icon: 'zoom_in',        th: 'หน้าป่อง',    en: 'Bulge' },
+    { id: 'pinch',     icon: 'zoom_out',       th: 'หน้าเรียว',   en: 'Pinch' },
+    { id: 'mirror',    icon: 'flip',           th: 'กระจกคู่',    en: 'Mirror' },
+    { id: 'kaleido',   icon: 'filter_vintage', th: 'คาไลโดสโคป', en: 'Kaleidoscope' },
+    { id: 'film',      icon: 'movie',          th: 'ฟิล์ม',       en: 'Film' },
+    { id: 'tiltshift', icon: 'blur_linear',    th: 'ของจิ๋ว',     en: 'Miniature' },
+    { id: 'glitch',    icon: 'tv_off',         th: 'กลิทช์',      en: 'Glitch' },
+    { id: 'halftone',  icon: 'grain',          th: 'การ์ตูนจุด',  en: 'Halftone' },
+    { id: 'pixel',     icon: 'apps',           th: 'พิกเซล',      en: 'Pixel' }
+];
 
 const FILTER_PRESETS = {
     original:  { name: { th: 'ต้นฉบับ',    en: 'Original' },  css: 'none' },

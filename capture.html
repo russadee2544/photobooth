@@ -37,6 +37,8 @@
     <!-- Camera Viewfinder -->
     <main class="absolute inset-0 z-0 flex items-center justify-center bg-black overflow-hidden">
         <video id="video-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+        <!-- The same picture drawn through the chosen lens (hidden until a lens other than Normal is picked) -->
+        <canvas id="lens-canvas" class="hidden absolute inset-0 w-full h-full object-cover" style="z-index:1"></canvas>
 
         <!-- Canvas for flash capture -->
         <canvas id="photo-canvas" class="hidden"></canvas>
@@ -52,6 +54,10 @@
         <!-- Countdown -->
         <div id="countdown" class="countdown-num hidden drop-shadow-lg">3</div>
     </div>
+
+    <!-- Lens picker: tap a lens and the live picture changes -->
+    <nav id="lens-bar" class="hidden absolute left-0 right-0 bottom-0 z-20 pointer-events-auto px-3 pb-3 pt-6"
+         style="background: linear-gradient(to top, rgba(0,0,0,.55), transparent);" aria-label="Lens"></nav>
 
     <!-- Error/Demo Banner -->
     <div id="demo-banner" class="hidden absolute top-24 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur border border-gray-700 text-white px-6 py-4 rounded-xl text-sm font-medium flex flex-col items-center gap-3 shadow-2xl z-50 pointer-events-auto">
@@ -72,6 +78,7 @@
     <div id="flash-overlay" class="flash-overlay"></div>
 
     <script src="template-engine.js?v=2.3"></script>
+    <script src="lens-fx.js?v=1"></script>
     <script src="shared.js?v=3.4"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -106,6 +113,53 @@
             let photos = [];
             let useDemo = false;
             let currentStream = null;
+
+            // ---- lenses ---------------------------------------------------------------
+            // The camera picture is drawn through a shader so customers see the effect live;
+            // Normal keeps the plain video exactly as before.
+            const lensCanvas = document.getElementById('lens-canvas');
+            const lensBar = document.getElementById('lens-bar');
+            let lens = null;
+            let activeLens = 'normal';
+            function applyLens(id) {
+                activeLens = id;
+                try { sessionStorage.setItem('pb_lens', id); } catch (_) {}
+                const on = !!lens && id !== 'normal';
+                if (on) { lens.setLens(id); lens.start(); } else if (lens) { lens.stop(); }
+                lensCanvas.classList.toggle('hidden', !on);
+                Array.from(lensBar.querySelectorAll('button')).forEach((b) => {
+                    const active = b.dataset.lens === id;
+                    b.style.background = active ? '#FFFFFF' : 'rgba(255,255,255,.14)';
+                    b.style.color = active ? '#0A0A0A' : '#FFFFFF';
+                });
+            }
+            function setupLenses() {
+                if (lens) return;
+                const lenses = Kiosk.lensesEnabled;
+                if (lenses.length < 2 || !window.LensFx) return;
+                lens = LensFx.create(video, lensCanvas);
+                if (!lens) return;
+                const en = getLanguage() === 'en';
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;gap:8px;overflow-x:auto;justify-content:safe center;-webkit-overflow-scrolling:touch;scrollbar-width:none;';
+                lenses.forEach((l) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.dataset.lens = l.id;
+                    b.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px;padding:8px 12px;border-radius:16px;font-size:12px;font-weight:600;backdrop-filter:blur(8px);transition:background .15s;';
+                    b.innerHTML = '<span class="material-symbols-outlined" style="font-size:22px"></span><span></span>';
+                    b.firstChild.textContent = l.icon;
+                    b.lastChild.textContent = en ? l.en : l.th;
+                    b.onclick = () => applyLens(l.id);
+                    row.appendChild(b);
+                });
+                lensBar.replaceChildren(row);
+                lensBar.classList.remove('hidden');
+                let saved = 'normal';
+                try { saved = sessionStorage.getItem('pb_lens') || 'normal'; } catch (_) {}
+                applyLens(lenses.some((l) => l.id === saved) ? saved : 'normal');
+            }
+            video.addEventListener('loadedmetadata', setupLenses);
 
             // Setup Camera (Request full wide 1920x1080 resolution)
             async function startCamera(deviceId = null) {
@@ -253,6 +307,15 @@
                     ctx.font = 'bold 80px "Inter", sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText('DEMO PHOTO ' + currentShot, canvas.width/2, canvas.height/2);
+                    photos.push(canvas.toDataURL('image/jpeg', 0.9));
+                } else if (lens && activeLens !== 'normal' && lens.frameForCapture(1280)) {
+                    // Photo with a lens: take the shader's picture, mirrored like a normal shot.
+                    canvas.width = lensCanvas.width;
+                    canvas.height = lensCanvas.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(lensCanvas, 0, 0);
                     photos.push(canvas.toDataURL('image/jpeg', 0.9));
                 } else {
                     // Save the full camera frame. Template composition performs

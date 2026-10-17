@@ -187,6 +187,20 @@
                 </div>
             </div>
 
+            <!-- Camera lenses -->
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-700 mt-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-accent-blue/10 text-accent-blue flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined">lens_blur</span>
+                    </div>
+                    <div>
+                        <span class="block text-sm font-bold text-white">เลนส์กล้อง (ลูกเล่นตอนถ่าย)</span>
+                        <span class="block text-xs text-gray-500 mt-0.5">ลูกค้าเลือกเลนส์ได้สดๆ ขณะถ่าย ติ๊กเฉพาะเลนส์ที่อยากให้แสดง · ถ้าปิดหมด จะไม่มีแถบเลนส์</span>
+                    </div>
+                </div>
+                <div id="lens-admin-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3"></div>
+            </div>
+
             <!-- QR Code Download Toggle -->
             <div class="bg-gray-900 rounded-xl p-4 border border-gray-700 mt-3">
                 <div class="flex items-center justify-between">
@@ -2299,9 +2313,38 @@
             }
         }
 
+        // ======================== CAMERA LENSES ========================
+        function renderLensAdmin() {
+            var grid = document.getElementById('lens-admin-grid');
+            if (!grid || typeof LENS_PRESETS === 'undefined') return;
+            var on = new Set(Kiosk.lensesEnabled.map(function (l) { return l.id; }));
+            grid.innerHTML = '';
+            LENS_PRESETS.forEach(function (l) {
+                var locked = l.id === 'normal';
+                var label = document.createElement('label');
+                label.className = 'flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white ' + (locked ? 'opacity-60' : 'cursor-pointer');
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = on.has(l.id);
+                box.disabled = locked;
+                box.onchange = function () {
+                    Kiosk.setLensEnabled(l.id, box.checked);
+                    showToast((box.checked ? 'เปิดเลนส์ ' : 'ปิดเลนส์ ') + l.th);
+                };
+                var icon = document.createElement('span');
+                icon.className = 'material-symbols-outlined text-base text-gray-400';
+                icon.textContent = l.icon;
+                var text = document.createElement('span');
+                text.textContent = l.th + (locked ? ' (เสมอ)' : '');
+                label.append(box, icon, text);
+                grid.appendChild(label);
+            });
+        }
+
         // ======================== FILTER TOGGLE ========================
         function initFilterToggle() {
             updateFilterToggle();
+            renderLensAdmin();
         }
 
         function toggleFilterEnabled() {

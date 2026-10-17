@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photobooth-v20';
+const CACHE_NAME = 'photobooth-v21';
 const ASSETS = [
     '/',
     '/index.html',
@@ -19,6 +19,7 @@ const ASSETS = [
     '/dither-worker.js',
     '/gif-worker.js',
     '/gif-core.js',
+    '/lens-fx.js',
     '/vendor/gifenc.esm.js',
     '/manifest.json',
     '/icon-192.png',
