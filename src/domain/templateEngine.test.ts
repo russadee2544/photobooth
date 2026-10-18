@@ -169,7 +169,7 @@ describe('PhotoTemplateEngine', () => {
       t.slots.forEach((slot: any) => {
         expect(slot.width).toBe(t.canvas.width - t.canvas.safeMargin.left - t.canvas.safeMargin.right);
         const ratio = slot.width / slot.height;
-        expect(ratio).toBeCloseTo(3 / 4, 1);
+        expect(ratio).toBeCloseTo(1, 1);
       });
       for (let i = 1; i < t.slots.length; i++) {
         expect(t.slots[i].x).toBe(t.slots[0].x);
@@ -177,7 +177,7 @@ describe('PhotoTemplateEngine', () => {
       }
     });
 
-    // 4_1x1 (Left card): 2:2 grid with 3:4 ratio
+    // 4_1x1 (Left card): 2:2 grid with 1:1 ratio
     expect(t4_3x4.slots).toHaveLength(4);
     expect(t4_3x4.slots[0].x).toBe(t4_3x4.slots[2].x); // Col 1
     expect(t4_3x4.slots[1].x).toBe(t4_3x4.slots[3].x); // Col 2
@@ -185,7 +185,7 @@ describe('PhotoTemplateEngine', () => {
     expect(t4_3x4.slots[2].y).toBe(t4_3x4.slots[3].y); // Row 2
     t4_3x4.slots.forEach((slot: any) => {
       const ratio = slot.width / slot.height;
-      expect(ratio).toBeCloseTo(3 / 4, 1);
+      expect(ratio).toBeCloseTo(1, 1);
     });
 
     // 4_16x9 (Right card): single vertical column with 16:9 ratio

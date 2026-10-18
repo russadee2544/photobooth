@@ -252,33 +252,42 @@
             // frame's photo slot. Show that crop now so nobody stands where it would cut them off.
             const guideEl = document.getElementById('crop-guide');
             const hintEl = document.getElementById('crop-hint');
-            function slotAspect() {
+            // The photo slot of the layout the customer picked: its shape and where its crop is anchored.
+            function slotInfo() {
                 try {
                     const template = TemplateCatalog.current(layoutStr);
                     const slot = template && template.slots && template.slots[0];
-                    if (slot && slot.width > 0 && slot.height > 0) return slot.width / slot.height;
+                    if (slot && slot.width > 0 && slot.height > 0) {
+                        return { aspect: slot.width / slot.height, fx: slot.focusX ?? 0.5, fy: slot.focusY ?? 0.42 };
+                    }
                 } catch (_) { /* fall back to the layout's own ratio */ }
                 const match = /(\d+)x(\d+)/.exec(ratio);
-                return match ? Number(match[1]) / Number(match[2]) : 3 / 4;
+                return { aspect: match ? Number(match[1]) / Number(match[2]) : 3 / 4, fx: 0.5, fy: 0.42 };
             }
             function updateGuide() {
                 const vw = video.videoWidth, vh = video.videoHeight;
                 if (!vw || !vh) { guideEl.classList.add('hidden'); hintEl.classList.add('hidden'); return; }
-                const aspect = slotAspect();
-                // Region of the camera frame that survives the crop, in video pixels...
+                const { aspect, fx, fy } = slotInfo();
+                // Region of the camera frame that survives the crop, in video pixels. Same maths as the
+                // print (getCoverCrop): the photo is saved mirrored, so the crop is measured on the mirror image.
                 const usedW = Math.min(vw, vh * aspect), usedH = Math.min(vh, vw / aspect);
+                const cropX = Math.max(0, Math.min(vw - usedW, vw * fx - usedW / 2));
+                const cropY = Math.max(0, Math.min(vh - usedH, vh * fy - usedH / 2));
+                const x0 = vw - cropX - usedW;            // back to the un-mirrored picture shown on screen
                 // ...and where that lands on screen (the preview is object-fit: cover).
                 const box = video.getBoundingClientRect();
                 const scale = Math.max(box.width / vw, box.height / vh);
-                const w = Math.min(box.width, usedW * scale), h = Math.min(box.height, usedH * scale);
+                const offX = (box.width - vw * scale) / 2, offY = (box.height - vh * scale) / 2;
+                const w = usedW * scale, h = usedH * scale;
                 if (w >= box.width * 0.97 && h >= box.height * 0.97) { guideEl.classList.add('hidden'); hintEl.classList.add('hidden'); return; }
                 Object.assign(guideEl.style, { width: w + 'px', height: h + 'px',
-                    left: (box.left + (box.width - w) / 2) + 'px', top: (box.top + (box.height - h) / 2) + 'px' });
+                    left: (box.left + offX + x0 * scale) + 'px', top: (box.top + offY + cropY * scale) + 'px' });
                 guideEl.classList.remove('hidden');
                 hintEl.textContent = getLanguage() === 'en' ? 'Stay inside the frame' : 'ยืนให้อยู่ในกรอบ';
                 hintEl.classList.remove('hidden');
             }
             video.addEventListener('loadedmetadata', updateGuide);
+            video.addEventListener('playing', updateGuide);
             video.addEventListener('resize', updateGuide);
             window.addEventListener('resize', updateGuide);
 

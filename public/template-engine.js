@@ -153,7 +153,8 @@
         const match = String(layoutId || '').match(/^(\d+)(?:_([a-z0-9:x-]+))?$/i);
         const rawRatio = match && match[2] ? match[2].toLowerCase().replace(':', 'x') : '3x4';
         let ratio = '3x4';
-        if (['square', '1:1', 'sq'].includes(rawRatio)) ratio = '1x1';
+        // rawRatio had ':' turned into 'x' above, so "1:1" arrives as '1x1' (it used to fall through to 3:4).
+        if (['square', '1x1', 'sq'].includes(rawRatio)) ratio = '1x1';
         else if (['4x3', 'landscape'].includes(rawRatio)) ratio = '4x3';
         else if (['16x9', 'wide'].includes(rawRatio)) ratio = '16x9';
         else if (['9x16', 'story'].includes(rawRatio)) ratio = '9x16';
