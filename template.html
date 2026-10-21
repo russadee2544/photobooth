@@ -84,7 +84,7 @@
 
     <!-- Bottom Bar -->
     <div class="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
-        <button onclick="saveAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group" data-i18n="btn_process">
+        <button id="tpl-continue" onclick="saveAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group" data-i18n="btn_process">
             Process Photos
             <span class="material-symbols-outlined ml-2 text-sm group-hover:rotate-180 transition-transform duration-500">sync</span>
         </button>
@@ -105,7 +105,15 @@
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
             await ThemePacks.installAll();
-            globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
+            // Picked before the photos are taken (the frame decides the shape shown while shooting):
+            // the cards show stand-in photos and nothing from an earlier session is reused.
+            const beforeCapture = new URLSearchParams(location.search).get('before') === 'capture';
+            if (beforeCapture) {
+                const go = document.getElementById('tpl-continue');
+                go.removeAttribute('data-i18n');
+                go.innerHTML = (getLanguage() === 'en' ? 'Start shooting' : 'เริ่มถ่ายรูป') + ' <span class="material-symbols-outlined ml-2 text-sm">photo_camera</span>';
+            }
+            globalPhotos = beforeCapture ? [] : ((await SessionAsync.get('raw_photos')) || Session.photos || []);
 
             const paperMode = Kiosk.paperMode || 'photo4x6_dual';
             const currentLayoutStr = Session.layout || '3_1x1';
@@ -117,16 +125,9 @@
             const customThemes = await fetchCustomThemes();  // legacy themes stored in Supabase
             customThemes.forEach((t) => items.push({ kind: 'theme', id: t.id, name: t.name, theme: t }));
 
-            // The photos were framed for the chosen layout's slot shape at capture: offer only frames
-            // with that shape, so the print shows exactly what was inside the guide.
             const layoutTemplate = TemplateCatalog.find(Session.layoutTemplateId || '') || TemplateCatalog.forLayout(currentLayoutStr, paperMode);
-            const layoutSlot = layoutTemplate && layoutTemplate.slots && layoutTemplate.slots[0];
-            const layoutAspect = layoutSlot && layoutSlot.height > 0 ? layoutSlot.width / layoutSlot.height : null;
-            const sameShape = (t) => !layoutAspect || (t.slots || []).every((s) => s.height > 0
-                && Math.abs((s.width / s.height) / layoutAspect - 1) <= 0.06);
             TemplateCatalog.load().filter((t) => {
                 if (t.enabled === false) return false;
-                if (!sameShape(t)) return false;
                 if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
                 const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
                 const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
@@ -168,6 +169,10 @@
             nextBtn.classList.toggle('hidden', single);
             dotsEl.classList.toggle('hidden', single);
 
+            // Stand-in photos for the previews when nothing has been shot yet.
+            const previewPhotos = globalPhotos.length ? globalPhotos
+                : Array.from({ length: Math.max(1, currentReqShots) }, (_, i) => samplePhoto(i));
+
             // ---- previews: the middle card first, then its neighbours, then the rest while idle ----
             let lastInteraction = 0;
             ['pointerdown', 'touchstart', 'wheel'].forEach((type) =>
@@ -182,8 +187,8 @@
                     let canvas = null;
                     try {
                         canvas = item.kind === 'schema'
-                            ? await composeTemplateBySchema(globalPhotos, 'custom_schema', CARD_RENDER_WIDTH, null, item.schema, paperMode)
-                            : await composePhotoByMode(globalPhotos, item.id, CARD_RENDER_WIDTH, item.theme, currentLayoutStr, currentLayoutSize);
+                            ? await composeTemplateBySchema(previewPhotos, 'custom_schema', CARD_RENDER_WIDTH, null, item.schema, paperMode)
+                            : await composePhotoByMode(previewPhotos, item.id, CARD_RENDER_WIDTH, item.theme, currentLayoutStr, currentLayoutSize);
                     } catch (err) { console.warn('frame preview failed', item.id, err); }
                     if (canvas) { cards[i].innerHTML = ''; cards[i].appendChild(canvas); }
                     else cards[i].innerHTML = '<div class="tpl-wait text-xs text-gray-400 px-3 text-center">' + escapeHtml(item.name) + '</div>';
@@ -271,7 +276,27 @@
             return div.innerHTML;
         }
 
+        // A soft grey stand-in "photo" (head and shoulders) for frame previews before shooting.
+        function samplePhoto(i) {
+            const c = document.createElement('canvas');
+            c.width = 640; c.height = 480;
+            const g = c.getContext('2d');
+            const tones = ['#D9D3CB', '#CFD6DD', '#D8D2DD', '#D3DBD2'];
+            g.fillStyle = tones[i % tones.length]; g.fillRect(0, 0, 640, 480);
+            g.fillStyle = 'rgba(255,255,255,.55)';
+            g.beginPath(); g.arc(320, 200, 70, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.ellipse(320, 470, 170, 150, 0, Math.PI, 0); g.fill();
+            return c.toDataURL('image/jpeg', 0.8);
+        }
+
         function saveAndContinue() {
+            if (new URLSearchParams(location.search).get('before') === 'capture') {
+                // Frame chosen: now the photos are taken inside its photo slot.
+                if (Session.templateSchemaId) SessionAsync.set('templateSchemaId', Session.templateSchemaId);
+                if (Session.template) SessionAsync.set('template', Session.template);
+                window.location.href = 'capture.html';
+                return;
+            }
             const nextPage = Kiosk.filterEnabled ? 'filter.html' : 'processing.html';
             if (!Kiosk.filterEnabled) {
                 Session.filter = 'original';

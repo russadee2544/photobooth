@@ -113,8 +113,10 @@
         function saveSelectionAndContinue() {
             // In retake flow, all photos shown are the final photos
             Session.photos = rawPhotos;
+            // The frame was picked before the photos were taken; straight on to the filter / processing.
+            if (!Kiosk.filterEnabled) Session.filter = 'original';
             SessionAsync.set('raw_photos', rawPhotos).then(() => {
-                window.location.href = 'template.html';
+                window.location.href = Kiosk.filterEnabled ? 'filter.html' : 'processing.html';
             });
         }
     </script>
