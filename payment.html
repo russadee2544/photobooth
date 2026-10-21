@@ -47,6 +47,22 @@
             border-color: #FF6B57;
             box-shadow: 0 0 0 4px rgba(255, 107, 87, 0.1);
         }
+        /* On-screen keypad: digits plus the 6 letters new codes use (A C H K P X) */
+        .keypad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%;
+            overflow: hidden; max-height: 0; opacity: 0; margin-top: 0;
+            transition: max-height .28s ease, opacity .2s ease, margin-top .28s ease; }
+        .keypad.open { max-height: 420px; opacity: 1; margin-top: 4px; margin-bottom: 12px; }
+        .keypad button { height: 56px; border-radius: 14px; background: #F3F4F6; color: #0A0A0A;
+            font: 700 1.45rem/1 'Inter', sans-serif; display: flex; align-items: center; justify-content: center;
+            -webkit-tap-highlight-color: transparent; transition: background .1s, transform .08s; user-select: none; }
+        .keypad button:active { background: #E0E3E8; transform: scale(.95); }
+        .keypad button.letter { background: #E8ECFF; color: #3046D9; }
+        .keypad button.fn { font-size: .85rem; font-weight: 600; color: #4B5563; }
+        .keypad .wide { grid-column: span 2; }
+        .keypad-more { display: none; }
+        .keypad-more.open { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; width: 100%; margin-bottom: 12px; }
+        .keypad-more button { height: 44px; border-radius: 10px; background: #F3F4F6; font: 700 1.05rem/1 'Inter', sans-serif; color: #374151; }
+        .keypad-more button:active { background: #E0E3E8; }
         .code-box.success {
             border-color: #BAFF66;
             box-shadow: 0 0 0 4px rgba(186, 255, 102, 0.2);
@@ -80,7 +96,7 @@
         <div class="glass-panel w-full max-w-lg p-6 sm:p-10 flex flex-col items-center fade-up-enter">
             
             <!-- Icon -->
-            <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+            <div id="redeem-icon" class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                 <span class="material-symbols-outlined text-white text-3xl">confirmation_number</span>
             </div>
 
@@ -93,13 +109,19 @@
                     type="text" 
                     id="code-input" 
                     class="code-input" 
-                    placeholder="K7M2X"
+                    placeholder="27A49"
+                    inputmode="none"
+                    virtualkeyboardpolicy="manual"
                     maxlength="5"
                     autocomplete="off"
                     autocapitalize="characters"
                     spellcheck="false"
                 >
             </div>
+
+            <!-- On-screen keypad (the tablet's own keyboard stays closed) -->
+            <div id="keypad" class="keypad" aria-label="Keypad"></div>
+            <div id="keypad-more" class="keypad-more" aria-label="More letters"></div>
 
             <!-- Error Message -->
             <div id="error-msg" class="text-accent-coral text-sm font-medium mb-6 h-6 flex items-center gap-1 opacity-0 transition-opacity">
@@ -153,7 +175,7 @@
                 invalid_code: 'Invalid code. Please check and try again.',
             },
             th: {
-                invalid_format: 'กรอกรหัส 5 ตัวบนบัตร เช่น K7M2X',
+                invalid_format: 'กรอกรหัส 5 ตัวบนบัตร เช่น 27A49',
                 not_found: 'รหัสไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่',
                 already_used: 'รหัสนี้ถูกใช้ไปแล้ว กรุณาซื้อรหัสใหม่',
                 expired: 'รหัสหมดอายุแล้ว กรุณาซื้อรหัสใหม่',
@@ -206,6 +228,52 @@
                 }
             });
 
+            // ---- on-screen keypad ----
+            const keypad = document.getElementById('keypad');
+            const keypadMore = document.getElementById('keypad-more');
+            const icon = document.getElementById('redeem-icon');
+            const setCode = (value) => {
+                input.value = value.slice(0, 5);
+                input.dispatchEvent(new Event('input'));
+                // Code complete: fold the keypad away so the Redeem button is right there.
+                if (input.value.length === 5) showKeypad(false);
+            };
+            const press = (key) => {
+                if (input.disabled) return;
+                if (key === 'back') setCode(input.value.slice(0, -1));
+                else if (key === 'clear') setCode('');
+                else if (key === 'more') keypadMore.classList.toggle('open');
+                else setCode(input.value + key);
+            };
+            function showKeypad(open) {
+                keypad.classList.toggle('open', open);
+                if (!open) keypadMore.classList.remove('open');
+                icon.classList.toggle('hidden', open);
+            }
+            const KEYS = ['1', '2', '3', 'A', 'C', '4', '5', '6', 'H', 'K', '7', '8', '9', 'P', 'X', 'clear', '0', 'back', 'more'];
+            KEYS.forEach((key) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                if (/^[A-Z]$/.test(key)) b.className = 'letter';
+                if (key === 'clear') { b.className = 'fn'; b.textContent = lang === 'en' ? 'Clear' : 'ล้าง'; }
+                else if (key === 'back') { b.className = 'fn wide'; b.innerHTML = '<span class="material-symbols-outlined">backspace</span>'; b.setAttribute('aria-label', 'Delete'); }
+                else if (key === 'more') { b.className = 'fn'; b.textContent = 'ABC'; b.title = lang === 'en' ? 'Other letters (older cards)' : 'ตัวอักษรอื่น (บัตรรุ่นเก่า)'; }
+                else b.textContent = key;
+                b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(key); });
+                keypad.appendChild(b);
+            });
+            // Older cards can carry any letter of the old alphabet.
+            'BDEFGJMNQRSTVWYZ'.split('').forEach((key) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = key;
+                b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(key); });
+                keypadMore.appendChild(b);
+            });
+            document.getElementById('code-box').addEventListener('pointerdown', () => { if (!input.disabled) showKeypad(true); });
+            showKeypad(true);
+            window.showKeypad = showKeypad;
+
             // Enter key to submit
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && PRINT_PASS_CODE.test(input.value)) {
@@ -232,6 +300,7 @@
             errorMsg.classList.add('opacity-100');
             
             codeBox.classList.add('error', 'shake');
+            if (window.showKeypad) window.showKeypad(true);   // let them fix the code straight away
             setTimeout(() => codeBox.classList.remove('shake'), 500);
         }
 
