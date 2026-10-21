@@ -177,6 +177,7 @@
             });
             Session.layout = schema.layoutId;
             Session.templateSchemaId = schema.templateId;
+            Session.layoutTemplateId = schema.templateId;   // the shape the photos are framed for at capture
             renderFormatSummary(Kiosk.paperMode, schema);
         }
 

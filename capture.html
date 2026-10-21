@@ -46,7 +46,7 @@
         <!-- The part of the picture that ends up in the print: everything outside is cropped away -->
         <div id="crop-guide" class="hidden absolute pointer-events-none z-[5]" aria-hidden="true"
              style="border: 3px solid rgba(255,255,255,.92); border-radius: 14px; box-shadow: 0 0 0 100vmax rgba(0,0,0,.5);"></div>
-        <p id="crop-hint" class="hidden absolute bottom-6 left-0 right-0 text-center text-white text-sm tracking-wide pointer-events-none z-[6] drop-shadow"></p>
+        <p id="crop-hint" class="hidden absolute bottom-6 left-0 right-0 text-center pointer-events-none z-[25]"><span id="crop-hint-text" style="display:inline-block;background:rgba(0,0,0,.6);color:#fff;font-size:15px;font-weight:600;letter-spacing:.02em;padding:6px 16px;border-radius:999px;"></span></p>
     </main>
 
     <!-- UI Overlay -->
@@ -123,7 +123,6 @@
             let activeLens = 'normal';
             function applyLens(id) {
                 activeLens = id;
-                try { sessionStorage.setItem('pb_lens', id); } catch (_) {}
                 const on = !!lens && id !== 'normal';
                 if (on) { lens.setLens(id); lens.start(); } else if (lens) { lens.stop(); }
                 lensCanvas.classList.toggle('hidden', !on);
@@ -155,9 +154,10 @@
                 });
                 lensBar.replaceChildren(row);
                 lensBar.classList.remove('hidden');
-                let saved = 'normal';
-                try { saved = sessionStorage.getItem('pb_lens') || 'normal'; } catch (_) {}
-                applyLens(lenses.some((l) => l.id === saved) ? saved : 'normal');
+                // Every photo session starts on Normal; the customer picks a lens if they want one.
+                applyLens('normal');
+                // Keep "stay inside the frame" readable above the lens buttons.
+                hintEl.style.bottom = (lensBar.offsetHeight + 10) + 'px';
             }
             video.addEventListener('loadedmetadata', setupLenses);
 
@@ -283,7 +283,7 @@
                 Object.assign(guideEl.style, { width: w + 'px', height: h + 'px',
                     left: (box.left + offX + x0 * scale) + 'px', top: (box.top + offY + cropY * scale) + 'px' });
                 guideEl.classList.remove('hidden');
-                hintEl.textContent = getLanguage() === 'en' ? 'Stay inside the frame' : 'ยืนให้อยู่ในกรอบ';
+                document.getElementById('crop-hint-text').textContent = getLanguage() === 'en' ? 'Stay inside the frame' : 'ยืนให้อยู่ในกรอบ';
                 hintEl.classList.remove('hidden');
             }
             video.addEventListener('loadedmetadata', updateGuide);

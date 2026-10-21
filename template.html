@@ -117,13 +117,26 @@
             const customThemes = await fetchCustomThemes();  // legacy themes stored in Supabase
             customThemes.forEach((t) => items.push({ kind: 'theme', id: t.id, name: t.name, theme: t }));
 
+            // The photos were framed for the chosen layout's slot shape at capture: offer only frames
+            // with that shape, so the print shows exactly what was inside the guide.
+            const layoutTemplate = TemplateCatalog.find(Session.layoutTemplateId || '') || TemplateCatalog.forLayout(currentLayoutStr, paperMode);
+            const layoutSlot = layoutTemplate && layoutTemplate.slots && layoutTemplate.slots[0];
+            const layoutAspect = layoutSlot && layoutSlot.height > 0 ? layoutSlot.width / layoutSlot.height : null;
+            const sameShape = (t) => !layoutAspect || (t.slots || []).every((s) => s.height > 0
+                && Math.abs((s.width / s.height) / layoutAspect - 1) <= 0.06);
             TemplateCatalog.load().filter((t) => {
                 if (t.enabled === false) return false;
+                if (!sameShape(t)) return false;
                 if (!Kiosk.isTemplateCompatible(t, paperMode)) return false;
                 const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
                 const matchesShots = !t.slots || t.slots.length === currentReqShots || (globalPhotos.length > 0 && t.slots.length === globalPhotos.length);
                 return isCustom && matchesShots;
             }).forEach((tpl) => items.push({ kind: 'schema', id: tpl.templateId, name: tpl.name, schema: tpl }));
+
+            // No themed frame in this shape: the plain layout itself is the frame.
+            if (!items.length && layoutTemplate) {
+                items.push({ kind: 'schema', id: layoutTemplate.templateId, name: getLanguage() === 'en' ? 'Plain' : 'แบบเรียบ', schema: layoutTemplate });
+            }
 
             if (!items.length) {
                 document.getElementById('no-frames').classList.remove('hidden');

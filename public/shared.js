@@ -180,7 +180,7 @@ const Kiosk = {
     }
 };
 
-['sessionId', 'layout', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics', 'gifEnabled', 'gifTicket', 'gifStatus', 'gifResult'].forEach(key => {
+['sessionId', 'layout', 'layoutTemplateId', 'templateSchemaId', 'photos', 'raw_photos', 'template', 'result', 'dithered', 'colorCloudUrl', 'ditheredCloudUrl', 'filter', 'authorization', 'printJobId', 'renderMetrics', 'gifEnabled', 'gifTicket', 'gifStatus', 'gifResult'].forEach(key => {
     Object.defineProperty(Session, key, {
         get: function() { return this.get(key); },
         set: function(v) { this.set(key, v); }

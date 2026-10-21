@@ -1683,10 +1683,16 @@
                 remaining.textContent += ` · รหัสของคุณ ${pass.code} (จดไว้ใช้ต่อ)`;
             }
             panel.classList.remove('hidden');
-            if (pass.remaining === 0) {
-                panel.querySelector('button').classList.add('hidden');
+            const usedUp = pass.remaining === 0;
+            if (usedUp) {
+                // .btn-modern's inline-flex beats .hidden, so hide it outright.
+                const again = panel.querySelector('button');
+                again.style.display = 'none';
+                again.disabled = true;
+                const home = panel.querySelectorAll('button')[1];
+                if (home) home.textContent = 'กลับหน้าแรก';
             }
-            let seconds = pass.code ? 60 : 30; // extra time to note down a QR-purchased code
+            let seconds = usedUp ? 10 : (pass.code ? 60 : 30); // extra time to note down a QR-purchased code
             const countdown = document.getElementById('pass-auto-pause');
             countdown.textContent = `จะกลับหน้าเริ่มใน ${seconds} วินาที`;
             clearInterval(autoPauseTimer);
@@ -1702,6 +1708,7 @@
 
         async function continueWithPrintPass() {
             clearInterval(autoPauseTimer);
+            if (Session.authorization?.remaining === 0) { void pausePrintPassAndGoHome(); return; }
             // New round = new session: fresh id and a fresh GIF ticket/status. The old
             // ticket was spent on round 1's upload, so reusing it broke the 2nd GIF.
             Session.sessionId = crypto.randomUUID();
