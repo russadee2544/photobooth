@@ -253,27 +253,45 @@
             const guideEl = document.getElementById('crop-guide');
             const hintEl = document.getElementById('crop-hint');
             // The photo slot of the layout the customer picked: its shape and where its crop is anchored.
-            function slotInfo() {
+            // The frame is chosen after shooting, so the guide must hold for every frame on offer:
+            // the chosen layout itself plus each frame with the same number of photos (same rule as
+            // the frame page). Every photo slot of them is listed; the guide is where they all overlap.
+            function guideSlots() {
+                const slots = [];
+                const add = (template) => (template && template.slots || []).forEach((s) => {
+                    if (s.width > 0 && s.height > 0) slots.push({ aspect: s.width / s.height, fx: s.focusX ?? 0.5, fy: s.focusY ?? 0.42 });
+                });
                 try {
-                    const template = TemplateCatalog.current(layoutStr);
-                    const slot = template && template.slots && template.slots[0];
-                    if (slot && slot.width > 0 && slot.height > 0) {
-                        return { aspect: slot.width / slot.height, fx: slot.focusX ?? 0.5, fy: slot.focusY ?? 0.42 };
-                    }
+                    add(TemplateCatalog.current(layoutStr));
+                    const shots = window.PhotoTemplateEngine ? PhotoTemplateEngine.parseLayout(layoutStr).count : requiredShots;
+                    TemplateCatalog.load().forEach((t) => {
+                        if (t.enabled === false || !Kiosk.isTemplateCompatible(t, Kiosk.paperMode)) return;
+                        const isCustom = t.templateId.startsWith('custom_') || (t.artboard && t.artboard.length > 0) || (t.overlay && t.overlay.url);
+                        if (isCustom && t.slots && t.slots.length === shots) add(t);
+                    });
                 } catch (_) { /* fall back to the layout's own ratio */ }
-                const match = /(\d+)x(\d+)/.exec(ratio);
-                return { aspect: match ? Number(match[1]) / Number(match[2]) : 3 / 4, fx: 0.5, fy: 0.42 };
+                if (!slots.length) {
+                    const match = /(\d+)x(\d+)/.exec(ratio);
+                    slots.push({ aspect: match ? Number(match[1]) / Number(match[2]) : 3 / 4, fx: 0.5, fy: 0.42 });
+                }
+                return slots;
             }
             function updateGuide() {
                 const vw = video.videoWidth, vh = video.videoHeight;
                 if (!vw || !vh) { guideEl.classList.add('hidden'); hintEl.classList.add('hidden'); return; }
-                const { aspect, fx, fy } = slotInfo();
-                // Region of the camera frame that survives the crop, in video pixels. Same maths as the
-                // print (getCoverCrop): the photo is saved mirrored, so the crop is measured on the mirror image.
-                const usedW = Math.min(vw, vh * aspect), usedH = Math.min(vh, vw / aspect);
-                const cropX = Math.max(0, Math.min(vw - usedW, vw * fx - usedW / 2));
-                const cropY = Math.max(0, Math.min(vh - usedH, vh * fy - usedH / 2));
-                const x0 = vw - cropX - usedW;            // back to the un-mirrored picture shown on screen
+                // Region of the camera frame that survives each slot's crop, in video pixels. Same maths as
+                // the print (getCoverCrop); the photo is saved mirrored, so x is measured on the mirror image.
+                let left = 0, top = 0, right = vw, bottom = vh;
+                guideSlots().forEach(({ aspect, fx, fy }) => {
+                    const cw = Math.min(vw, vh * aspect), ch = Math.min(vh, vw / aspect);
+                    const cx = Math.max(0, Math.min(vw - cw, vw * fx - cw / 2));
+                    const cy = Math.max(0, Math.min(vh - ch, vh * fy - ch / 2));
+                    const sx = vw - cx - cw;              // back to the un-mirrored picture shown on screen
+                    left = Math.max(left, sx); right = Math.min(right, sx + cw);
+                    top = Math.max(top, cy); bottom = Math.min(bottom, cy + ch);
+                });
+                const usedW = Math.max(1, right - left), usedH = Math.max(1, bottom - top);
+                const x0 = left, cropY = top;
                 // ...and where that lands on screen (the preview is object-fit: cover).
                 const box = video.getBoundingClientRect();
                 const scale = Math.max(box.width / vw, box.height / vh);
