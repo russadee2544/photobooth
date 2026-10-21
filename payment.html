@@ -150,6 +150,7 @@
                 code_unavailable: 'This card has expired or has no print credits left.',
                 kiosk_in_use: 'This booth is finishing another card. Please wait.',
                 too_many_attempts: 'Too many attempts. Please wait and try again.',
+                invalid_code: 'Invalid code. Please check and try again.',
             },
             th: {
                 invalid_format: 'กรอกรหัส 5 ตัวบนบัตร เช่น K7M2X',
@@ -163,6 +164,7 @@
                 code_unavailable: 'บัตรหมดอายุหรือใช้สิทธิ์พิมพ์ครบแล้ว',
                 kiosk_in_use: 'ตู้นี้กำลังใช้งานบัตรอื่น กรุณารอสักครู่',
                 too_many_attempts: 'ลองรหัสผิดหลายครั้ง กรุณารอสักครู่แล้วลองใหม่',
+                invalid_code: 'รหัสไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่',
             }
         };
 
@@ -222,7 +224,10 @@
             const errorText = document.getElementById('error-text');
             const codeBox = document.getElementById('code-box');
             
-            errorText.innerText = messages[errorKey] || messages.not_found;
+            // Only a real "no such code" answer says the code is wrong; anything else shows its reason,
+            // so a booth/connection fault is not mistaken for a mistyped code.
+            errorText.innerText = messages[errorKey]
+                || (lang === 'en' ? 'Could not check the code' : 'ตรวจรหัสไม่สำเร็จ กรุณาเรียกพนักงาน') + ' [' + String(errorKey || 'unknown').slice(0, 40) + ']';
             errorMsg.classList.remove('opacity-0');
             errorMsg.classList.add('opacity-100');
             

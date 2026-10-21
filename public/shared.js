@@ -3036,7 +3036,7 @@ async function claimPrintPass(rawCode) {
         const result = await bridge.claimPrintPass({ code, kioskId: Kiosk.kioskId,
             previousToken: previous?.passId ? previous.sessionToken : null });
         if (!result || !result.passId || !result.sessionToken || result.error) {
-            return { success: false, error: result?.error || 'network_error' };
+            return { success: false, error: result?.error || (typeof result?.code === 'string' ? result.code.toLowerCase() : 'network_error') };
         }
         Session.authorization = result;
         return { success: true, pass: result };
