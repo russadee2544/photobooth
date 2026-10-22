@@ -8,6 +8,9 @@ import { createClient } from '@supabase/supabase-js';
 //     -> {url}. The function stores the file in the public photobooth bucket under an
 //     unguessable name and writes the kiosk_sessions log row (24h expiry for redeem mode,
 //     none for event mode). Clients no longer have any direct write access.
+//  3. Phone studio, same ticket, after the color photo: x-photo-kind studio-shot (up to 8) |
+//     studio-under | studio-over (images), then studio-manifest (JSON: { original, frame }) ->
+//     {studioId}. Files go to studio/<studioId>/ and the manifest lists them for the phone page.
 const BUCKET = 'photobooth';
 const MAX_BYTES = 10 * 1024 * 1024;
 const TICKET_TTL_MS = 3 * 3600_000;
@@ -79,16 +82,83 @@ function imageKind(bytes: Uint8Array): { ext: 'jpg' | 'png'; type: string } | nu
   return null;
 }
 
+const STUDIO_KINDS = ['studio-shot', 'studio-under', 'studio-over', 'studio-manifest'];
+const STUDIO_MAX_FILES = 10;
+
+interface StudioFile { kind: string; name: string }
+
+async function uploadStudio(request: Request, kind: string, ticketDigest: string, row: Record<string, unknown>): Promise<Response> {
+  if (!row.color_used || !row.row_id) return json({ error: 'color_first' }, 409);
+  const studioId = (row.studio_id as string | null) || hex(crypto.getRandomValues(new Uint8Array(16)));
+  const files: StudioFile[] = Array.isArray(row.studio_files) ? row.studio_files as StudioFile[] : [];
+  if (row.studio_done) return json({ error: 'ticket_used' }, 409);
+  const publicUrl = (name: string) => `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${BUCKET}/studio/${studioId}/${name}`;
+
+  if (kind !== 'studio-manifest') {
+    if (files.length >= STUDIO_MAX_FILES) return json({ error: 'too_many_files' }, 409);
+    if (kind !== 'studio-shot' && files.some((f) => f.kind === kind)) return json({ error: 'ticket_used' }, 409);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.byteLength) return json({ error: 'empty_body' }, 400);
+    if (bytes.byteLength > MAX_BYTES) return json({ error: 'too_large' }, 413);
+    const image = imageKind(bytes);
+    if (!image) return json({ error: 'not_an_image' }, 415);
+    const name = `${kind.slice(7)}_${files.length + 1}_${hex(crypto.getRandomValues(new Uint8Array(6)))}.${image.ext}`;
+    const { error } = await admin.storage.from(BUCKET).upload(`studio/${studioId}/${name}`, bytes, { contentType: image.type, upsert: false });
+    if (error) return json({ error: 'storage_failed' }, 502);
+    files.push({ kind, name });
+    await admin.from('photo_upload_tickets').update({ studio_id: studioId, studio_files: files }).eq('ticket_digest', ticketDigest);
+    return json({ ok: true });
+  }
+
+  // Manifest: the page's map of the files above, with the frame geometry sent by the kiosk.
+  let input: Record<string, unknown>;
+  try { input = JSON.parse(await request.text()); } catch { return json({ error: 'invalid_json' }, 400); }
+  const shots = files.filter((f) => f.kind === 'studio-shot').map((f) => publicUrl(f.name));
+  if (!shots.length) return json({ error: 'no_shots' }, 400);
+  const under = files.find((f) => f.kind === 'studio-under');
+  const over = files.find((f) => f.kind === 'studio-over');
+  const frameIn = (input.frame ?? null) as Record<string, unknown> | null;
+  const n = (v: unknown, lo: number, hi: number) => Math.max(lo, Math.min(hi, Number(v) || 0));
+  let frame = null;
+  if (frameIn && under && over && Array.isArray(frameIn.slots)) {
+    const width = Math.round(n(frameIn.width, 1, 4000)), height = Math.round(n(frameIn.height, 1, 12000));
+    frame = {
+      width, height, under: publicUrl(under.name), over: publicUrl(over.name),
+      slots: (frameIn.slots as Array<Record<string, unknown>>).slice(0, 8).map((s, i) => ({
+        index: Math.round(n(s.index ?? i + 1, 1, 8)), x: n(s.x, -width, width * 2), y: n(s.y, -height, height * 2),
+        width: n(s.width, 1, width * 2), height: n(s.height, 1, height * 2), rotation: n(s.rotation, -180, 180),
+        shape: typeof s.shape === 'string' ? String(s.shape).slice(0, 20) : 'rectangle',
+        focusX: n(s.focusX ?? 0.5, 0, 1), focusY: n(s.focusY ?? 0.42, 0, 1), zIndex: Math.round(n(s.zIndex ?? i + 1, -1000, 1000)),
+      })),
+    };
+  }
+  const { data: kiosk } = await admin.from('kiosks').select('workspace_id').eq('id', row.kiosk_id).maybeSingle();
+  const expiresAt = row.mode === 'event' ? null : new Date(Date.now() + 24 * 3600_000).toISOString();
+  const manifest = {
+    version: 1, createdAt: new Date().toISOString(), expiresAt,
+    original: typeof input.original === 'string' && input.original.startsWith(Deno.env.get('SUPABASE_URL') ?? '') ? input.original : null,
+    shots, frame,
+    looks: kiosk ? `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${BUCKET}/studio-looks/${kiosk.workspace_id}/looks.json` : null,
+  };
+  const { error } = await admin.storage.from(BUCKET).upload(`studio/${studioId}/manifest.json`,
+    new TextEncoder().encode(JSON.stringify(manifest)), { contentType: 'application/json', upsert: true });
+  if (error) return json({ error: 'storage_failed' }, 502);
+  await admin.from('photo_upload_tickets').update({ studio_id: studioId, studio_done: true }).eq('ticket_digest', ticketDigest);
+  await admin.from('kiosk_sessions').update({ studio_id: studioId }).eq('id', row.row_id);
+  return json({ studioId });
+}
+
 async function uploadPhoto(request: Request): Promise<Response> {
   const ticket = request.headers.get('x-photo-ticket') ?? '';
   const kind = request.headers.get('x-photo-kind') ?? '';
-  if (!HEX64.test(ticket) || !['color', 'dither'].includes(kind)) return json({ error: 'ticket_invalid' }, 401);
+  if (!HEX64.test(ticket) || !['color', 'dither', ...STUDIO_KINDS].includes(kind)) return json({ error: 'ticket_invalid' }, 401);
   if (Number(request.headers.get('content-length') ?? '0') > MAX_BYTES) return json({ error: 'too_large' }, 413);
 
   const digest = await sha256Hex(ticket);
   const { data: row } = await admin.from('photo_upload_tickets').select('*')
     .eq('ticket_digest', digest).gt('expires_at', new Date().toISOString()).maybeSingle();
   if (!row) return json({ error: 'ticket_invalid' }, 401);
+  if (STUDIO_KINDS.includes(kind)) return uploadStudio(request, kind, digest, row);
   if ((kind === 'color' && row.color_used) || (kind === 'dither' && (row.dither_used || !row.color_used))) {
     return json({ error: 'ticket_used' }, 409);
   }
@@ -135,7 +205,6 @@ async function uploadPhoto(request: Request): Promise<Response> {
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
-  return (request.headers.get('content-type') ?? '').includes('application/json')
-    ? issueTicket(request)
-    : uploadPhoto(request);
+  // Uploads carry a ticket header (the studio manifest is JSON too); a ticket request does not.
+  return request.headers.get('x-photo-ticket') ? uploadPhoto(request) : issueTicket(request);
 });

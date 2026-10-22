@@ -45,7 +45,7 @@ function objectName(url: string | null): string | null {
 
 async function purgeExpiredSessions(dryRun: boolean): Promise<{ sessions: number; files: number }> {
   const { data, error } = await admin.from('kiosk_sessions')
-    .select('id, color_url, dithered_url')
+    .select('id, color_url, dithered_url, studio_id')
     .neq('kiosk_mode', 'event')
     .lt('expires_at', new Date().toISOString())
     .limit(BATCH);
@@ -54,6 +54,12 @@ async function purgeExpiredSessions(dryRun: boolean): Promise<{ sessions: number
   const names = [...new Set(data.flatMap((row) => [objectName(row.color_url), objectName(row.dithered_url)])
     .filter((n): n is string => !!n))];
   if (dryRun) return { sessions: data.length, files: names.length };
+  // Phone studio folders (studio/<id>/...) of these sessions.
+  for (const row of data) {
+    if (!row.studio_id || !/^[0-9a-f]{32}$/.test(row.studio_id)) continue;
+    const { data: files } = await admin.storage.from(BUCKET).list(`studio/${row.studio_id}`, { limit: 100 });
+    for (const file of files ?? []) names.push(`studio/${row.studio_id}/${file.name}`);
+  }
   if (names.length) {
     const { error: removeError } = await admin.storage.from(BUCKET).remove(names);
     if (removeError) return { sessions: 0, files: 0 }; // keep the rows so the next run retries

@@ -201,6 +201,56 @@
                 <div id="lens-admin-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3"></div>
             </div>
 
+            <!-- Phone photo studio -->
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-700 mt-3" id="studio-card">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-accent-coral/10 text-accent-coral flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined">palette</span>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">สตูดิโอแต่งรูปบนมือถือ</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">QR รูปภาพจะเปิดหน้าแต่งรูป ลูกค้าเลือกลุคและผิวละมุนเองบนมือถือ แล้วบันทึก/แชร์ (ใบที่พิมพ์ไม่เปลี่ยน)</span>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-gray-300 shrink-0 cursor-pointer">
+                        <input type="checkbox" id="studio-enabled" class="w-5 h-5 accent-red-500"> เปิด
+                    </label>
+                </div>
+                <label class="block mt-3 text-xs text-gray-400">ที่อยู่หน้าแต่งรูป (เช่น https://studio.example.com)
+                    <input type="url" id="studio-url" placeholder="https://..." class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white">
+                </label>
+
+                <div class="mt-4 flex items-center justify-between">
+                    <span class="text-sm font-bold text-white">ลุค (LUT)</span>
+                    <label class="text-xs bg-gray-800 border border-gray-700 hover:bg-gray-700 text-white rounded-lg px-3 py-1.5 cursor-pointer flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">upload</span> เพิ่มไฟล์ .cube
+                        <input type="file" id="studio-cube" accept=".cube" multiple class="hidden">
+                    </label>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1">ติ๊กลุคที่จะให้ลูกค้าเห็น · ⦿ = ลุคที่เลือกไว้ให้ก่อน · เลื่อนความแรงได้ทีละลุค · ไฟล์ .cube ส่งออกได้จาก Lightroom / Photoshop / DaVinci</p>
+                <div id="studio-looks" class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+
+                <div class="mt-4 text-sm font-bold text-white">ผิว (ค่าเริ่มต้น ลูกค้าปรับเองได้)</div>
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                    <div class="flex flex-col gap-2 text-xs text-gray-300">
+                        <label class="grid grid-cols-[70px_1fr_34px] items-center gap-2">ผิวละมุน <input type="range" id="studio-smooth" min="0" max="100"> <output id="studio-smooth-out"></output></label>
+                        <label class="grid grid-cols-[70px_1fr_34px] items-center gap-2">ผิวสว่าง <input type="range" id="studio-bright" min="0" max="100"> <output id="studio-bright-out"></output></label>
+                        <label class="grid grid-cols-[70px_1fr_34px] items-center gap-2">โทนผิว <input type="range" id="studio-tone" min="-100" max="100"> <output id="studio-tone-out"></output></label>
+                        <span class="text-[11px] text-gray-500">โทนผิว: ซ้าย = อมเหลือง · ขวา = อมชมพู</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <figure class="m-0"><canvas id="studio-before" class="w-full rounded-lg bg-gray-800"></canvas><figcaption class="text-[10px] text-gray-500 text-center mt-1">ก่อน</figcaption></figure>
+                        <figure class="m-0"><canvas id="studio-after" class="w-full rounded-lg bg-gray-800"></canvas><figcaption class="text-[10px] text-gray-500 text-center mt-1">หลัง (ลุคที่เลือกไว้ + ผิว)</figcaption></figure>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between gap-3">
+                    <span id="studio-publish-note" class="text-[11px] text-gray-500">ลุคและค่าผิวต้องส่งขึ้นคลาวด์ก่อน มือถือลูกค้าถึงจะเห็น</span>
+                    <button type="button" onclick="openStudioDemo()" class="shrink-0 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-gray-700">ลองแต่งรูป</button>
+                    <button type="button" id="studio-publish" onclick="publishStudioLooks()" class="shrink-0 bg-white text-gray-900 rounded-lg px-4 py-2 text-sm font-bold hover:bg-gray-200">ส่งขึ้นคลาวด์ให้ทุกตู้</button>
+                </div>
+            </div>
+
             <!-- QR Code Download Toggle -->
             <div class="bg-gray-900 rounded-xl p-4 border border-gray-700 mt-3">
                 <div class="flex items-center justify-between">
@@ -917,6 +967,7 @@
     </div>
 
     <script src="template-engine.js?v=2.3"></script>
+    <script src="look-engine.js?v=1"></script>
     <script src="shared.js?v=3.4"></script>
     <script>
         function initAdmin() {
@@ -2341,9 +2392,210 @@
             });
         }
 
+        // ======================== PHONE PHOTO STUDIO ========================
+        let studioState = null;
+        let studioSample = null;
+        let studioRenderer = null;
+        const studioLutCache = new Map();
+
+        function studioSave() { if (!StudioLooks.save(studioState)) showToast('บันทึกไม่สำเร็จ: พื้นที่เก็บของเบราว์เซอร์เต็ม'); }
+
+        async function studioSampleImage() {
+            if (studioSample) return studioSample;
+            // A home-page sample photo if there is one, else a drawn stand-in face.
+            let src = null;
+            try {
+                src = await new Promise((resolve) => {
+                    const open = indexedDB.open('pb_kiosk', 1);
+                    open.onupgradeneeded = () => open.result.createObjectStore('kv');
+                    open.onerror = () => resolve(null);
+                    open.onsuccess = () => {
+                        const req = open.result.transaction('kv', 'readonly').objectStore('kv').get('home_photos');
+                        req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result.find((p) => typeof p === 'string') : null);
+                        req.onerror = () => resolve(null);
+                    };
+                });
+            } catch (_) { src = null; }
+            if (!src) {
+                const c = document.createElement('canvas'); c.width = 480; c.height = 360;
+                const g = c.getContext('2d');
+                const bg = g.createLinearGradient(0, 0, 0, 360); bg.addColorStop(0, '#8fb0cf'); bg.addColorStop(1, '#3a3530');
+                g.fillStyle = bg; g.fillRect(0, 0, 480, 360);
+                g.fillStyle = '#d9a383'; g.beginPath(); g.ellipse(240, 170, 75, 95, 0, 0, 7); g.fill();
+                const d = g.getImageData(0, 0, 480, 360);
+                for (let i = 0; i < d.data.length; i += 4) { const n = (Math.random() - .5) * 34; d.data[i] += n; d.data[i + 1] += n; d.data[i + 2] += n; }
+                g.putImageData(d, 0, 0);
+                g.fillStyle = '#222'; g.beginPath(); g.ellipse(214, 150, 10, 6, 0, 0, 7); g.ellipse(266, 150, 10, 6, 0, 0, 7); g.fill();
+                g.fillStyle = '#a5444a'; g.beginPath(); g.ellipse(240, 215, 24, 7, 0, 0, 7); g.fill();
+                src = c.toDataURL('image/jpeg', 0.9);
+            }
+            studioSample = await new Promise((resolve) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = src; });
+            return studioSample;
+        }
+
+        function studioLut(look) {
+            if (!look || look.id === 'none') return null;
+            if (studioLutCache.has(look.id)) return studioLutCache.get(look.id);
+            let lut = null;
+            try {
+                if (look.builtin) lut = LookEngine.builtinAtlas(look.id);
+                // uploaded LUTs are decoded up front (preloadStudioLuts); the WebGL texture needs a loaded image
+            } catch (_) { lut = null; }
+            studioLutCache.set(look.id, lut);
+            return lut;
+        }
+
+        function studioRender(target, settings, w) {
+            if (!studioSample || !studioRenderer) return;
+            const h = Math.round(w * studioSample.naturalHeight / studioSample.naturalWidth);
+            target.width = w; target.height = h;
+            const out = studioRenderer.render(studioSample, settings, w, h);
+            target.getContext('2d').drawImage(out, 0, 0);
+        }
+
+        function renderStudioPreview() {
+            const d = studioState.defaults;
+            const look = studioState.looks.find((l) => l.id === d.look);
+            const before = document.getElementById('studio-before');
+            before.width = 320; before.height = Math.round(320 * studioSample.naturalHeight / studioSample.naturalWidth);
+            before.getContext('2d').drawImage(studioSample, 0, 0, before.width, before.height);
+            studioRender(document.getElementById('studio-after'), { lut: studioLut(look), amount: look ? look.strength ?? 1 : 0,
+                smooth: d.smooth, bright: d.bright, tone: d.tone }, 320);
+        }
+
+        function renderStudioLooks() {
+            const box = document.getElementById('studio-looks');
+            box.innerHTML = '';
+            const rows = [{ id: 'none', name: 'ธรรมดา (ไม่มีลุค)', fixed: true }].concat(studioState.looks);
+            rows.forEach((look) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg p-2';
+                const thumb = document.createElement('canvas');
+                thumb.className = 'w-12 h-9 rounded object-cover shrink-0';
+                studioRender(thumb, { lut: studioLut(look), amount: look.strength ?? 1 }, 96);
+                const def = document.createElement('input');
+                def.type = 'radio'; def.name = 'studio-default-look'; def.checked = studioState.defaults.look === look.id;
+                def.title = 'ลุคที่เลือกไว้ให้ก่อน';
+                def.onchange = () => { studioState.defaults.look = look.id; studioSave(); renderStudioPreview(); };
+                const body = document.createElement('div');
+                body.className = 'flex-1 min-w-0';
+                const name = document.createElement('input');
+                name.value = look.name; name.disabled = !!look.fixed;
+                name.className = 'w-full bg-transparent text-sm text-white outline-none';
+                name.onchange = () => { look.name = name.value.trim().slice(0, 40) || look.name; studioSave(); };
+                body.appendChild(name);
+                if (!look.fixed) {
+                    const strength = document.createElement('input');
+                    strength.type = 'range'; strength.min = 0; strength.max = 100; strength.value = Math.round((look.strength ?? 1) * 100);
+                    strength.className = 'w-full'; strength.title = 'ความแรง';
+                    strength.oninput = () => { look.strength = Number(strength.value) / 100; studioRender(thumb, { lut: studioLut(look), amount: look.strength }, 96); };
+                    strength.onchange = () => { studioSave(); renderStudioPreview(); };
+                    body.appendChild(strength);
+                }
+                row.append(def, thumb, body);
+                if (!look.fixed) {
+                    const on = document.createElement('input');
+                    on.type = 'checkbox'; on.checked = look.enabled !== false; on.title = 'ให้ลูกค้าเห็นลุคนี้';
+                    on.className = 'w-4 h-4';
+                    on.onchange = () => { look.enabled = on.checked; studioSave(); };
+                    row.appendChild(on);
+                }
+                if (!look.fixed && !look.builtin) {
+                    const del = document.createElement('button');
+                    del.type = 'button'; del.title = 'ลบ'; del.className = 'text-gray-500 hover:text-red-400';
+                    del.innerHTML = '<span class="material-symbols-outlined text-base">delete</span>';
+                    del.onclick = () => {
+                        if (!confirm('ลบลุค "' + look.name + '"?')) return;
+                        studioState.looks = studioState.looks.filter((l) => l !== look);
+                        if (studioState.defaults.look === look.id) studioState.defaults.look = 'none';
+                        studioSave(); renderStudioLooks(); renderStudioPreview();
+                    };
+                    row.appendChild(del);
+                }
+                box.appendChild(row);
+            });
+        }
+
+        async function preloadStudioLuts() {
+            await Promise.all(studioState.looks.filter((l) => !l.builtin && l.atlas && !studioLutCache.has(l.id)).map((l) => new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => { studioLutCache.set(l.id, { size: img.naturalHeight, atlas: img }); resolve(); };
+                img.onerror = () => { studioLutCache.set(l.id, null); resolve(); };
+                img.src = l.atlas;
+            })));
+        }
+
+        async function initStudioCard() {
+            if (!document.getElementById('studio-card') || !window.LookEngine) return;
+            studioState = StudioLooks.load();
+            studioRenderer = LookEngine.createRenderer();
+            await studioSampleImage();
+            await preloadStudioLuts();
+            const enabled = document.getElementById('studio-enabled');
+            const url = document.getElementById('studio-url');
+            enabled.checked = localStorage.getItem('kiosk_studio_enabled') === 'true';
+            url.value = Kiosk.studioUrl;
+            enabled.onchange = () => {
+                if (enabled.checked && !/^https?:\/\/\S+$/.test(url.value.trim())) { showToast('ใส่ที่อยู่หน้าแต่งรูปก่อน'); enabled.checked = false; return; }
+                Kiosk.studioEnabled = enabled.checked;
+                showToast(enabled.checked ? 'เปิดสตูดิโอแต่งรูปแล้ว · QR จะพาไปหน้าแต่งรูป' : 'ปิดสตูดิโอ · QR เปิดรูปตรงๆ เหมือนเดิม');
+            };
+            url.onchange = () => { Kiosk.studioUrl = url.value; if (!url.value.trim()) { Kiosk.studioEnabled = false; enabled.checked = false; } };
+            const bind = (id, key, scale) => {
+                const input = document.getElementById(id), out = document.getElementById(id + '-out');
+                input.value = Math.round(studioState.defaults[key] * scale); out.textContent = input.value;
+                input.oninput = () => { studioState.defaults[key] = Number(input.value) / scale; out.textContent = input.value; renderStudioPreview(); };
+                input.onchange = studioSave;
+            };
+            bind('studio-smooth', 'smooth', 100);
+            bind('studio-bright', 'bright', 100);
+            bind('studio-tone', 'tone', 100);
+            document.getElementById('studio-cube').onchange = async (e) => {
+                for (const file of Array.from(e.target.files || [])) {
+                    try {
+                        const lut = LookEngine.parseCube(await file.text());
+                        const id = 'lut_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+                        studioLutCache.set(id, { size: lut.size, atlas: lut.atlas });
+                        studioState.looks.push({ id, name: (lut.title || file.name.replace(/\.cube$/i, '')).slice(0, 40),
+                            atlas: lut.atlas.toDataURL('image/png'), size: lut.size, strength: 1, enabled: true });
+                    } catch (err) {
+                        showToast('อ่านไฟล์ ' + file.name + ' ไม่ได้ (' + (err.message || err) + ')');
+                    }
+                }
+                e.target.value = '';
+                studioSave(); renderStudioLooks();
+            };
+            renderStudioLooks();
+            renderStudioPreview();
+            // Only the main kiosk publishes; the others just see the switch and the address.
+            ThemeSync.canPublish().then((ok) => {
+                if (ok) return;
+                document.getElementById('studio-publish').classList.add('hidden');
+                document.getElementById('studio-publish-note').textContent = 'ลุคและค่าผิวตั้งได้ที่ตู้หลักเท่านั้น (ส่งขึ้นคลาวด์ให้ทุกตู้จากตู้หลัก)';
+            }).catch(() => {});
+        }
+
+        // Try the studio with any photos: same site in development, the studio's own address once it is hosted.
+        function openStudioDemo() {
+            const local = /^(localhost|127.0.0.1)$/.test(location.hostname);
+            const base = local || !Kiosk.studioUrl ? '/studio/index.html' : Kiosk.studioUrl + '/';
+            window.open(base + '#demo', '_blank');
+        }
+
+        async function publishStudioLooks() {
+            const btn = document.getElementById('studio-publish');
+            btn.disabled = true;
+            try {
+                const r = await StudioLooks.publish();
+                showToast(r && r.success ? 'ส่งลุคขึ้นคลาวด์แล้ว (' + r.looks + ' ลุค) · มือถือลูกค้าเห็นทันที'
+                    : 'ส่งไม่สำเร็จ: ' + ((r && r.error === 'admin_capability_required') ? 'กรุณาใส่ PIN ใหม่' : ((r && r.error) || 'ลองใหม่')));
+            } finally { btn.disabled = false; }
+        }
+
         // ======================== FILTER TOGGLE ========================
         function initFilterToggle() {
             updateFilterToggle();
+            initStudioCard().catch((e) => console.warn('studio card', e));
             renderLensAdmin();
         }
 

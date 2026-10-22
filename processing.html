@@ -59,6 +59,9 @@
                     customThemeObj = await fetchCustomThemeById(template);
                 }
 
+                // The phone studio gets the shots as taken (before any filter).
+                const studioShots = photos.slice();
+
                 // 0. Apply filter to photos (if not original)
                 if (selectedFilter && selectedFilter !== 'original') {
                     statusText.innerText = "Applying filter...";
@@ -107,6 +110,12 @@
                     await SessionAsync.set('dithered', workCanvas.toDataURL('image/jpeg', 0.92));
                 } else {
                     await SessionAsync.remove('dithered');
+                }
+
+                // Phone studio bundle (shots + frame layers) must also be built before raw frames are erased.
+                if (Kiosk.studioEnabled) {
+                    statusText.innerText = "Preparing photo studio...";
+                    await prepareStudioBundle(studioShots, currentLayoutStr);
                 }
 
                 // The GIF blob must be in IndexedDB before raw frames are erased.
