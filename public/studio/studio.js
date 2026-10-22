@@ -39,6 +39,7 @@
     function manifestUrl() {
         const id = location.hash.slice(1).split(/[?&]/)[0];
         if (id === 'local') return 'local';                                 // dev only: bundle built by the kiosk page on this machine
+        if (id === 'demo') return 'demo';                                   // try-out with any photos
         return /^[0-9a-f]{32}$/.test(id) ? `${BUCKET_URL}/studio/${id}/manifest.json` : null;
     }
 
@@ -47,10 +48,9 @@
         const url = manifestUrl();
         if (!url) return fail('ไม่พบรูป', 'กรุณาสแกน QR Code ที่ตู้อีกครั้ง');
         let manifest;
-        if (url === 'local') {
-            manifest = await localManifest();
-            if (!manifest) return fail('ไม่มีชุดรูปทดสอบ', 'ถ่ายรูปบนตู้ทดสอบ (localhost) ก่อน');
-        } else try {
+        if (url === 'local') manifest = await localManifest();
+        if (url === 'demo' || (url === 'local' && !manifest)) manifest = await demoManifest();
+        else if (url !== 'local') try {
             const response = await fetch(url, { cache: 'no-store' });
             if (!response.ok) throw new Error(String(response.status));
             manifest = await response.json();
@@ -98,17 +98,57 @@
                 get.onsuccess = () => {
                     const b = get.result;
                     if (!b || !b.shots) return resolve(null);
-                    let localLooks = null;   // what the admin page saved on this machine, shaped like the published looks.json
-                    try {
-                        const saved = JSON.parse(localStorage.getItem('kiosk_studio_looks') || 'null');
-                        if (saved && Array.isArray(saved.looks)) localLooks = { looks: saved.looks.filter((l) => l.enabled !== false)
-                            .map((l) => ({ id: l.id, name: l.name, builtin: !!l.builtin, strength: l.strength ?? 1, atlas: l.builtin ? null : l.atlas })), defaults: saved.defaults };
-                    } catch (_) { /* none */ }
-                    resolve({ shots: b.shots, original: null, expiresAt: null, looks: null, localLooks,
+                    resolve({ shots: b.shots, original: null, expiresAt: null, looks: null, localLooks: savedLocalLooks(),
                         frame: b.frame ? { width: b.frame.width, height: b.frame.height, under: b.frame.under, over: b.frame.over, slots: b.frame.slots } : null });
                 };
             };
         });
+    }
+
+    // Looks the admin page saved in this browser (same site only), shaped like the published looks.json.
+    function savedLocalLooks() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('kiosk_studio_looks') || 'null');
+            if (!saved || !Array.isArray(saved.looks)) return null;
+            return { looks: saved.looks.filter((l) => l.enabled !== false)
+                .map((l) => ({ id: l.id, name: l.name, builtin: !!l.builtin, strength: l.strength ?? 1, atlas: l.builtin ? null : l.atlas })),
+                defaults: saved.defaults };
+        } catch (_) { return null; }
+    }
+
+    // Try-out: the photos come from the person's own device (nothing is uploaded).
+    function demoManifest() {
+        $('loading').hidden = true;
+        $('demo').hidden = false;
+        return new Promise((resolve) => {
+            const done = (shots) => {
+                $('demo').hidden = true;
+                $('loading').hidden = false;
+                resolve({ shots, original: null, expiresAt: null, looks: null, frame: null, localLooks: savedLocalLooks() });
+            };
+            $('demo-files').onchange = (e) => {
+                const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/')).slice(0, 4);
+                if (files.length) done(files.map((f) => URL.createObjectURL(f)));
+            };
+            $('demo-sample').onclick = () => done([samplePhoto(0), samplePhoto(1)]);
+        });
+    }
+    function samplePhoto(i) {
+        const c = document.createElement('canvas');
+        c.width = 1200; c.height = 900;
+        const g = c.getContext('2d');
+        const sky = g.createLinearGradient(0, 0, 0, 900);
+        sky.addColorStop(0, ['#8fb5d6', '#d6b48f'][i % 2]); sky.addColorStop(1, '#3a332d');
+        g.fillStyle = sky; g.fillRect(0, 0, 1200, 900);
+        g.fillStyle = '#d9a383'; g.beginPath(); g.ellipse(600, 400, 180, 230, 0, 0, Math.PI * 2); g.fill();
+        const d = g.getImageData(0, 0, 1200, 900);
+        for (let k = 0; k < d.data.length; k += 4) { const n = (Math.random() - 0.5) * 34; d.data[k] += n; d.data[k + 1] += n; d.data[k + 2] += n; }
+        g.putImageData(d, 0, 0);
+        g.fillStyle = '#2b211c'; g.beginPath(); g.ellipse(600, 230, 200, 100, 0, Math.PI, 0); g.fill();
+        g.fillStyle = '#222'; g.beginPath(); g.ellipse(535, 360, 22, 13, 0, 0, Math.PI * 2); g.ellipse(665, 360, 22, 13, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#a5444a'; g.beginPath(); g.ellipse(600, 505, 55, 16, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#ece7df'; g.fillRect(360, 660, 480, 240);
+        return c.toDataURL('image/jpeg', 0.92);
     }
 
     async function loadLooks(url) {

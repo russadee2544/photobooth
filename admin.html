@@ -246,6 +246,7 @@
                 </div>
                 <div class="mt-4 flex items-center justify-between gap-3">
                     <span id="studio-publish-note" class="text-[11px] text-gray-500">ลุคและค่าผิวต้องส่งขึ้นคลาวด์ก่อน มือถือลูกค้าถึงจะเห็น</span>
+                    <button type="button" onclick="openStudioDemo()" class="shrink-0 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-gray-700">ลองแต่งรูป</button>
                     <button type="button" id="studio-publish" onclick="publishStudioLooks()" class="shrink-0 bg-white text-gray-900 rounded-lg px-4 py-2 text-sm font-bold hover:bg-gray-200">ส่งขึ้นคลาวด์ให้ทุกตู้</button>
                 </div>
             </div>
@@ -2572,6 +2573,13 @@
                 document.getElementById('studio-publish').classList.add('hidden');
                 document.getElementById('studio-publish-note').textContent = 'ลุคและค่าผิวตั้งได้ที่ตู้หลักเท่านั้น (ส่งขึ้นคลาวด์ให้ทุกตู้จากตู้หลัก)';
             }).catch(() => {});
+        }
+
+        // Try the studio with any photos: same site in development, the studio's own address once it is hosted.
+        function openStudioDemo() {
+            const local = /^(localhost|127.0.0.1)$/.test(location.hostname);
+            const base = local || !Kiosk.studioUrl ? '/studio/index.html' : Kiosk.studioUrl + '/';
+            window.open(base + '#demo', '_blank');
         }
 
         async function publishStudioLooks() {

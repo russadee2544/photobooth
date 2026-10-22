@@ -84,6 +84,16 @@
         <div id="error-text">รูปจะเก็บไว้ 24 ชั่วโมงหลังถ่าย</div>
     </div>
 
+    <!-- Try-out mode (#demo): the owner picks any photos to test looks and skin settings -->
+    <div class="state" id="demo" hidden>
+        <h2>ลองแต่งรูป</h2>
+        <div>เลือกรูปจากเครื่อง (ได้สูงสุด 4 รูป) เพื่อลองลุคและการปรับผิว</div>
+        <label class="btn primary" style="cursor:pointer;min-width:220px;">เลือกรูปจากเครื่อง
+            <input type="file" id="demo-files" accept="image/*" multiple hidden>
+        </label>
+        <button type="button" class="btn ghost" id="demo-sample" style="min-width:220px;">ใช้รูปตัวอย่าง</button>
+    </div>
+
     <main id="app" hidden>
         <div class="stage" id="stage">
             <canvas id="preview"></canvas>
