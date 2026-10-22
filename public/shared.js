@@ -87,6 +87,11 @@ const Kiosk = {
     get promptPayEnabled() { return localStorage.getItem('kiosk_promptpay_enabled') !== 'false'; },
     set promptPayEnabled(v) { localStorage.setItem('kiosk_promptpay_enabled', v ? 'true' : 'false'); },
     // GIF download (default on). Effective only while download QR is on too.
+    // Phone photo studio: the photo QR opens a page where the customer picks a look and saves.
+    get studioEnabled() { return localStorage.getItem('kiosk_studio_enabled') === 'true' && !!this.studioUrl; },
+    set studioEnabled(v) { localStorage.setItem('kiosk_studio_enabled', v ? 'true' : 'false'); },
+    get studioUrl() { return (localStorage.getItem('kiosk_studio_url') || '').trim().replace(/\/+$/, ''); },
+    set studioUrl(v) { localStorage.setItem('kiosk_studio_url', String(v || '').trim()); },
     get gifEnabled() { return localStorage.getItem('kiosk_gif_enabled') !== 'false'; },
     set gifEnabled(v) { localStorage.setItem('kiosk_gif_enabled', v ? 'true' : 'false'); },
     get kioskId() { return localStorage.getItem('kiosk_id') || ''; },
@@ -2283,8 +2288,11 @@ async function drawTextLayer(ctx, layer, width, height, scale) {
     });
 }
 
+// target.pass: undefined = everything; 'under' = background and back layers only (no photos);
+// 'over' = front layers and overlays only, on a transparent canvas. Used for the phone studio.
 async function drawTemplateUnit(ctx, schema, images, templateName, customThemeObj, target) {
     const engine = window.PhotoTemplateEngine;
+    const pass = target.pass || 'all';
     const scaleX = target.width / schema.canvas.width;
     const scaleY = target.height / schema.canvas.height;
     const bg = customThemeObj && customThemeObj.theme_type === 'text'
@@ -2293,9 +2301,11 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
 
     ctx.save();
     ctx.translate(target.x, target.y);
+    if (pass !== 'over') {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, target.width, target.height);
-    if (schema.canvas && schema.canvas.backgroundImage) {
+    }
+    if (pass !== 'over' && schema.canvas && schema.canvas.backgroundImage) {
         const bgImage = await loadTemplateImage(schema.canvas.backgroundImage);
         if (bgImage) {
             const fit = (schema.canvas && schema.canvas.backgroundFitMode) || 'cover';
@@ -2352,9 +2362,10 @@ async function drawTemplateUnit(ctx, schema, images, templateName, customThemeOb
         }
     };
 
-    await drawArtboardLayers('back');
+    if (pass !== 'over') await drawArtboardLayers('back');
+    if (pass === 'under') { ctx.restore(); return; }
 
-    schema.slots.slice().sort((a, b) => a.zIndex - b.zIndex).forEach((slot) => {
+    if (pass !== 'over') schema.slots.slice().sort((a, b) => a.zIndex - b.zIndex).forEach((slot) => {
         const image = images[slot.index - 1];
         const x = slot.x * scaleX;
         const y = slot.y * scaleY;
@@ -2713,6 +2724,132 @@ async function uploadToCloud(dataUrl, kind) {
         return null;
     }
 }
+
+// ======================== PHONE PHOTO STUDIO ========================
+// The photo QR can open a phone page (studio/) where the customer picks a colour look and skin
+// smoothing, then saves. It needs the shots without the frame plus the frame split in two layers
+// (behind / in front of the photos) and where the photo slots are. Built in processing (the raw
+// shots are erased there), uploaded from the print page with the same one-session photo ticket.
+const STUDIO_BUNDLE_KEY = 'studio_bundle';
+const STUDIO_SHOT_EDGE = 1600;
+const STUDIO_FRAME_WIDTH = 1200;
+
+function studioScaled(image, maxEdge) {
+    const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
+    const k = Math.min(1, maxEdge / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext('2d').drawImage(image, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.88);
+}
+
+// shots: the confirmed photos before any filter. Stores the bundle for the print page. Never throws.
+async function prepareStudioBundle(shots, layoutStr) {
+    await PB_DB.del(STUDIO_BUNDLE_KEY).catch(() => {});
+    if (!Kiosk.studioEnabled || !Kiosk.qrEnabled || !Array.isArray(shots) || !shots.length) return false;
+    try {
+        const images = (await Promise.all(shots.map(loadTemplateImage))).filter(Boolean);
+        const bundle = { shots: images.map((img) => studioScaled(img, STUDIO_SHOT_EDGE)), frame: null };
+        const schema = window.PhotoTemplateEngine && TemplateCatalog.current(layoutStr);
+        if (schema) {
+            const t = PhotoTemplateEngine.normalizeTemplate(schema);
+            const width = STUDIO_FRAME_WIDTH, height = Math.round(width * t.canvas.height / t.canvas.width);
+            const k = width / t.canvas.width;
+            const layer = async (pass, type) => {
+                const c = document.createElement('canvas');
+                c.width = width; c.height = height;
+                await drawTemplateUnit(c.getContext('2d'), t, [], 'custom_schema', null, { x: 0, y: 0, width, height, pass });
+                return type === 'png' ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.9);
+            };
+            bundle.frame = {
+                width, height,
+                under: await layer('under', 'jpeg'),
+                over: await layer('over', 'png'),
+                slots: t.slots.map((s) => ({ index: s.index, x: Math.round(s.x * k), y: Math.round(s.y * k),
+                    width: Math.round(s.width * k), height: Math.round(s.height * k), rotation: s.rotation || 0,
+                    shape: s.shape || 'rectangle', focusX: s.focusX ?? 0.5, focusY: s.focusY ?? 0.42, zIndex: s.zIndex || s.index }))
+            };
+        }
+        await PB_DB.set(STUDIO_BUNDLE_KEY, bundle);
+        return true;
+    } catch (e) {
+        console.warn('Studio bundle skipped:', e);
+        return false;
+    }
+}
+
+async function postStudioPart(ticket, kind, body, contentType) {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/session-photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': contentType, 'x-photo-ticket': ticket, 'x-photo-kind': kind },
+        body
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.error || `http_${response.status}`);
+    return json;
+}
+
+// After the colour photo is uploaded (same ticket). Resolves to the studio link, or null.
+async function uploadStudioBundle(originalUrl) {
+    if (!Kiosk.studioEnabled) return null;
+    let bundle = null;
+    try { bundle = await PB_DB.get(STUDIO_BUNDLE_KEY); } catch (_) {}
+    if (!bundle || !Array.isArray(bundle.shots) || !bundle.shots.length) return null;
+    try {
+        const ticket = await ensurePhotoUploadTicket();
+        if (!ticket) return null;
+        const blob = async (dataUrl) => (await fetch(dataUrl)).blob();
+        for (const shot of bundle.shots.slice(0, 8)) await postStudioPart(ticket, 'studio-shot', await blob(shot), 'image/jpeg');
+        if (bundle.frame) {
+            await postStudioPart(ticket, 'studio-under', await blob(bundle.frame.under), 'image/jpeg');
+            await postStudioPart(ticket, 'studio-over', await blob(bundle.frame.over), 'image/png');
+        }
+        const manifest = {
+            original: originalUrl || null,
+            frame: bundle.frame ? { width: bundle.frame.width, height: bundle.frame.height, slots: bundle.frame.slots } : null
+        };
+        const done = await postStudioPart(ticket, 'studio-manifest', JSON.stringify(manifest), 'application/vnd.photobooth.studio+json');
+        if (!done.studioId) return null;
+        await PB_DB.del(STUDIO_BUNDLE_KEY).catch(() => {});
+        return `${Kiosk.studioUrl}/#${done.studioId}`;
+    } catch (e) {
+        console.warn('Studio upload failed, the QR opens the plain photo:', e);
+        return null;
+    }
+}
+
+// Looks for the phone studio, managed on the main kiosk's admin page and published for every kiosk.
+// stored locally as { looks: [{ id, name, builtin?, atlas? (PNG data URL), size?, strength, enabled }],
+//                     defaults: { look, smooth, bright, tone } }
+const STUDIO_LOOKS_KEY = 'kiosk_studio_looks';
+const StudioLooks = {
+    load() {
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem(STUDIO_LOOKS_KEY) || 'null'); } catch (_) {}
+        const builtins = (window.LookEngine ? LookEngine.BUILTIN : []).map((l) => ({ id: l.id, name: l.th, builtin: true, strength: 1, enabled: true }));
+        const looks = Array.isArray(saved?.looks) ? saved.looks : [];
+        // Built-ins first (keeping their saved switches), then uploaded LUTs.
+        const merged = builtins.map((b) => Object.assign(b, looks.find((l) => l.id === b.id && l.builtin) || {}, { builtin: true }))
+            .concat(looks.filter((l) => !l.builtin));
+        const defaults = Object.assign({ look: 'none', smooth: 0.35, bright: 0.25, tone: 0 }, saved?.defaults || {});
+        return { looks: merged, defaults };
+    },
+    save(value) {
+        try { localStorage.setItem(STUDIO_LOOKS_KEY, JSON.stringify(value)); return true; }
+        catch (_) { return false; }
+    },
+    // Sent to the cloud (main kiosk only); the phone studio reads it from there.
+    async publish() {
+        const bridge = window.PhotoboothDevice;
+        if (!bridge || typeof bridge.publishStudioLooks !== 'function') return { success: false, error: 'not_supported' };
+        const { looks, defaults } = this.load();
+        return bridge.publishStudioLooks({
+            looks: looks.filter((l) => l.enabled !== false).map((l) => ({ id: l.id, name: l.name, builtin: !!l.builtin,
+                strength: l.strength ?? 1, atlas: l.builtin ? null : l.atlas })),
+            defaults
+        });
+    }
+};
 
 // The session-photo function writes the log row together with the upload, so the
 // kiosk has nothing left to log. Kept so older pages calling it keep working.

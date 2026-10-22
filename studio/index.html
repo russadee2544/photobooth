@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MEMORIES Studio</title>
+    <meta name="theme-color" content="#0E0E10">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0E0E10; --panel: #18181B; --line: #2A2A2F; --text: #F4F4F5; --muted: #9A9AA3;
+            --accent: #F23B2F; --chip: #232328; --radius: 18px;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Prompt', system-ui, sans-serif; }
+        body { min-height: 100dvh; display: flex; flex-direction: column; }
+        header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+        .brand { font-weight: 700; letter-spacing: .28em; font-size: 13px; }
+        .expiry { font-size: 11px; color: var(--muted); }
+        main { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 6px 16px calc(16px + env(safe-area-inset-bottom)); max-width: 560px; width: 100%; margin: 0 auto; }
+
+        .stage { position: relative; background: #000; border-radius: var(--radius); overflow: hidden; display: flex;
+            align-items: center; justify-content: center; height: min(56dvh, 560px); touch-action: none; user-select: none; }
+        .stage canvas { max-width: 100%; max-height: 100%; display: block; }
+        .hint-below { text-align: center; font-size: 11px; color: var(--muted); margin-top: -6px; }
+        .stage .hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: rgba(255,255,255,.75);
+            pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+        .stage .badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,.6); font-size: 11px; padding: 4px 10px; border-radius: 99px; display: none; }
+        .stage.showing-original .badge { display: block; }
+
+        .seg { display: flex; background: var(--panel); border-radius: 14px; padding: 4px; gap: 4px; }
+        .seg button { flex: 1; border: 0; background: transparent; color: var(--muted); font: 600 14px 'Prompt', sans-serif; padding: 9px 0; border-radius: 10px; }
+        .seg button.on { background: var(--text); color: #111; }
+
+        .shots { display: none; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+        .shots.show { display: flex; }
+        .shots button { flex: 0 0 auto; width: 58px; height: 58px; border-radius: 12px; border: 2px solid transparent; padding: 0; overflow: hidden; background: var(--chip); }
+        .shots button.on { border-color: var(--text); }
+        .shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        .label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; margin: 2px 2px -4px; }
+        .looks { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+        .looks::-webkit-scrollbar, .shots::-webkit-scrollbar { display: none; }
+        .look { flex: 0 0 auto; width: 76px; border: 0; background: none; color: var(--muted); padding: 0; font: 500 12px 'Prompt', sans-serif; text-align: center; }
+        .look .thumb { width: 76px; height: 76px; border-radius: 14px; overflow: hidden; background: var(--chip); border: 2px solid transparent; margin-bottom: 4px; }
+        .look .thumb canvas, .look .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .look.on { color: var(--text); }
+        .look.on .thumb { border-color: var(--text); }
+
+        .panel { background: var(--panel); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+        .row { display: grid; grid-template-columns: 82px 1fr 34px; align-items: center; gap: 10px; font-size: 13px; }
+        .row output { text-align: right; color: var(--muted); font-size: 12px; }
+        input[type=range] { width: 100%; accent-color: var(--text); }
+        .tone-ends { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: -8px; padding: 0 34px 0 92px; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { border: 0; border-radius: 14px; padding: 14px; font: 600 15px 'Prompt', sans-serif; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn.primary { background: var(--accent); color: #fff; }
+        .btn.ghost { background: var(--panel); color: var(--text); }
+        .btn:disabled { opacity: .5; }
+        .links { display: flex; justify-content: center; gap: 18px; font-size: 12px; }
+        .links a { color: var(--muted); }
+
+        .state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 40px 24px; color: var(--muted); }
+        .state h2 { color: var(--text); margin: 0; font-size: 18px; }
+        .spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--text); border-radius: 50%; animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); background: var(--text); color: #111;
+            font-size: 13px; padding: 10px 16px; border-radius: 99px; opacity: 0; transition: .25s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateX(-50%); }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">MEMORIES</div>
+        <div class="expiry" id="expiry"></div>
+    </header>
+
+    <div class="state" id="loading"><div class="spinner"></div><div>กำลังโหลดรูปของคุณ…</div></div>
+    <div class="state" id="error" hidden>
+        <h2 id="error-title">ลิงก์นี้หมดอายุแล้ว</h2>
+        <div id="error-text">รูปจะเก็บไว้ 24 ชั่วโมงหลังถ่าย</div>
+    </div>
+
+    <main id="app" hidden>
+        <div class="stage" id="stage">
+            <canvas id="preview"></canvas>
+            <div class="badge">ต้นฉบับ</div>
+        </div>
+        <div class="hint-below">แตะค้างที่รูปเพื่อเทียบกับต้นฉบับ</div>
+
+        <div class="seg" id="mode">
+            <button type="button" data-mode="frame" class="on">กรอบ</button>
+            <button type="button" data-mode="shot">รูปเดี่ยว</button>
+        </div>
+        <div class="shots" id="shots"></div>
+
+        <div class="label"><span>ลุค</span><span id="look-name"></span></div>
+        <div class="looks" id="looks"></div>
+
+        <div class="panel">
+            <div class="row" id="strength-row"><span>ความแรงลุค</span><input type="range" id="strength" min="0" max="100" value="100"><output id="strength-out">100</output></div>
+            <div class="row"><span>ผิวละมุน</span><input type="range" id="smooth" min="0" max="100" value="35"><output id="smooth-out">35</output></div>
+            <div class="row"><span>ผิวสว่าง</span><input type="range" id="bright" min="0" max="100" value="25"><output id="bright-out">25</output></div>
+            <div class="row"><span>โทนผิว</span><input type="range" id="tone" min="-100" max="100" value="0"><output id="tone-out">0</output></div>
+            <div class="tone-ends"><span>อมเหลือง</span><span>อมชมพู</span></div>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn ghost" id="share">แชร์</button>
+            <button type="button" class="btn primary" id="save">บันทึกรูป</button>
+        </div>
+        <div class="links">
+            <a id="original" href="#" target="_blank" rel="noopener" hidden>ดาวน์โหลดต้นฉบับ</a>
+        </div>
+    </main>
+    <div class="toast" id="toast"></div>
+
+    <script src="/template-engine.js"></script>
+    <script src="/look-engine.js"></script>
+    <script src="/studio/studio.js"></script>
+</body>
+</html>

@@ -98,6 +98,10 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     themePublish: (a) => (adminValid()
       ? callFunction('theme-sync', { operation: 'publish', bundle: a.bundle }, { 'x-admin-capability': admin.token })
       : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    // Looks for the phone photo studio (main kiosk only, PIN session).
+    publishStudioLooks: (a) => (adminValid()
+      ? callFunction('theme-sync', { operation: 'publishLooks', looks: a.looks, defaults: a.defaults }, { 'x-admin-capability': admin.token })
+      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
     listPrintPasses: async () => {
       const result = await withAdmin({ operation: 'listPass' });
       if (!result.success) return { success: false, codes: [], error: result.error };

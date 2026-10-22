@@ -589,6 +589,8 @@
                         if (!colorUrl) throw new Error('Cloud upload returned empty url');
 
                         Session.colorCloudUrl = colorUrl;
+                        // Phone studio on: the QR opens the studio (pick a look, save) instead of the plain photo.
+                        const studioLink = await uploadStudioBundle(colorUrl);
                         showThumb('thumb-color', result);
 
                         // Check if distinct dithered version exists (e.g. thermal receipt)
@@ -607,7 +609,7 @@
                         if (qrColorEl) {
                             qrColorEl.innerHTML = '';
                             new QRCode(qrColorEl, {
-                                text: colorUrl,
+                                text: studioLink || colorUrl,
                                 width: 128,
                                 height: 128,
                                 colorDark: "#000000",
