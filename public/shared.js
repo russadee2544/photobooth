@@ -3806,17 +3806,85 @@ const FILTER_PRESETS = {
     vintage:   { name: { th: 'วินเทจ',     en: 'Vintage' },   css: 'sepia(55%) contrast(108%) brightness(96%)' },
     bright:    { name: { th: 'สดใส',       en: 'Bright' },    css: 'brightness(115%) saturate(125%)' },
     soft:      { name: { th: 'นุ่มนวล',   en: 'Soft' },      css: 'brightness(108%) contrast(88%) saturate(85%)' },
-    dramatic:  { name: { th: 'ดราม่า',    en: 'Dramatic' },  css: 'contrast(135%) saturate(130%) brightness(88%)' }
+    dramatic:  { name: { th: 'ดราม่า',    en: 'Dramatic' },  css: 'contrast(135%) saturate(130%) brightness(88%)' },
+    fisheye:   { name: { th: 'ฟิชอาย',     en: 'Fisheye' },   css: 'none', warp: 'fisheye' }
 };
+
+// Fisheye lens look: remaps a rectilinear photo onto an equidistant fisheye
+// projection (centre bulges out, edges bend), then darkens the corners like a
+// real wide lens. The frame stays full so it still fills every layout slot.
+const FISHEYE_MAX_ANGLE = 1.15; // half-diagonal field of view in radians
+const FISHEYE_VIGNETTE = 0.45;
+
+// source: Image or canvas. maxDim (optional) downsizes first, for previews.
+function fisheyeCanvas(source, maxDim) {
+    const sw = source.naturalWidth || source.width;
+    const sh = source.naturalHeight || source.height;
+    const scale = maxDim ? Math.min(1, maxDim / Math.max(sw, sh)) : 1;
+    const w = Math.max(1, Math.round(sw * scale));
+    const h = Math.max(1, Math.round(sh * scale));
+
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    const sctx = srcCanvas.getContext('2d');
+    sctx.drawImage(source, 0, 0, w, h);
+    const src = sctx.getImageData(0, 0, w, h).data;
+
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const octx = out.getContext('2d');
+    const dstImage = octx.createImageData(w, h);
+    const dst = dstImage.data;
+
+    const cx = (w - 1) / 2;
+    const cy = (h - 1) / 2;
+    const radius = Math.hypot(cx, cy) || 1;
+    const tanMax = Math.tan(FISHEYE_MAX_ANGLE);
+
+    for (let y = 0; y < h; y++) {
+        const dy = y - cy;
+        for (let x = 0; x < w; x++) {
+            const dx = x - cx;
+            const rn = Math.hypot(dx, dy) / radius;
+            // Output radius is proportional to the view angle; the source is
+            // rectilinear, so its radius follows tan(angle).
+            const k = rn > 0 ? (Math.tan(rn * FISHEYE_MAX_ANGLE) / tanMax) / rn : 1;
+            const sx = Math.min(w - 1, Math.max(0, cx + dx * k));
+            const sy = Math.min(h - 1, Math.max(0, cy + dy * k));
+
+            const x0 = sx | 0, y0 = sy | 0;
+            const x1 = Math.min(x0 + 1, w - 1), y1 = Math.min(y0 + 1, h - 1);
+            const fx = sx - x0, fy = sy - y0;
+            const i00 = (y0 * w + x0) * 4, i10 = (y0 * w + x1) * 4;
+            const i01 = (y1 * w + x0) * 4, i11 = (y1 * w + x1) * 4;
+            const shade = 1 - FISHEYE_VIGNETTE * rn * rn * rn;
+            const o = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+                const top = src[i00 + c] + (src[i10 + c] - src[i00 + c]) * fx;
+                const bottom = src[i01 + c] + (src[i11 + c] - src[i01 + c]) * fx;
+                dst[o + c] = (top + (bottom - top) * fy) * shade;
+            }
+            dst[o + 3] = 255;
+        }
+    }
+    octx.putImageData(dstImage, 0, 0);
+    return out;
+}
 
 // Apply a CSS filter to an array of photo DataURLs via canvas (for processing)
 async function applyPhotosFilter(photos, filterName) {
     const preset = FILTER_PRESETS[filterName];
-    if (!preset || preset.css === 'none') return photos;
+    if (!preset || (preset.css === 'none' && !preset.warp)) return photos;
 
     return Promise.all(photos.map(src => new Promise(resolve => {
         const img = new Image();
         img.onload = () => {
+            if (preset.warp === 'fisheye') {
+                resolve(fisheyeCanvas(img).toDataURL('image/jpeg', 0.92));
+                return;
+            }
             const c = document.createElement('canvas');
             c.width = img.width;
             c.height = img.height;

@@ -59,6 +59,7 @@
         .filter-bright    { filter: brightness(115%) saturate(125%); }
         .filter-soft      { filter: brightness(108%) contrast(88%) saturate(85%); }
         .filter-dramatic  { filter: contrast(135%) saturate(130%) brightness(88%); }
+        .filter-fisheye   { filter: none; }
     </style>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -143,6 +144,12 @@
                     <div class="filter-label" id="label-dramatic">ดราม่า</div>
                 </div>
 
+                <!-- Fisheye (lens warp, rendered on a canvas) -->
+                <div class="filter-card" data-filter="fisheye">
+                    <img class="filter-thumb filter-fisheye" id="thumb-fisheye" src="" alt="Fisheye">
+                    <div class="filter-label" id="label-fisheye">ฟิชอาย</div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -172,6 +179,7 @@
                 bright: 'สดใส',
                 soft: 'นุ่มนวล',
                 dramatic: 'ดราม่า',
+                fisheye: 'ฟิชอาย',
             },
             en: {
                 title: 'Choose a Filter',
@@ -183,6 +191,7 @@
                 bright: 'Bright',
                 soft: 'Soft',
                 dramatic: 'Dramatic',
+                fisheye: 'Fisheye',
             }
         };
 
@@ -194,9 +203,14 @@
             bright:   'filter-bright',
             soft:     'filter-soft',
             dramatic: 'filter-dramatic',
+            fisheye:  'filter-fisheye',
         };
 
         let selectedFilter = 'original';
+        // The fisheye look is a pixel warp, not a CSS filter, so its preview is
+        // a pre-rendered image swapped into the big preview.
+        let previewSrc = null;
+        let fisheyePreviewSrc = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             // If filter feature is disabled in admin, skip to processing
@@ -218,10 +232,11 @@
             document.getElementById('label-bright').innerText = L.bright;
             document.getElementById('label-soft').innerText = L.soft;
             document.getElementById('label-dramatic').innerText = L.dramatic;
+            document.getElementById('label-fisheye').innerText = L.fisheye;
 
             // Load photos from session
             const photos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
-            const previewSrc = photos.length > 0 ? photos[0] : null;
+            previewSrc = photos.length > 0 ? photos[0] : null;
 
             if (previewSrc) {
                 // Set all thumbnails to the first photo
@@ -238,6 +253,14 @@
                     bigPreview.style.display = '';
                     placeholder.style.display = 'none';
                 };
+
+                const fisheyeSource = new Image();
+                fisheyeSource.onload = () => {
+                    fisheyePreviewSrc = fisheyeCanvas(fisheyeSource, 900).toDataURL('image/jpeg', 0.9);
+                    document.getElementById('thumb-fisheye').src = fisheyePreviewSrc;
+                    if (selectedFilter === 'fisheye') bigPreview.src = fisheyePreviewSrc;
+                };
+                fisheyeSource.src = previewSrc;
             }
 
             // Restore previously selected filter (if user navigates back)
@@ -273,6 +296,8 @@
             Object.values(BIG_FILTER_CLASSES).forEach(cls => bigPreview.classList.remove(cls));
             // Add selected filter class
             bigPreview.classList.add(BIG_FILTER_CLASSES[filterName] || 'filter-original');
+            const wantedSrc = filterName === 'fisheye' ? (fisheyePreviewSrc || previewSrc) : previewSrc;
+            if (wantedSrc && bigPreview.getAttribute('src') !== wantedSrc) bigPreview.src = wantedSrc;
 
             if (animate) {
                 bigPreview.style.opacity = '0.6';
