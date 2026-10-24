@@ -1,13 +1,13 @@
 {
   "packId": "pinkretro-2x6",
-  "version": 1,
+  "version": 2,
   "name": "Pink Retro (2x6)",
   "templates": [
     {
       "schemaVersion": 1,
-      "templateId": "custom_pack_pinkretro_2x6_4",
-      "layoutId": "4_3x2",
-      "name": "Pink Retro · 2×6 · 4 รูป",
+      "templateId": "custom_pack_pinkretro_2x6_1",
+      "layoutId": "1_3x2",
+      "name": "Pink Retro · 2×6 · 1 รูป",
       "type": "2x6",
       "orientation": "portrait",
       "enabled": true,
@@ -17,7 +17,7 @@
         "height": 1800,
         "dpi": 300,
         "backgroundColor": "#232323",
-        "backgroundImage": "/theme-packs/pinkretro/paper.jpg",
+        "backgroundImage": "/theme-packs/pinkretro/strip-1-dark.jpg",
         "backgroundFitMode": "stretch",
         "safeMargin": {
           "top": 0,
@@ -41,7 +41,250 @@
         {
           "id": "stickers",
           "name": "Stickers and frame lines",
-          "url": "/theme-packs/pinkretro/over.png",
+          "url": "/theme-packs/pinkretro/strip-1-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 600,
+          "height": 1800,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 60,
+          "y": 636,
+          "width": 480,
+          "height": 339,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": true,
+        "paperSize": "2x6"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_pinkretro_2x6_2",
+      "layoutId": "2_3x2",
+      "name": "Pink Retro · 2×6 · 2 รูป",
+      "type": "2x6",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 600,
+        "height": 1800,
+        "dpi": 300,
+        "backgroundColor": "#232323",
+        "backgroundImage": "/theme-packs/pinkretro/strip-2-dark.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stickers",
+          "name": "Stickers and frame lines",
+          "url": "/theme-packs/pinkretro/strip-2-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 600,
+          "height": 1800,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 86,
+          "y": 353,
+          "width": 429,
+          "height": 281,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 60,
+          "y": 889,
+          "width": 480,
+          "height": 339,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": true,
+        "paperSize": "2x6"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_pinkretro_2x6_3",
+      "layoutId": "3_3x2",
+      "name": "Pink Retro · 2×6 · 3 รูป",
+      "type": "2x6",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 600,
+        "height": 1800,
+        "dpi": 300,
+        "backgroundColor": "#232323",
+        "backgroundImage": "/theme-packs/pinkretro/strip-3-dark.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stickers",
+          "name": "Stickers and frame lines",
+          "url": "/theme-packs/pinkretro/strip-3-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 600,
+          "height": 1800,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 86,
+          "y": 212,
+          "width": 429,
+          "height": 281,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 60,
+          "y": 607,
+          "width": 480,
+          "height": 339,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        },
+        {
+          "index": 3,
+          "x": 86,
+          "y": 1060,
+          "width": 429,
+          "height": 281,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": true,
+        "paperSize": "2x6"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_pinkretro_2x6_4",
+      "layoutId": "4_3x2",
+      "name": "Pink Retro · 2×6 · 4 รูป",
+      "type": "2x6",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 600,
+        "height": 1800,
+        "dpi": 300,
+        "backgroundColor": "#232323",
+        "backgroundImage": "/theme-packs/pinkretro/strip-4-dark.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stickers",
+          "name": "Stickers and frame lines",
+          "url": "/theme-packs/pinkretro/strip-4-over.png",
           "placement": "front",
           "x": 0,
           "y": 0,
