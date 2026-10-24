@@ -747,7 +747,8 @@
         { id: 'hexagon', label: 'หกเหลี่ยม', labelEn: 'Hexagon' },
         { id: 'star', label: 'ดาว', labelEn: 'Star' },
         { id: 'arch', label: 'ซุ้มประตู', labelEn: 'Arch' },
-        { id: 'stamp', label: 'แสตมป์', labelEn: 'Stamp' }
+        { id: 'stamp', label: 'แสตมป์', labelEn: 'Stamp' },
+        { id: 'cloud', label: 'ก้อนเมฆ', labelEn: 'Cloud' }
     ];
     const SHAPE_IDS = SHAPES.map((shape) => shape.id);
     const fix = (value) => Math.round(value * 100) / 100;
@@ -776,6 +777,9 @@
     }
 
     // Heart from cubic curves in the unit square (tip at the bottom centre).
+    // Puffy cloud (from the Pink Retro Canva strip), unit square, cubic curves.
+    const CLOUD = [["M",0.5678,0],["C",0.5787,0,0.5898,0,0.6007,0],["C",0.688,0.0167,0.7425,0.0723,0.7674,0.1633],["C",0.9129,0.1511,1.0187,0.3232,0.9542,0.492],["C",0.9757,0.5275,0.9935,0.5671,1,0.6204],["C",1,0.6357,1,0.6509,1,0.6661],["C",0.9808,0.8017,0.8979,0.8933,0.7619,0.8686],["C",0.7269,0.9382,0.6647,1.0079,0.5678,0.9993],["C",0.5177,0.9947,0.4829,0.9682,0.4524,0.9361],["C",0.4203,0.9628,0.3855,0.9838,0.3352,0.984],["C",0.2189,0.9844,0.1411,0.8814,0.1392,0.7402],["C",0.0644,0.7071,0.0138,0.6455,0,0.5399],["C",0,0.5247,0,0.5094,0,0.4942],["C",0.0152,0.3896,0.0631,0.3239,0.1428,0.2961],["C",0.138,0.1196,0.2975,0.0094,0.4286,0.0871],["C",0.4598,0.0487,0.5039,0.0068,0.5678,0]];
+
     const HEART = [
         ['M', 0.5, 1],
         ['C', 0.15, 0.74, 0, 0.53, 0, 0.32],
@@ -843,6 +847,8 @@
                 return `M0 ${fix(h)}V${fix(ry)}A${fix(rx)} ${fix(ry)} 0 0 1 ${fix(w)} ${fix(ry)}V${fix(h)}Z`;
             }
             case 'stamp': return stampGeometry(w, h).path;
+            case 'cloud':
+                return CLOUD.map(([cmd, ...n]) => cmd + n.map((v, i) => fix(v * (i % 2 === 0 ? w : h))).join(' ')).join('') + 'Z';
             default: return `M0 0H${fix(w)}V${fix(h)}H0Z`;
         }
     }

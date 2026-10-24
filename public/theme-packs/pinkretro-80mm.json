@@ -1,0 +1,112 @@
+{
+  "packId": "pinkretro-80mm",
+  "version": 1,
+  "name": "Pink Retro (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_pinkretro_80_4",
+      "layoutId": "4_3x2",
+      "name": "Pink Retro · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1728,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/pinkretro/paper-thermal.jpg",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "stickers",
+          "name": "Stickers and frame lines",
+          "url": "/theme-packs/pinkretro/over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 1728,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 82,
+          "y": 134,
+          "width": 412,
+          "height": 270,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 2,
+          "x": 58,
+          "y": 443,
+          "width": 461,
+          "height": 325,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        },
+        {
+          "index": 3,
+          "x": 82,
+          "y": 809,
+          "width": 412,
+          "height": 270,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rounded"
+        },
+        {
+          "index": 4,
+          "x": 58,
+          "y": 1119,
+          "width": 461,
+          "height": 325,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}
