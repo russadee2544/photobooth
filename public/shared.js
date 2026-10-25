@@ -2863,7 +2863,7 @@ async function logSessionToCloud() {
 // until the pack's version changes.
 const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json', '/theme-packs/exhibition-58mm.json', '/theme-packs/boarding-58mm.json',
     '/theme-packs/wanted-80mm.json', '/theme-packs/exhibition-80mm.json', '/theme-packs/boarding-80mm.json',
-    '/theme-packs/goodvibes-80mm.json', '/theme-packs/pinkretro-80mm.json'];
+    '/theme-packs/goodvibes-80mm.json', '/theme-packs/pinkretro-80mm.json', '/theme-packs/moment-80mm.json'];
 const ThemePacks = {
     async installAll() {
         for (const url of THEME_PACK_URLS) {

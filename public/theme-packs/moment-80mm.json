@@ -1,0 +1,355 @@
+{
+  "packId": "moment-80mm",
+  "version": 1,
+  "name": "The Moment (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_moment_80_1",
+      "layoutId": "1_2x3",
+      "name": "The Moment · 80mm · 1 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 638,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/moment/receipt-1-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "borders",
+          "name": "Photo borders",
+          "url": "/theme-packs/moment/receipt-1-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 638,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 169,
+          "y": 58,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_moment_80_2",
+      "layoutId": "2_2x3",
+      "name": "The Moment · 80mm · 2 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1183,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/moment/receipt-2-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "borders",
+          "name": "Photo borders",
+          "url": "/theme-packs/moment/receipt-2-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 1183,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 169,
+          "y": 58,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 169,
+          "y": 602,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_moment_80_3",
+      "layoutId": "3_2x3",
+      "name": "The Moment · 80mm · 3 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1727,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/moment/receipt-3-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "borders",
+          "name": "Photo borders",
+          "url": "/theme-packs/moment/receipt-3-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 1727,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 169,
+          "y": 58,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 169,
+          "y": 602,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 169,
+          "y": 1146,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_moment_80_4",
+      "layoutId": "4_2x3",
+      "name": "The Moment · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 2271,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/moment/receipt-4-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [
+        {
+          "id": "borders",
+          "name": "Photo borders",
+          "url": "/theme-packs/moment/receipt-4-over.png",
+          "placement": "front",
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 2271,
+          "rotation": 0,
+          "zIndex": 220,
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "slots": [
+        {
+          "index": 1,
+          "x": 169,
+          "y": 58,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 169,
+          "y": 602,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 169,
+          "y": 1146,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 4,
+          "x": 169,
+          "y": 1691,
+          "width": 349,
+          "height": 523,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}
