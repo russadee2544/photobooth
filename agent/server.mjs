@@ -15,6 +15,7 @@ import { createPrintService } from './print-pass.mjs';
 import { listPrinters, printerHealth, printImage as printViaDriver, printImageEscPos, printImagesEscPos, RECEIPT_DOTS } from './printer-win.mjs';
 import { createHeartbeat } from './heartbeat.mjs';
 import { ensureResetShortcut } from './shortcut.mjs';
+import { keepAwake } from './keep-awake.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
@@ -375,6 +376,8 @@ async function runKiosk(config) {
   server.listen(port, '127.0.0.1', () => {
     console.log(`Photobooth agent on http://localhost:${port}/home.html (mode: ${config.mode}, kiosk: ${config.kioskId})`);
   });
+  // A booth must not go dark between customers.
+  keepAwake({ log: (line) => console.log(`[power] ${line}`) });
 
   createHeartbeat({
     send: (payload) => internal.heartbeat(payload),

@@ -4120,3 +4120,23 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndInjectEventBanner();
     syncPresetBrandingFromDB();
 });
+
+// ======================== KEEP THE BOOTH AWAKE ========================
+// Windows' power plan turns the screen off (then sleeps) after a few idle minutes, which leaves the
+// booth dark between customers. A screen wake lock keeps the display on and stops idle sleep while
+// a kiosk page is showing. The browser drops the lock when the page is hidden, so it is taken again.
+(function keepAwake() {
+    if (typeof navigator === 'undefined' || !navigator.wakeLock) return;
+    let lock = null;
+    async function take() {
+        if (lock || document.visibilityState !== 'visible') return;
+        try {
+            lock = await navigator.wakeLock.request('screen');
+            lock.addEventListener('release', () => { lock = null; });
+        } catch (_) { lock = null; /* e.g. battery saver; try again on the next tap */ }
+    }
+    take();
+    document.addEventListener('visibilitychange', take);
+    document.addEventListener('pointerdown', take, { passive: true });
+    setInterval(take, 60000);
+})();
