@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ตั้งค่าตู้ Photobooth</title>
+  <style>
+    :root { --bg:#f6f4ee; --ink:#1b1a17; --muted:#6b675d; --line:#d9d4c6; --accent:#1b1a17; --bad:#b3261e; --ok:#1d6b3a; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#16150f; --ink:#f1eee4; --muted:#a29d8e; --line:#3a382f; --accent:#f1eee4; } }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--ink);
+           font:16px/1.5 system-ui, sans-serif; padding:24px 16px; }
+    main { width:100%; max-width:520px; }
+    h1 { font-size:1.6rem; margin:0 0 4px; }
+    p.lead { color:var(--muted); margin:0 0 24px; }
+    label { display:block; font-weight:600; margin:16px 0 6px; }
+    small { display:block; color:var(--muted); font-weight:400; margin-top:2px; }
+    input, select { width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:transparent;
+                    color:inherit; font:inherit; }
+    input:focus, select:focus { outline:2px solid var(--accent); outline-offset:1px; }
+    button { margin-top:24px; width:100%; padding:14px; border:0; border-radius:10px; background:var(--accent); color:var(--bg);
+             font:inherit; font-weight:700; cursor:pointer; }
+    button.link { margin-top:8px; padding:8px; background:transparent; color:var(--muted); font-weight:600; }
+    button:disabled { opacity:.55; cursor:wait; }
+    #msg { min-height:1.5em; margin-top:14px; font-weight:600; }
+    #msg.bad { color:var(--bad); } #msg.ok { color:var(--ok); }
+    code { background:color-mix(in srgb, var(--ink) 8%, transparent); padding:1px 5px; border-radius:4px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ตั้งค่าตู้ Photobooth</h1>
+  <p class="lead">กรอกค่าที่ได้จากเจ้าของระบบ (คำสั่ง <code>create-kiosk</code>) ทำครั้งเดียวต่อเครื่อง</p>
+  <form id="form" autocomplete="off">
+    <label for="kioskId">Kiosk ID<small>รูปแบบ xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</small></label>
+    <input id="kioskId" required spellcheck="false" autocapitalize="off">
+
+    <label for="credential">Device credential<small>แสดงครั้งเดียวตอนสร้างตู้ เก็บในเครื่องแบบเข้ารหัส</small></label>
+    <input id="credential" type="password" required spellcheck="false" autocapitalize="off">
+
+    <label for="mode">โหมดตู้</label>
+    <select id="mode">
+      <option value="redeem">Redeem (ขายแพ็กเกจ รหัส / PromptPay)</option>
+      <option value="event">Event (ฟรี ไม่ใช้รหัส)</option>
+    </select>
+
+    <label for="printer">เครื่องพิมพ์ Bluetooth
+      <small>จับคู่ (Pair) เครื่องพิมพ์ในการตั้งค่า Bluetooth ของ Android ก่อน แล้วกด "โหลดรายชื่อใหม่" เปลี่ยนภายหลังได้ในหน้าแอดมิน</small></label>
+    <select id="printer"><option value="">เลือกภายหลังในหน้าแอดมิน</option></select>
+    <button id="reload" class="link" type="button">โหลดรายชื่อใหม่</button>
+
+    <label for="updateChannel">ช่องอัปเดตแอป
+      <small>เครื่องหลักเลือก "ทดลอง" จะได้เวอร์ชันใหม่ก่อน เครื่องอื่นเลือก "ปกติ" รอจนกว่าเจ้าของกดเผยแพร่</small></label>
+    <select id="updateChannel">
+      <option value="stable">ปกติ (เครื่องทั่วไป)</option>
+      <option value="canary">ทดลอง (เครื่องหลัก)</option>
+    </select>
+
+    <label for="packageId">Package ID <small>ไม่บังคับ</small></label>
+    <input id="packageId" spellcheck="false" autocapitalize="off">
+
+    <button id="save" type="submit">บันทึกและเริ่มใช้งาน</button>
+    <div id="msg" role="status" aria-live="polite"></div>
+  </form>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const say = (text, kind = '') => { $('msg').textContent = text; $('msg').className = kind; };
+  const ERRORS = {
+    invalid_input: 'ข้อมูลไม่ถูกต้อง ตรวจ Kiosk ID และ credential อีกครั้ง',
+    credential_rejected: 'ระบบไม่ยอมรับ credential นี้ (หรือถูกหมุนเปลี่ยนแล้ว)',
+    network_error: 'ติดต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',
+    build_missing_supabase: 'ไฟล์ติดตั้งไม่สมบูรณ์ กรุณาติดตั้ง APK ใหม่'
+  };
+
+  async function loadPrinters() {
+    const select = $('printer');
+    const keep = select.value;
+    try {
+      const info = await fetch('/__setup/info').then((r) => r.json());
+      select.length = 1;
+      for (const p of info.printers || []) {
+        const option = document.createElement('option');
+        option.value = p.name;
+        option.textContent = p.name;
+        select.append(option);
+      }
+      if (keep) select.value = keep;
+      if (info.error === 'bluetooth_permission') say('อนุญาตสิทธิ์ "อุปกรณ์ที่อยู่ใกล้เคียง" ให้แอปก่อน จึงจะเห็นเครื่องพิมพ์', 'bad');
+      else if (info.error === 'bluetooth_off') say('เปิด Bluetooth ก่อน จึงจะเห็นเครื่องพิมพ์', 'bad');
+    } catch (_) { /* printers can be chosen later in admin */ }
+  }
+  loadPrinters();
+  $('reload').addEventListener('click', loadPrinters);
+
+  $('form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('save').disabled = true;
+    say('กำลังตรวจสอบ...');
+    try {
+      const res = await fetch('/__setup/save', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kioskId: $('kioskId').value, credential: $('credential').value, mode: $('mode').value,
+          printerName: $('printer').value, packageId: $('packageId').value, updateChannel: $('updateChannel').value
+        })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { say(ERRORS[body.error] || 'บันทึกไม่สำเร็จ', 'bad'); $('save').disabled = false; return; }
+      say('บันทึกแล้ว กำลังเริ่มระบบ...', 'ok');
+      setTimeout(() => location.replace('/home.html'), 600);
+    } catch (e) {
+      say(ERRORS.network_error, 'bad');
+      $('save').disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

@@ -14,3 +14,12 @@ agent/start-kiosk.ps1
 installer/stage
 dist-installer
 dist-studio/
+
+# Android app (android/): generated assets, Gradle output, local SDK path, built APKs
+android/app/src/main/assets
+android/local.properties
+android/.gradle
+android/.kotlin
+android/build
+android/app/build
+dist-android

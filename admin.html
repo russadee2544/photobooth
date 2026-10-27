@@ -1996,7 +1996,12 @@
 
                 if (printers.length === 0) {
                     select.innerHTML = '<option value="">(ไม่พบเครื่องพิมพ์ในระบบ หรือรันบนอุปกรณ์อื่น)</option>';
-                    if (hint) hint.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span><span>จะใช้เครื่องพิมพ์ Default ของระบบ Windows อัตโนมัติ</span>';
+                    // Android app: printers are the Bluetooth printers paired in Android settings.
+                    var androidHint = { bluetooth_off: 'เปิด Bluetooth ของเครื่องก่อน แล้วกดรีเฟรช',
+                        bluetooth_permission: 'อนุญาตสิทธิ์ "อุปกรณ์ที่อยู่ใกล้เคียง" ให้แอป Photobooth แล้วกดรีเฟรช' }[data.error]
+                        || 'จับคู่ (Pair) เครื่องพิมพ์ในการตั้งค่า Bluetooth ของ Android ก่อน แล้วกดรีเฟรช';
+                    if (hint) hint.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span><span>'
+                        + (window.__pbAndroid ? androidHint : 'จะใช้เครื่องพิมพ์ Default ของระบบ Windows อัตโนมัติ') + '</span>';
                     if (badge) badge.innerText = 'Default System';
                     return;
                 }

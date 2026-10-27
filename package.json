@@ -12,6 +12,10 @@
     "agent": "node agent/server.mjs",
     "agent:setup": "node agent/setup.mjs",
     "installer": "node installer/build.mjs",
+    "android:prepare": "node android/scripts/prepare-web.mjs",
+    "android:build": "node android/scripts/build-apk.mjs",
+    "android:publish": "node android/scripts/publish-apk.mjs",
+    "android:promote": "node android/scripts/publish-apk.mjs --promote",
     "publish:update": "node scripts/publish-update.mjs",
     "promote:update": "node scripts/publish-update.mjs --promote"
   },
