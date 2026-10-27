@@ -32,6 +32,12 @@
             color: #D0D0D0;
             letter-spacing: 0.3em;
         }
+        /* Phones: 5 characters must fit the box (3rem with wide spacing ran past the edge) */
+        @media (max-width: 480px) {
+            .code-input, .code-input::placeholder { font-size: min(3rem, 10.5vw); letter-spacing: .18em; }
+            .code-input { text-indent: .18em; }
+            .code-box { padding: 1.2rem 1rem; }
+        }
         .code-box {
             border: 2px solid #E3E3E3;
             border-radius: 20px;
