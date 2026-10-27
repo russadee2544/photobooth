@@ -144,8 +144,29 @@
             .frame-no { display: none; }
             .film-counter { right: 6px; top: -1.35rem; }
         }
-        /* Very small screens are not the kiosk target: keep the text and the button, drop the strip. */
-        @media (max-width: 420px) { .strip-wrap { display: none; } }
+        /* Phones and small tablets (portrait): everything scales with the screen width so the sign never runs off
+           the edge, the button stays on one line and the strip fills the middle instead of leaving a hole. */
+        @media (max-width: 640px) {
+            .film-stage { padding-left: 0; padding-right: 0; }
+            .film-layout { --W: min(88vw, 520px); }
+            .booth-sign { gap: 3vw; padding: 4.2vw 4vw; border-width: 2.5px; border-radius: 1rem; box-shadow: 4px 4px 0 var(--ink); }
+            .booth-sign::after { inset: 5px; border-radius: .7rem; }
+            .booth-sign .sign-icon { font-size: 11vw; }
+            .booth-sign b { font-size: 7.6vw; letter-spacing: .04em; }
+            .booth-sign i { font-size: 3.9vw; letter-spacing: .24em; }
+            .film-title { font-size: 12.5vw; margin-top: 6vw; }
+            .film-tagline { font-size: 4vw; max-width: var(--W); line-height: 1.5; margin-top: 2.5vw; }
+            .film-price { font-size: 4.2vw; margin-top: 2.5vw; }
+            .strip { width: var(--W); padding: 2vw 2vw 7vw; gap: 1.6vw; }
+            .strip::after { bottom: 2.4vw; font-size: 2.4vw; }
+            .film-counter { font-size: 2.6vw; padding: 1.4vw 2vw; top: -4vw; }
+            .film-cta { white-space: nowrap; gap: 3vw; padding: 4.6vw 5vw; font-size: 5.2vw; margin-top: 8vw;
+                box-shadow: 0 8px 22px rgba(215, 54, 43, .3); }
+            .film-meta { font-size: 2.7vw; letter-spacing: .18em; gap: .4rem 1rem; margin-top: 5vw; flex-wrap: nowrap; white-space: nowrap; }
+            body.home-film footer { padding: 3vw 4vw; font-size: 2.4vw; gap: 3vw; }
+            body.home-film footer > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            body.home-film footer > div { gap: 3vw; flex: none; }
+        }
         @media (prefers-reduced-motion: reduce) {
             .film-stage *, .film-stage *::before, .film-stage *::after { animation: none !important; }
             .film-cta::before { display: none; }
