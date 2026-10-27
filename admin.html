@@ -2193,6 +2193,10 @@
                 ios: 'iPhone / iPad ไม่รองรับ Bluetooth จากหน้าเว็บ — ใช้มือถือหรือแท็บเล็ต Android กับ Chrome',
                 browser: 'เบราว์เซอร์นี้ไม่รองรับ — เปิดหน้านี้ใน Google Chrome บน Android หรือ PC'
             };
+            if (window.__pbAndroid) {
+                statusEl.innerHTML = '<span class="text-amber-400">ในแอป Android ให้เลือกแท็บ "ไดรเวอร์ระบบ" แล้วเลือกเครื่องพิมพ์ Bluetooth ที่จับคู่ไว้ในการตั้งค่า Android</span>';
+                return;
+            }
             var reason = BLEPrinter.unsupportedReason();
             if (reason) {
                 statusEl.innerHTML = '<span class="text-red-400">⚠️ ' + (reasons[reason] || reasons.browser) + '</span>';
