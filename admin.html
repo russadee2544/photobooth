@@ -2186,27 +2186,33 @@
 
         async function connectBluetoothPrinter() {
             var statusEl = document.getElementById('bt-printer-status');
-            if (!('bluetooth' in navigator)) {
-                statusEl.innerHTML = '<span class="text-red-400">⚠️ เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth — ลองใช้ Chrome บน Android หรือ PC</span>';
+            var reasons = {
+                insecure: 'หน้านี้ไม่ได้เปิดผ่าน https — Bluetooth ใช้ได้เฉพาะหน้าเว็บ https เท่านั้น',
+                in_app: 'กำลังเปิดในแอป (LINE / Facebook) — กดเมนู ⋮ แล้วเลือก "เปิดใน Chrome"',
+                samsung: 'Samsung Internet ไม่รองรับ — เปิดหน้านี้ใน Google Chrome แทน',
+                ios: 'iPhone / iPad ไม่รองรับ Bluetooth จากหน้าเว็บ — ใช้มือถือหรือแท็บเล็ต Android กับ Chrome',
+                browser: 'เบราว์เซอร์นี้ไม่รองรับ — เปิดหน้านี้ใน Google Chrome บน Android หรือ PC'
+            };
+            var reason = BLEPrinter.unsupportedReason();
+            if (reason) {
+                statusEl.innerHTML = '<span class="text-red-400">⚠️ ' + (reasons[reason] || reasons.browser) + '</span>';
                 return;
             }
             try {
-                statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังสแกน Bluetooth...</span>';
-                var device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['generic_access']
-                });
+                statusEl.innerHTML = '<span class="text-yellow-400">⏳ กำลังสแกน Bluetooth... (เปิดเครื่องพิมพ์ไว้ แล้วเลือกชื่อเครื่องในรายการ)</span>';
+                var device = await BLEPrinter.connect({ interactive: true });
                 var name = device.name || 'Bluetooth Printer';
-                statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + '</span>';
+                statusEl.innerHTML = '<span class="text-green-400">✓ เชื่อมต่อแล้ว: ' + name + ' — กด Test Print เพื่อลองพิมพ์</span>';
+                setPrinterConnUI('bluetooth');
+                currentPrinterConn = 'bluetooth';
                 setPrinterStatusConnected('bluetooth', name);
-                var saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
-                saved.conn = 'bluetooth'; saved.deviceName = name;
-                localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
             } catch(e) {
-                if (e.name !== 'NotFoundError') {
-                    statusEl.innerHTML = '<span class="text-red-400">เกิดข้อผิดพลาด: ' + e.message + '</span>';
-                } else {
+                if (e.name === 'NotFoundError') {
                     statusEl.innerHTML = '<span class="text-gray-500">ยกเลิกการเลือก</span>';
+                } else if (e.message === 'ble_no_writable_characteristic') {
+                    statusEl.innerHTML = '<span class="text-red-400">⚠️ เชื่อมต่อได้แต่เครื่องนี้ไม่มีช่องรับงานพิมพ์แบบ BLE ที่รู้จัก — เครื่องพิมพ์อาจใช้ Bluetooth แบบเก่า (SPP) ที่หน้าเว็บส่งงานไม่ได้</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="text-red-400">เชื่อมต่อไม่สำเร็จ: ' + e.message + ' — ลองปิดแอปพิมพ์ของเครื่องพิมพ์ในมือถือ (ถ้าเปิดค้างไว้) แล้วลองใหม่</span>';
                 }
             }
         }
@@ -2327,9 +2333,18 @@
                 await printCanvasViaSystemDialog(testCanvas, Kiosk.paperMode, 1);
                 showToast('ส่งงานพิมพ์ทดสอบเรียบร้อย ✓');
             } else if (conn === 'bluetooth') {
-                showToast('โหมด Bluetooth: ส่งพิมพ์ทดสอบ...');
-                await printCanvasViaSystemDialog(testCanvas, Kiosk.paperMode, 1);
-                showToast('ส่งงานพิมพ์ทดสอบเรียบร้อย ✓');
+                if (!Kiosk.paperMode.startsWith('thermal')) {
+                    showToast('Bluetooth ใช้ได้กับกระดาษใบเสร็จ (58/80mm) เท่านั้น — เปลี่ยนชนิดกระดาษก่อน');
+                    return;
+                }
+                showToast('กำลังส่งพิมพ์ทดสอบทาง Bluetooth...');
+                try {
+                    await BLEPrinter.connect();
+                    await BLEPrinter.send(BLEPrinter.buildPayload(testCanvas, Kiosk.paperMode, 1));
+                    showToast('ส่งพิมพ์ทดสอบทาง Bluetooth สำเร็จ ✓');
+                } catch (err) {
+                    showToast('พิมพ์ทาง Bluetooth ไม่สำเร็จ: ' + err.message + ' — กด Scan & Connect ใหม่');
+                }
             } else if (conn === 'wifi') {
                 showToast('โหมด Wi-Fi: ส่งพิมพ์ทดสอบ...');
                 await printCanvasViaSystemDialog(testCanvas, Kiosk.paperMode, 1);
