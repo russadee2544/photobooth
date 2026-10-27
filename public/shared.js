@@ -1048,6 +1048,156 @@ const USBPrinter = {
     }
 };
 
+// ============================================================
+// BLUETOOTH (BLE) ESC/POS PRINTER - Web Bluetooth, Chrome on Android/PC over https
+// Portable thermal printers expose a "serial" GATT service; we look for the first
+// writable characteristic among the services these printers commonly use.
+// Printers that only speak classic Bluetooth (SPP) are not reachable from a web page.
+// ============================================================
+const BLEPrinter = {
+    SERVICES: [
+        '000018f0-0000-1000-8000-00805f9b34fb', // most ESC/POS mini printers (char 2af1)
+        'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Xprinter / Gprinter style
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC/Microchip transparent UART
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 style UART
+        '0000fee7-0000-1000-8000-00805f9b34fb',
+        '0000ae30-0000-1000-8000-00805f9b34fb', // "cat" style printers
+        '0000af30-0000-1000-8000-00805f9b34fb',
+        '0000ff80-0000-1000-8000-00805f9b34fb',
+    ],
+    device: null,
+    characteristic: null,
+
+    // Why Web Bluetooth is not usable here (null = usable)
+    unsupportedReason() {
+        if (typeof window === 'undefined') return 'no_window';
+        if (!window.isSecureContext) return 'insecure';
+        if (!('bluetooth' in navigator)) {
+            const ua = navigator.userAgent || '';
+            if (/Line\/|FBAN|FBAV|Instagram|; wv\)/i.test(ua)) return 'in_app';
+            if (/SamsungBrowser/i.test(ua)) return 'samsung';
+            if (/iPhone|iPad/i.test(ua)) return 'ios';
+            return 'browser';
+        }
+        return null;
+    },
+
+    async _attach(device) {
+        const server = device.gatt.connected ? device.gatt : await device.gatt.connect();
+        let fallback = null;
+        for (const service of await server.getPrimaryServices()) {
+            let chars = [];
+            try { chars = await service.getCharacteristics(); } catch (e) { continue; }
+            for (const c of chars) {
+                if (c.properties.writeWithoutResponse) { this.characteristic = c; break; }
+                if (c.properties.write && !fallback) fallback = c;
+            }
+            if (this.characteristic) break;
+        }
+        if (!this.characteristic) this.characteristic = fallback;
+        if (!this.characteristic) throw new Error('ble_no_writable_characteristic');
+        this.device = device;
+        device.addEventListener('gattserverdisconnected', () => { this.characteristic = null; }, { once: true });
+        return device;
+    },
+
+    // interactive=true shows Chrome's device chooser (needs a tap). Without it we only reuse a printer
+    // that was already allowed on this site (each kiosk page is a new document, so print pages reconnect here).
+    async connect({ interactive = false } = {}) {
+        if (this.device && this.characteristic && this.device.gatt.connected) return this.device;
+        const reason = this.unsupportedReason();
+        if (reason) throw new Error('ble_unsupported_' + reason);
+        this.characteristic = null;
+        if (!interactive) {
+            const savedId = (JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}')).bleDeviceId;
+            const known = typeof navigator.bluetooth.getDevices === 'function' ? await navigator.bluetooth.getDevices() : [];
+            const device = known.find((d) => d.id === savedId) || known[0];
+            if (!device) throw new Error('ble_not_paired');
+            return this._attach(device);
+        }
+        const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: this.SERVICES });
+        await this._attach(device);
+        const saved = JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}');
+        saved.conn = 'bluetooth';
+        saved.deviceName = device.name || 'Bluetooth Printer';
+        saved.bleDeviceId = device.id;
+        localStorage.setItem('kiosk_printer_config', JSON.stringify(saved));
+        return device;
+    },
+
+    // Small packets with a short pause: cheap printers have tiny buffers and drop data that arrives too fast.
+    async send(bytes) {
+        if (!this.characteristic) await this.connect();
+        const c = this.characteristic;
+        const noResponse = c.properties.writeWithoutResponse;
+        const size = noResponse ? 180 : 240;
+        for (let off = 0; off < bytes.length; off += size) {
+            const part = bytes.subarray(off, Math.min(off + size, bytes.length));
+            if (noResponse) {
+                await c.writeValueWithoutResponse(part);
+                await new Promise((r) => setTimeout(r, 8));
+            } else {
+                await c.writeValueWithResponse(part);
+            }
+        }
+    },
+
+    // ESC/POS for BLE printers: the image goes out in bands of 128 lines (one huge GS v 0 overflows small printers)
+    // Scale to the print head and Floyd-Steinberg dither (photos thresholded at 50% turn into blobs)
+    dither(canvas, width) {
+        const height = Math.round(canvas.height * width / canvas.width);
+        const out = document.createElement('canvas');
+        out.width = width; out.height = height;
+        const ctx = out.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(canvas, 0, 0, width, height);
+        const img = ctx.getImageData(0, 0, width, height), d = img.data;
+        const lum = new Float32Array(width * height);
+        for (let i = 0; i < lum.length; i++) lum[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = y * width + x, v = lum[i] < 128 ? 0 : 255, err = lum[i] - v;
+                lum[i] = v;
+                if (x + 1 < width) lum[i + 1] += err * 7 / 16;
+                if (y + 1 < height) {
+                    if (x > 0) lum[i + width - 1] += err * 3 / 16;
+                    lum[i + width] += err * 5 / 16;
+                    if (x + 1 < width) lum[i + width + 1] += err / 16;
+                }
+            }
+        }
+        for (let i = 0; i < lum.length; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = lum[i]; d[i * 4 + 3] = 255; }
+        ctx.putImageData(img, 0, 0);
+        return out;
+    },
+
+    buildPayload(canvas, paperMode, copies = 1) {
+        const width = ESC_POS.dotWidth[paperMode] || 384;
+        const raster = ESC_POS.rasterize(this.dither(canvas, width), width);
+        const bpl = raster.bytesPerLine;
+        const parts = [[0x1B, 0x40]];
+        for (let i = 0; i < copies; i++) {
+            for (let y = 0; y < raster.height; y += 128) {
+                const h = Math.min(128, raster.height - y);
+                parts.push([0x1D, 0x76, 0x30, 0x00, bpl & 0xFF, (bpl >> 8) & 0xFF, h & 0xFF, (h >> 8) & 0xFF]);
+                parts.push(raster.data.subarray(y * bpl, (y + h) * bpl));
+            }
+            parts.push([0x1B, 0x64, 0x04, 0x1D, 0x56, 0x41, 0x30]); // feed 4 lines, partial cut (ignored by printers without a cutter)
+        }
+        const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+        let off = 0;
+        for (const p of parts) { out.set(p, off); off += p.length; }
+        return out;
+    },
+
+    async printDataUrl(dataUrl, paperMode, copies = 1) {
+        const canvas = await dataUrlToCanvas(dataUrl);
+        await this.connect();
+        await this.send(this.buildPayload(canvas, paperMode, copies));
+    },
+};
+
 // Hidden iframe System Print helper (Windows / macOS / Android print driver)
 // When Chrome is launched with --kiosk-printing, window.print() sends directly
 // to the default printer WITHOUT showing the print dialog.
@@ -1301,6 +1451,17 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies
         return { status: 'failed', copiesCompleted: 0, transport: 'agent', error: 'agent_direct_print_failed' };
     }
 
+    // 3a. Bluetooth (BLE) thermal printer straight from the browser
+    if (conn === 'bluetooth' && paperMode.startsWith('thermal')) {
+        try {
+            await BLEPrinter.printDataUrl(dataUrl, paperMode, copyCount);
+            return { status: 'completed', copiesCompleted: copyCount, transport: 'web_bluetooth' };
+        } catch (error) {
+            console.warn('Bluetooth print failed:', error);
+            return { status: 'failed', copiesCompleted: 0, transport: 'web_bluetooth', error: error && error.message ? error.message : 'ble_failed' };
+        }
+    }
+
     // 3. Direct WebUSB for thermal printers
     if (conn === 'usb' && paperMode.startsWith('thermal')) {
         try {
@@ -1343,6 +1504,7 @@ function dataUrlToCanvas(dataUrl) {
 
 if (typeof window !== 'undefined') {
     window.USBPrinter = USBPrinter;
+    window.BLEPrinter = BLEPrinter;
     window.printCanvasViaSystemDialog = printCanvasViaSystemDialog;
     window.createTestPrintCanvas = createTestPrintCanvas;
     window.printViaUSB = printViaUSB;
