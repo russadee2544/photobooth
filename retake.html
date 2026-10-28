@@ -114,7 +114,9 @@
             // In retake flow, all photos shown are the final photos
             Session.photos = rawPhotos;
             SessionAsync.set('raw_photos', rawPhotos).then(() => {
-                window.location.href = 'template.html';
+                // The frame was picked before shooting: go straight on to the filter or processing.
+                if (!Kiosk.filterEnabled) Session.filter = 'original';
+                window.location.href = Kiosk.filterEnabled ? 'filter.html' : 'processing.html';
             });
         }
     </script>

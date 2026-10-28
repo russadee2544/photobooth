@@ -135,8 +135,8 @@ exit $code
 `;
 export const RECEIPT_DOTS = { thermal58: 384, thermal80: 576, thermal100: 832 };
 
-// Lightness levels for the admin page: 0 = as the image is ... 4 = lightest. Default 2.
-export const RECEIPT_LIGHTNESS = [1, 0.85, 0.72, 0.6, 0.5];
+// Lightness levels for the admin page: 0 = as the image is ... 6 = lightest. Default 2.
+export const RECEIPT_LIGHTNESS = [1, 0.85, 0.72, 0.6, 0.5, 0.42, 0.35];
 const gammaOf = (level) => String(RECEIPT_LIGHTNESS[Number.isInteger(level) ? level : 2] ?? 0.72);
 
 export async function printImageEscPos({ bytes, ext = 'png', printerName = '', copies = 1, dots = 576, lightness }) {

@@ -252,15 +252,20 @@
             // frame's photo slot. Show that crop now so nobody stands where it would cut them off.
             const guideEl = document.getElementById('crop-guide');
             const hintEl = document.getElementById('crop-hint');
-            // The photo slot of the layout the customer picked: its shape and where its crop is anchored.
-            // The frame is chosen after shooting, so the guide must hold for every frame on offer:
-            // the chosen layout itself plus each frame with the same number of photos (same rule as
-            // the frame page). Every photo slot of them is listed; the guide is where they all overlap.
+            // The photo slots of the frame the customer picked before shooting: their shape (portrait,
+            // landscape, square) and where the crop is anchored. Without a picked frame (an old theme),
+            // the guide must hold for every frame on offer: the chosen layout plus each frame with the
+            // same number of photos; the guide is where they all overlap.
             function guideSlots() {
                 const slots = [];
                 const add = (template) => (template && template.slots || []).forEach((s) => {
                     if (s.width > 0 && s.height > 0) slots.push({ aspect: s.width / s.height, fx: s.focusX ?? 0.5, fy: s.focusY ?? 0.42 });
                 });
+                const picked = Session.templateSchemaId && TemplateCatalog.find(Session.templateSchemaId);
+                if (picked) {
+                    add(picked);
+                    if (slots.length) return slots;
+                }
                 try {
                     add(TemplateCatalog.current(layoutStr));
                     const shots = window.PhotoTemplateEngine ? PhotoTemplateEngine.parseLayout(layoutStr).count : requiredShots;

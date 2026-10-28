@@ -761,6 +761,7 @@ const i18n = {
         "btn_cancel": "CANCEL",
         "tpl_title": "Choose Frame",
         "tpl_desc": "Select a frame style that matches your mood.",
+        "tpl_start": "Start shooting",
         "tpl_light": "Classic Y2K",
         "tpl_light_sub": "Minimalist Monochrome",
         "tpl_dark": "Retro Ticket",
@@ -801,6 +802,7 @@ const i18n = {
         "btn_cancel": "ยกเลิก",
         "tpl_title": "เลือกกรอบรูป",
         "tpl_desc": "เลือกสไตล์กรอบที่เข้ากับอารมณ์ของคุณ",
+        "tpl_start": "เริ่มถ่ายรูป",
         "tpl_light": "คลาสสิก Y2K",
         "tpl_light_sub": "มินิมอลขาวดำ",
         "tpl_dark": "เรโทรทิคเก็ต",
@@ -3012,6 +3014,33 @@ const StudioLooks = {
         });
     }
 };
+
+// ======================== ONE-QR DOWNLOAD PAGE ========================
+// One QR opens the download page (dl.html on the web host) with every version of the photo. The page
+// gets the files' names in the URL fragment (never sent to a server) and only builds links to this
+// project's storage. Returns the link, or null when the uploaded URLs are not the expected kind.
+const SHARE_PAGE_URL = 'https://photobooth-tau-one.vercel.app/d';
+
+function buildShareLink({ colorUrl, ditherUrl, gifUrl, expiresAt } = {}) {
+    const photoName = (url, prefix) => {
+        const base = `${SUPABASE_URL}/storage/v1/object/public/photobooth/${prefix}`;
+        if (typeof url !== 'string' || !url.startsWith(base)) return null;
+        const rest = url.slice(base.length);
+        return /^\d{13}_[0-9a-f]{24}\.(jpg|png)$/.test(rest) ? rest : null;
+    };
+    const parts = [];
+    const c = photoName(colorUrl, 'photo_');
+    const r = photoName(ditherUrl, 'retro_');
+    if (c) parts.push('c=' + c);
+    if (r) parts.push('r=' + r);
+    const g = typeof gifUrl === 'string' && gifUrl.startsWith(`${SUPABASE_URL}/functions/v1/session-gif?a=`)
+        ? gifUrl.split('?a=')[1] : null;
+    if (g && /^[0-9a-f-]{36}$/i.test(g)) parts.push('g=' + g);
+    if (!c && !r) return null;
+    const x = Date.parse(expiresAt || '');
+    if (x > 0) parts.push('x=' + Math.floor(x / 1000));
+    return `${SHARE_PAGE_URL}#${parts.join('&')}`;
+}
 
 // The session-photo function writes the log row together with the upload, so the
 // kiosk has nothing left to log. Kept so older pages calling it keep working.

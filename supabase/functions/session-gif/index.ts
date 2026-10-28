@@ -1,4 +1,4 @@
-import '@supabase/functions-js/edge-runtime.d.ts';
+// (EdgeRuntime is a global of the Supabase runtime; its type import is left out because jsr.io kept timing out at deploy)
 import { createClient } from '@supabase/supabase-js';
 
 // Session GIF downloads.
@@ -132,18 +132,22 @@ async function uploadGif(request: Request): Promise<Response> {
   return json({ assetId: asset.asset_id, downloadUrl, expiresAt: asset.purge_after });
 }
 
+// &dl=<file name> makes the signed URL a download (the one-QR download page uses it). The redirect
+// carries CORS so that page can also fetch the GIF and hand it to the phone's share sheet.
 async function download(url: URL): Promise<Response> {
   const assetId = url.searchParams.get('a') ?? '';
+  const fileName = (url.searchParams.get('dl') ?? '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').slice(0, 80);
+  const headers = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
   const gone = () => new Response('This GIF link has expired.', {
-    status: 410, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+    status: 410, headers: { ...headers, 'Content-Type': 'text/plain; charset=utf-8' },
   });
   if (!UUID.test(assetId)) return gone();
   const { data: storageKey, error } = await admin.rpc('get_gif_asset_for_download', { p_asset_id: assetId });
   if (error || typeof storageKey !== 'string') return gone();
   const { data: signed, error: signError } = await admin.storage.from(BUCKET)
-    .createSignedUrl(storageKey, SIGNED_REDIRECT_SECONDS);   // inline: the GIF plays in the phone's browser (long-press to save)
+    .createSignedUrl(storageKey, SIGNED_REDIRECT_SECONDS, fileName ? { download: fileName } : undefined);   // inline unless dl: the GIF plays in the phone's browser
   if (signError || !signed?.signedUrl) return gone();
-  return new Response(null, { status: 302, headers: { Location: signed.signedUrl, 'Cache-Control': 'no-store' } });
+  return new Response(null, { status: 302, headers: { ...headers, Location: signed.signedUrl } });
 }
 
 Deno.serve(async (request) => {

@@ -14,7 +14,8 @@
     { "source": "/payment", "destination": "/payment.html" },
     { "source": "/buy", "destination": "/buy.html" },
     { "source": "/processing", "destination": "/processing.html" },
-    { "source": "/print", "destination": "/print.html" }
+    { "source": "/print", "destination": "/print.html" },
+    { "source": "/d", "destination": "/dl.html" }
   ],
   "headers": [
     {
