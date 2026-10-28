@@ -1,4 +1,4 @@
-import '@supabase/functions-js/edge-runtime.d.ts';
+// (EdgeRuntime is a global of the Supabase runtime; its type import is left out because jsr.io kept timing out at deploy)
 import { createClient } from '@supabase/supabase-js';
 
 // Session GIF downloads.
