@@ -4121,8 +4121,15 @@ async function applyPhotosFilter(photos, filterName) {
             c.width = img.width;
             c.height = img.height;
             const ctx = c.getContext('2d');
-            ctx.filter = preset.css;
+            // Safari/iPad ignores ctx.filter: apply the same filter to the pixels instead (css-filter.js).
+            const byHand = globalThis.CssCanvasFilter && !CssCanvasFilter.nativeSupported();
+            if (!byHand) ctx.filter = preset.css;
             ctx.drawImage(img, 0, 0);
+            if (byHand) {
+                const pixels = ctx.getImageData(0, 0, c.width, c.height);
+                CssCanvasFilter.apply(pixels.data, preset.css);
+                ctx.putImageData(pixels, 0, 0);
+            }
             resolve(c.toDataURL('image/jpeg', 0.92));
         };
         img.onerror = () => resolve(src);
