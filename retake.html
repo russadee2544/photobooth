@@ -64,6 +64,7 @@
             }
 
             renderGrid();
+            window.addEventListener('resize', fitGrid);
             new IdleTimer(120000, 'home.html').start();
         });
 
@@ -72,17 +73,20 @@
             grid.innerHTML = '';
             const retakeLabel = getLanguage() === 'en' ? 'Retake' : 'ถ่ายใหม่';
 
+            const slot = reviewSlot();
             rawPhotos.forEach((src, idx) => {
                 // One column per photo: the picture, then an always-visible Retake button.
                 const item = document.createElement('div');
-                item.className = 'shrink-0 w-36 sm:w-44 md:w-48 lg:w-52 xl:w-60 flex flex-col gap-3';
+                item.className = 'review-item shrink-0 flex flex-col gap-3';
 
                 const frame = document.createElement('div');
-                frame.className = 'relative aspect-[3/4] bg-gray-200 rounded-xl overflow-hidden shadow-sm';
+                frame.className = 'relative bg-gray-200 rounded-xl overflow-hidden shadow-sm';
+                frame.style.aspectRatio = String(slot.aspect);
 
                 const img = document.createElement('img');
                 img.src = src;
                 img.className = 'w-full h-full object-cover';
+                img.style.objectPosition = (slot.fx * 100) + '% ' + (slot.fy * 100) + '%';   // same anchor as the print crop
                 img.id = `img-${idx}`;
                 img.alt = '';
 
@@ -108,6 +112,35 @@
                 item.appendChild(retakeBtn);
                 grid.appendChild(item);
             });
+            fitGrid();
+        }
+
+        // Shape of the photo in the frame picked before shooting, so the review shows what will be printed.
+        function reviewSlot() {
+            const t = Session.templateSchemaId && TemplateCatalog.find(Session.templateSchemaId);
+            const s = t && t.slots && t.slots.find((x) => x.width > 0 && x.height > 0);
+            return s ? { aspect: s.width / s.height, fx: s.focusX ?? 0.5, fy: s.focusY ?? 0.42 } : { aspect: 3 / 4, fx: 0.5, fy: 0.42 };
+        }
+
+        // As big as the free space allows: try every column count and keep the one with the widest photos.
+        function fitGrid() {
+            const grid = document.getElementById('photo-grid');
+            const items = [...grid.children];
+            if (!items.length) return;
+            const aspect = reviewSlot().aspect;
+            const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
+            const bar = document.getElementById('btn-continue').parentElement.offsetHeight;
+            const W = grid.clientWidth, H = Math.max(200, window.innerHeight - grid.getBoundingClientRect().top - bar - 16);   // space above the Continue bar
+            const below = 64;                                 // retake button + its gap
+            let best = 120;
+            for (let cols = 1; cols <= items.length; cols++) {
+                const rows = Math.ceil(items.length / cols);
+                const byW = (W - gap * (cols - 1)) / cols;
+                const byH = ((H - gap * (rows - 1)) / rows - below) * aspect;
+                best = Math.max(best, Math.min(byW, byH));
+            }
+            const w = Math.floor(Math.min(best, 640));
+            items.forEach((el) => { el.style.width = w + 'px'; });
         }
 
         function saveSelectionAndContinue() {
