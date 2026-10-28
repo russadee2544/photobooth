@@ -654,6 +654,41 @@
             </div>
         </div>
 
+        <!-- ======================== iPAD CUSTOMER SCREEN ======================== -->
+        <!-- Shown only on a PC kiosk whose program supports it (agent/remote-screen.mjs). -->
+        <div id="remote-screen-card" class="hidden bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
+            <h2 class="text-xl font-bold mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-accent-blue">tablet_mac</span>
+                เชื่อมต่อ iPad (จอลูกค้า)
+            </h2>
+            <p class="text-sm text-gray-400 mb-4">ลูกค้าใช้ iPad ถ่ายรูปและกดทุกขั้นตอน ส่วนเครื่องนี้พิมพ์ให้ · iPad กับเครื่องนี้ต้องอยู่ Wi-Fi วงเดียวกัน</p>
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+                <button id="remote-screen-toggle" onclick="toggleRemoteScreen()" class="flex items-center gap-2 bg-accent-blue hover:opacity-90 text-white px-5 py-3 rounded-xl font-bold text-sm transition">
+                    <span class="material-symbols-outlined text-sm">power_settings_new</span><span>เปิดให้ iPad ใช้งาน</span>
+                </button>
+                <span id="remote-screen-state" class="text-sm text-gray-300"></span>
+            </div>
+            <div id="remote-screen-steps" class="hidden grid gap-4 sm:grid-cols-2">
+                <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+                    <p class="font-bold text-sm mb-1">1. ติดตั้งใบรับรอง (ครั้งเดียวต่อ iPad)</p>
+                    <p class="text-xs text-gray-400 mb-3">สแกนด้วยกล้อง iPad แล้วทำตามขั้นตอนในหน้านั้น</p>
+                    <div id="remote-setup-qr" class="bg-white p-2 rounded-lg inline-block"></div>
+                    <p id="remote-setup-urls" class="text-[11px] text-gray-400 mt-2 break-all"></p>
+                </div>
+                <div class="bg-gray-900 rounded-xl p-4 border border-gray-700">
+                    <p class="font-bold text-sm mb-1">2. จับคู่ iPad</p>
+                    <p class="text-xs text-gray-400 mb-3">QR ใช้ได้ครั้งเดียว ภายใน 5 นาที</p>
+                    <button onclick="startRemotePairing()" class="flex items-center gap-2 bg-accent-mint text-gray-900 font-bold px-4 py-2 rounded-xl text-sm mb-3">
+                        <span class="material-symbols-outlined text-sm">qr_code_2</span>สร้าง QR จับคู่
+                    </button>
+                    <div id="remote-pair-qr" class="bg-white p-2 rounded-lg inline-block empty:hidden"></div>
+                    <p id="remote-pair-info" class="text-[11px] text-gray-400 mt-2 break-all"></p>
+                </div>
+            </div>
+            <div id="remote-screen-list" class="mt-4 text-sm"></div>
+            <p class="text-xs text-gray-500 mt-4">ครั้งแรกที่เปิด Windows อาจถามสิทธิ์ไฟร์วอลล์ ให้กด "อนุญาต" สำหรับเครือข่ายส่วนตัว · ถ้า iPad เปิดหน้าไม่ได้ ให้ปิดโหมด Wi-Fi แขก/การแยกอุปกรณ์ (client isolation) ที่เราเตอร์</p>
+        </div>
+
         <!-- Cloud Analytics -->
         <div class="bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-700">
             <div class="flex justify-between items-center mb-6">
@@ -966,6 +1001,7 @@
         </div>
     </div>
 
+    <script src="qrcode.min.js"></script>
     <script src="template-engine.js?v=2.3"></script>
     <script src="look-engine.js?v=1"></script>
     <script src="shared.js?v=3.4"></script>
@@ -2048,6 +2084,78 @@
             }
         }
 
+        // ---- iPad as the customer screen (PC kiosk program only) ----
+        var remoteScreen = null;
+        var remotePairTimer = null;
+        function drawQr(el, text) {
+            el.innerHTML = '';
+            if (!text || typeof QRCode === 'undefined') return;
+            new QRCode(el, { text: text, width: 168, height: 168, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+        }
+        function remoteError(r) {
+            var e = (r && r.error) || '';
+            return { admin_capability_required: 'กรุณาใส่ PIN ใหม่ (จัดการได้จากหน้าจอของเครื่องนี้เท่านั้น)', no_lan_address: 'เครื่องนี้ยังไม่ได้ต่อ Wi-Fi/LAN วงภายใน',
+                not_running: 'ยังไม่ได้เปิดให้ iPad ใช้งาน', EADDRINUSE: 'พอร์ต 8443/8080 ถูกโปรแกรมอื่นใช้อยู่' }[e] || e;
+        }
+        function renderRemoteScreen(r) {
+            remoteScreen = r;
+            var on = !!(r && r.running);
+            document.getElementById('remote-screen-toggle').querySelector('span:last-child').textContent = r && r.enabled ? 'ปิดการใช้งาน iPad' : 'เปิดให้ iPad ใช้งาน';
+            document.getElementById('remote-screen-state').textContent = on ? 'พร้อม · ' + r.host + ' (' + r.ips.join(', ') + ')'
+                : (r && r.enabled && r.error ? 'เปิดไม่สำเร็จ: ' + remoteError(r) : 'ปิดอยู่');
+            document.getElementById('remote-screen-steps').classList.toggle('hidden', !on);
+            if (on) {
+                drawQr(document.getElementById('remote-setup-qr'), r.setupUrls[0]);
+                document.getElementById('remote-setup-urls').textContent = r.setupUrls.join('  ·  ');
+            }
+            var list = document.getElementById('remote-screen-list');
+            list.innerHTML = '';
+            (r && r.screens || []).forEach(function (s) {
+                var row = document.createElement('div');
+                row.className = 'flex items-center justify-between gap-3 py-2 border-t border-gray-700';
+                var label = document.createElement('span');
+                label.textContent = s.name + (s.lastSeen ? ' · ใช้ล่าสุด ' + new Date(s.lastSeen).toLocaleTimeString('th-TH') : '');
+                var revoke = document.createElement('button');
+                revoke.className = 'text-xs text-accent-coral font-bold';
+                revoke.textContent = 'ยกเลิกการจับคู่';
+                revoke.onclick = async function () {
+                    var res = await window.PhotoboothDevice.revokeRemoteScreen({ id: s.id });
+                    showToast(res && res.success ? 'ยกเลิกการจับคู่แล้ว' : 'ยกเลิกไม่สำเร็จ: ' + remoteError(res));
+                    loadRemoteScreen();
+                };
+                row.append(label, revoke);
+                list.appendChild(row);
+            });
+        }
+        async function loadRemoteScreen() {
+            if (!window.PhotoboothDevice || typeof window.PhotoboothDevice.remoteScreenStatus !== 'function') return;
+            var r = await window.PhotoboothDevice.remoteScreenStatus();
+            if (!r || !r.success) return;   // no PIN session yet, or opened from an iPad
+            document.getElementById('remote-screen-card').classList.remove('hidden');
+            renderRemoteScreen(r);
+        }
+        async function toggleRemoteScreen() {
+            var r = await window.PhotoboothDevice.setRemoteScreen({ enabled: !(remoteScreen && remoteScreen.enabled) });
+            if (!r || !r.success) { showToast('บันทึกไม่สำเร็จ: ' + remoteError(r)); return; }
+            renderRemoteScreen(r);
+            if (r.enabled && !r.running) showToast('เปิดไม่สำเร็จ: ' + remoteError(r));
+        }
+        async function startRemotePairing() {
+            var r = await window.PhotoboothDevice.startRemotePairing();
+            if (!r || !r.success) { showToast('สร้าง QR ไม่สำเร็จ: ' + remoteError(r)); return; }
+            drawQr(document.getElementById('remote-pair-qr'), r.pairUrls[0]);
+            var info = document.getElementById('remote-pair-info');
+            clearInterval(remotePairTimer);
+            var tick = function () {
+                var left = Math.max(0, Math.round((Date.parse(r.expiresAt) - Date.now()) / 1000));
+                info.textContent = left > 0 ? 'รหัส ' + r.code + ' · เหลือ ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' · สำรอง: ' + (r.pairUrls[1] || '')
+                    : 'QR หมดอายุ กดสร้างใหม่';
+                if (left <= 0) { clearInterval(remotePairTimer); document.getElementById('remote-pair-qr').innerHTML = ''; loadRemoteScreen(); }
+            };
+            tick();
+            remotePairTimer = setInterval(tick, 1000);
+        }
+
         // Receipt printers: ESC/POS raw (default) or the Windows driver. Lives in the kiosk program's config.
         async function loadPrintTransport() {
             var row = document.getElementById('print-transport-row');
@@ -2108,6 +2216,7 @@
             setPrinterStatusConnected(currentPrinterConn, saved.systemPrinterName || saved.deviceName || 'Windows / System Print');
             loadInstalledPrinters();
             loadPrintTransport();
+            loadRemoteScreen();
 
             // Load quality defaults
             var qMode = saved.defaultPrintQualityMode || 'hd';
