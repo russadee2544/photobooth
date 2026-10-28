@@ -181,6 +181,7 @@ export default defineConfig({
         dashboard: resolve(import.meta.dirname, 'dashboard.html'),
         templateEditor: resolve(import.meta.dirname, 'template-editor.html'),
         studio: resolve(import.meta.dirname, 'studio/index.html'),
+        download: resolve(import.meta.dirname, 'dl.html'),
       },
     },
   },

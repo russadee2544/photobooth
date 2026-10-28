@@ -267,6 +267,15 @@
 
         <!-- All QR codes (photo, retro, GIF) sit side by side in one row -->
         <div id="qr-row" class="flex flex-nowrap items-start gap-3 md:gap-5 justify-center lg:justify-start mb-6">
+        <!-- One QR for everything: opens the download page with the colour, black-and-white and GIF versions -->
+        <div id="share-block" class="hidden flex items-center gap-4 md:gap-6 bg-white rounded-3xl shadow-md border border-gray-200 p-3 md:p-4">
+            <div id="qr-share" class="w-36 h-36 md:w-40 md:h-40 xl:w-44 xl:h-44 [&>img]:w-full [&>img]:h-auto [&>canvas]:w-full [&>canvas]:h-auto flex items-center justify-center bg-white shrink-0"></div>
+            <div class="flex flex-col gap-2 min-w-0 pr-1">
+                <p class="text-base md:text-lg font-bold text-gray-900 leading-snug">สแกนครั้งเดียว<br>ได้ครบทุกแบบ</p>
+                <ul id="share-kinds" class="flex flex-col gap-1 text-xs md:text-sm font-semibold text-gray-700"></ul>
+                <p id="share-note" class="text-[11px] text-gray-400"></p>
+            </div>
+        </div>
         <div id="qr-container" class="hidden flex flex-nowrap gap-3 md:gap-5 justify-center lg:justify-start">
             <!-- Normal QR -->
             <div id="qr-color-wrapper" class="flex flex-col items-center">
@@ -570,7 +579,8 @@
             }
 
             // GIF runs on its own track; it never touches printing or the photo QR.
-            void initGifDownload();
+            share.photos = (Kiosk.qrEnabled && !localDemo) ? undefined : null;
+            initGifDownload().then((r) => gifSettled(r && r.url, r && r.expiresAt), () => gifSettled(null));
 
             // Handle QR Code & Cloud Upload (never upload local demo/test images)
             if (localDemo && Kiosk.qrEnabled) {
@@ -601,9 +611,7 @@
                             if (ditherUrl) Session.ditheredCloudUrl = ditherUrl;
                         }
 
-                        // Display QR Codes
-                        uploadStatus.classList.add('hidden');
-                        qrContainer.classList.remove('hidden');
+                        // The separate QRs below are drawn too: they are the fallback when the one-QR page cannot be used.
 
                         const qrColorEl = document.getElementById("qr-color");
                         if (qrColorEl) {
@@ -650,11 +658,14 @@
                         if (typeof logSessionToCloud === 'function') {
                             logSessionToCloud(colorUrl, ditherUrl);
                         }
+                        // The phone studio needs its own link, so it keeps the separate QRs.
+                        photosUploaded(studioLink ? false : { colorUrl, ditherUrl });
                     } catch (err) {
                         console.warn('QR code upload notice:', err);
                         uploadStatus.classList.remove('hidden');
                         uploadStatus.innerHTML = '<span class="material-symbols-outlined text-amber-500 text-sm">wifi_off</span><span class="text-xs text-gray-500">โหมดออฟไลน์ · บันทึกภาพลงเครื่องเรียบร้อย (พิมพ์ได้ตามปกติ)</span>';
                         qrContainer.classList.add('hidden');
+                        photosUploaded(null);
                     }
                 })();
             } else {
@@ -665,6 +676,61 @@
 
             new IdleTimer(120000, 'home.html').start();
         });
+
+        // ---- one QR for every version (colour, black-and-white, GIF) -----------------------------------
+        // photos: undefined = uploading, null = no photo QR, false = keep separate QRs, object = uploaded.
+        // gif: undefined = still coming (waited for up to 20 s), null = none, string = its link.
+        const share = { photos: null, gif: undefined, gifExpiresAt: null };
+        const GIF_WAIT_MS = 20000;
+        function photosUploaded(photos) {
+            share.photos = photos;
+            if (photos && share.gif === undefined) {
+                setTimeout(() => { if (share.gif === undefined) { share.gif = null; refreshDownloads(); } }, GIF_WAIT_MS);
+            }
+            refreshDownloads();
+        }
+        function gifSettled(url, expiresAt) {
+            if (url) { share.gif = url; share.gifExpiresAt = expiresAt || null; }
+            else if (share.gif === undefined) share.gif = null;
+            refreshDownloads();
+        }
+        function refreshDownloads() {
+            const uploadStatus = document.getElementById('upload-status');
+            const qrContainer = document.getElementById('qr-container');
+            const gifSection = document.getElementById('gif-section');
+            const gifWrapper = document.getElementById('gif-qr-wrapper');
+            const block = document.getElementById('share-block');
+            if (share.photos === undefined) return;                       // photos still uploading
+            if (share.photos && share.gif === undefined) return;          // short wait for the GIF
+            const photoExpiry = Kiosk.mode === 'redeem' ? new Date(Date.now() + 24 * 3600_000).toISOString() : null;
+            const expiries = [photoExpiry, share.gif ? share.gifExpiresAt : null].filter(Boolean).sort();
+            const link = share.photos ? buildShareLink({ ...share.photos, gifUrl: share.gif, expiresAt: expiries[0] }) : null;
+            if (!link) {
+                if (share.photos !== null) { uploadStatus.classList.add('hidden'); qrContainer.classList.remove('hidden'); }
+                if (share.gif) gifWrapper.classList.remove('hidden');
+                block.classList.add('hidden');
+                return;
+            }
+            const el = document.getElementById('qr-share');
+            el.innerHTML = '';
+            new QRCode(el, { text: link, width: 200, height: 200, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.L });
+            const kinds = [['palette', 'ภาพสี HD', share.photos.colorUrl], ['contrast', 'ภาพขาวดำ', share.photos.ditherUrl], ['gif_box', 'GIF ภาพเคลื่อนไหว', share.gif]]
+                .filter((k) => k[2]);
+            const ul = document.getElementById('share-kinds');
+            ul.replaceChildren(...kinds.map(([icon, label]) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-1.5';
+                li.innerHTML = '<span class="material-symbols-outlined text-base text-green-600"></span><span></span>';
+                li.firstChild.textContent = icon;
+                li.lastChild.textContent = label;
+                return li;
+            }));
+            document.getElementById('share-note').textContent = expiries.length ? 'ลิงก์ใช้ได้ 24 ชั่วโมง' : '';
+            uploadStatus.classList.add('hidden');
+            qrContainer.classList.add('hidden');
+            gifSection.classList.add('hidden');
+            block.classList.remove('hidden');
+        }
 
         // Small preview of the image behind a QR code, so people know what they will download.
         function showThumb(id, src) {
@@ -700,6 +766,7 @@
 
             const status = Session.gifStatus;
             if (!Session.gifEnabled || !['ready', 'failed', 'too_large'].includes(status)) return;
+            if (!document.getElementById('share-block').classList.contains('hidden')) return;
             section.classList.remove('hidden');
             if (status === 'too_large') {
                 return setStatus('block', t('GIF มีขนาดเกิน 20 MB จึงดาวน์โหลดไม่ได้ (พิมพ์และดาวน์โหลดรูปได้ตามปกติ)',
@@ -739,6 +806,8 @@
                 PB_DB.get(GIF_BLOB_KEY).then((blob) => {
                     if (blob instanceof Blob) showThumb('thumb-gif', URL.createObjectURL(blob));
                 }).catch(() => {});
+                if (share.photos === null || share.photos === false) wrapper.classList.remove('hidden');
+                return { url: result.downloadUrl, expiresAt: result.expiresAt };
             }
             wrapper.classList.remove('hidden');
         }

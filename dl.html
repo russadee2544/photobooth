@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#F3EEE4">
+    <title>ดาวน์โหลดรูป · MEMORIES</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <style>
+        /* One QR on the kiosk opens this page: every version of the customer's photo, each with its own save button.
+           The links live in the URL fragment (never sent to a server) and only ever point at this project's storage. */
+        @font-face { font-family: 'Prompt'; font-weight: 400; font-display: swap; src: url('/fonts/Prompt-thai-400.woff2') format('woff2'); unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC; }
+        @font-face { font-family: 'Prompt'; font-weight: 600; font-display: swap; src: url('/fonts/Prompt-thai-600.woff2') format('woff2'); unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC; }
+        @font-face { font-family: 'Prompt'; font-weight: 400; font-display: swap; src: url('/fonts/Prompt-latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+        @font-face { font-family: 'Prompt'; font-weight: 600; font-display: swap; src: url('/fonts/Prompt-latin-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+        :root { --paper: #F3EEE4; --card: #FBF8F2; --ink: #141210; --muted: #6E655C; --red: #D7362B; --line: #E2D9CA; }
+        * { box-sizing: border-box; margin: 0; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { min-height: 100dvh; background: var(--paper); color: var(--ink); font-family: 'Prompt', system-ui, sans-serif;
+            padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); }
+        main { max-width: 520px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 18px; }
+        .brand { font-weight: 600; letter-spacing: .32em; font-size: .8rem; }
+        .shop { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+        h1 { font-size: 1.45rem; font-weight: 600; margin-top: 14px; }
+        .lead { color: var(--muted); font-size: .92rem; margin-top: 4px; }
+
+        .all { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 18px 0 8px;
+            padding: 17px 20px; border: 0; border-radius: 999px; background: var(--red); color: #fff;
+            font: 600 1.1rem 'Prompt', sans-serif; box-shadow: 0 10px 24px rgba(215, 54, 43, .28); cursor: pointer; }
+        .all:active { transform: translateY(1px); }
+        .all[disabled] { opacity: .55; box-shadow: none; }
+
+        .list { display: grid; gap: 12px; margin-top: 14px; }
+        .item { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; background: var(--card);
+            border: 1px solid var(--line); border-radius: 18px; padding: 12px; }
+        .thumb { width: 96px; height: 96px; border-radius: 12px; background: #E9E1D2 center / cover no-repeat; overflow: hidden; }
+        .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .name { font-weight: 600; font-size: 1.02rem; }
+        .note { color: var(--muted); font-size: .8rem; margin-top: 1px; }
+        .save { display: inline-flex; align-items: center; gap: 8px; margin-top: 9px; padding: 10px 18px; border-radius: 999px;
+            border: 2px solid var(--ink); background: var(--ink); color: #fff; font: 600 .95rem 'Prompt', sans-serif; cursor: pointer; }
+        .save[disabled] { background: transparent; color: var(--muted); border-color: var(--line); }
+        .save svg, .all svg { width: 1.15em; height: 1.15em; flex: none; }
+        .item.is-gone .thumb { filter: grayscale(1); opacity: .45; }
+
+        .help { margin-top: 18px; background: var(--card); border: 1px dashed var(--line); border-radius: 14px; padding: 12px 14px;
+            color: var(--muted); font-size: .82rem; line-height: 1.55; }
+        .expiry { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 14px; }
+        .empty { text-align: center; padding: 48px 12px; color: var(--muted); }
+        .toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0;
+            background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: .9rem; transition: .25s; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <div class="brand">MEMORIES</div>
+        <div class="shop">ณ บ้านใหม่ ไออุ่น</div>
+        <h1>รูปของคุณพร้อมแล้ว</h1>
+        <p class="lead">กดบันทึกทีละแบบ หรือบันทึกทั้งหมดในครั้งเดียว</p>
+    </header>
+
+    <button id="save-all" class="all" type="button" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+        <span id="save-all-text">บันทึกทั้งหมด</span>
+    </button>
+    <div id="list" class="list"></div>
+    <p id="help" class="help" hidden></p>
+    <p id="expiry" class="expiry" hidden></p>
+    <p id="empty" class="empty" hidden>ลิงก์นี้ไม่ถูกต้อง หรือรูปหมดอายุแล้ว<br>สอบถามพนักงานได้เลยนะ</p>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+    const SUPABASE = 'https://zualrdvvlcoexqrbedhl.supabase.co';
+    const PHOTO_BASE = `${SUPABASE}/storage/v1/object/public/photobooth/`;
+    const GIF_BASE = `${SUPABASE}/functions/v1/session-gif?a=`;
+    const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const NAME = /^(\d{13})_[0-9a-f]{24}\.(jpg|png)$/;
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>';
+
+    // #c=<colour>&r=<black-and-white>&g=<gif asset>&x=<expiry, unix seconds>
+    const params = new URLSearchParams(location.hash.slice(1));
+    const taken = (() => { const m = NAME.exec(params.get('c') || params.get('r') || ''); return m ? new Date(Number(m[1])) : new Date(); })();
+    const day = `${taken.getDate()}${MONTHS[taken.getMonth()]}`.replace(/\.$/, '');   // 27ต.ค + .jpg -> 27ต.ค.jpg
+    const items = [];
+    const photo = (key, prefix, label, note) => {
+        const m = NAME.exec(params.get(key) || '');
+        if (!m) return;
+        items.push({ label, note, url: PHOTO_BASE + prefix + params.get(key), file: `MEMORIES-${label}-${day}.${m[2]}`, type: m[2] === 'png' ? 'image/png' : 'image/jpeg' });
+    };
+    photo('c', 'photo_', 'ภาพสี', 'ภาพสีความละเอียดสูง');
+    photo('r', 'retro_', 'ขาวดำ', 'แบบเดียวกับใบเสร็จ');
+    if (UUID.test(params.get('g') || '')) {
+        items.push({ label: 'GIF', note: 'ภาพเคลื่อนไหว ขยับได้', url: GIF_BASE + params.get('g'), file: `MEMORIES-GIF-${day}.gif`, type: 'image/gif', gif: true });
+    }
+    if (!items.length) { document.getElementById('empty').hidden = false; return; }
+
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inApp = /Line\/|FBAN|FBAV|Instagram/i.test(ua);
+    const toast = (text) => { const t = document.getElementById('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 2600); };
+
+    // Fetch every file once on arrival: iPhone only opens the share sheet straight from a tap, so the files must be ready.
+    items.forEach((item) => {
+        item.ready = fetch(item.url, { cache: 'no-store' }).then((r) => {
+            if (!r.ok) throw new Error('gone');
+            return r.blob();
+        }).then((blob) => (item.blob = blob), () => { item.gone = true; return null; });
+    });
+
+    const list = document.getElementById('list');
+    items.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<div class="thumb"><img alt="" loading="eager"></div>
+            <div><div class="name"></div><div class="note"></div>
+            <button class="save" type="button" disabled>${ICON}<span>กำลังเตรียม…</span></button></div>`;
+        row.querySelector('img').src = item.url;
+        row.querySelector('.name').textContent = item.label;
+        row.querySelector('.note').textContent = item.note;
+        const button = row.querySelector('.save');
+        // A GIF that cannot be fetched may still open: show it in the browser (long-press to save) unless its picture fails too.
+        const img = row.querySelector('img');
+        item.ready.then(() => {
+            if (item.gone && item.gif && img.complete && img.naturalWidth > 0) {
+                item.openOnly = true;
+                button.disabled = false;
+                button.lastElementChild.textContent = 'เปิด GIF';
+                row.querySelector('.note').textContent = 'เปิดแล้วกดค้างที่รูปเพื่อบันทึก';
+                return;
+            }
+            if (item.gone) { row.classList.add('is-gone'); button.lastElementChild.textContent = 'หมดอายุแล้ว'; return; }
+            button.disabled = false;
+            button.lastElementChild.textContent = item.gif ? 'บันทึก GIF' : `บันทึก${item.label}`;
+        });
+        button.addEventListener('click', () => (item.openOnly ? location.assign(item.url) : save([item])));
+        list.appendChild(row);
+    });
+
+    const all = document.getElementById('save-all');
+    if (items.length > 1) {
+        all.hidden = false;
+        all.disabled = true;
+        Promise.all(items.map((i) => i.ready)).then(() => {
+            const live = items.filter((i) => !i.gone);
+            all.disabled = live.length < 1;
+            document.getElementById('save-all-text').textContent = `บันทึกทั้งหมด (${live.length} ไฟล์)`;
+        });
+        all.addEventListener('click', () => save(items.filter((i) => !i.gone)));
+    }
+
+    // iPhone / iPad: the share sheet has "Save Image" (goes to Photos). Elsewhere a normal download (Android shows it in the gallery).
+    async function save(chosen) {
+        chosen = chosen.filter((i) => i.blob);
+        if (!chosen.length) return;
+        const files = chosen.map((i) => new File([i.blob], i.file, { type: i.type }));
+        if (isIOS && navigator.canShare && navigator.canShare({ files })) {
+            try {
+                await navigator.share({ files });
+                return;
+            } catch (e) {
+                if (e && e.name === 'AbortError') return;   // the customer closed the sheet
+            }
+        }
+        for (const [k, item] of chosen.entries()) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(item.blob);
+            a.download = item.file;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+            if (k < chosen.length - 1) await new Promise((r) => setTimeout(r, 700));   // browsers drop back-to-back downloads
+        }
+        toast(chosen.length > 1 ? `บันทึก ${chosen.length} ไฟล์แล้ว` : 'บันทึกแล้ว');
+    }
+
+    const help = document.getElementById('help');
+    help.hidden = false;
+    help.textContent = inApp
+        ? 'ถ้ากดบันทึกแล้วไม่มีอะไรเกิดขึ้น ให้กดเมนู ⋮ หรือ ⋯ มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์" หรือกดค้างที่รูปแล้วเลือกบันทึกรูปภาพ'
+        : isIOS
+            ? 'กดบันทึก แล้วเลือก "บันทึกรูปภาพ" รูปจะไปอยู่ในแอปรูปภาพ'
+            : 'กดบันทึก ไฟล์จะอยู่ในแกลเลอรีหรือโฟลเดอร์ดาวน์โหลด';
+
+    const x = Number(params.get('x'));
+    if (x > 0) {
+        const d = new Date(x * 1000);
+        const el = document.getElementById('expiry');
+        el.hidden = false;
+        el.textContent = `ดาวน์โหลดได้ถึง ${d.getDate()} ${MONTHS[d.getMonth()]} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} น.`;
+    }
+})();
+</script>
+</body>
+</html>
