@@ -3,8 +3,12 @@
 // browser gets a fixed set of methods and never a generic "call any function".
 const ADMIN_SESSION_FALLBACK_MS = 15 * 60 * 1000;
 
+// Admin (PIN) sessions are per screen: the PC's own screen is 'local', each paired iPad has its own
+// id (agent/remote-screen.mjs). Handlers get (args, { screen }); a PIN typed on one screen never
+// unlocks admin on another.
 export function createDeviceBridge({ supabaseUrl, publishableKey, credential, kioskId, packageId }) {
-  let admin = { token: '', expiresAt: 0 };
+  const admins = new Map();   // screen -> { token, expiresAt }
+  const screenOf = (ctx) => String(ctx?.screen || 'local');
   // passId -> raw code, as returned once by generatePass (memory only).
   const rawCodes = new Map();
 
@@ -22,16 +26,18 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     return upstream.json().catch(() => ({ error: 'bad_upstream_response' }));
   }
 
-  const adminValid = () => admin.token && admin.expiresAt > Date.now();
-  const keepCapability = (result) => {
+  const adminOf = (ctx) => admins.get(screenOf(ctx)) || { token: '', expiresAt: 0 };
+  const adminValid = (ctx) => { const admin = adminOf(ctx); return !!admin.token && admin.expiresAt > Date.now(); };
+  const keepCapability = (result, ctx) => {
     if (result?.capabilityToken) {
       const expires = Date.parse(result.expiresAt);
-      admin = { token: result.capabilityToken, expiresAt: Number.isFinite(expires) ? expires : Date.now() + ADMIN_SESSION_FALLBACK_MS };
+      admins.set(screenOf(ctx), { token: result.capabilityToken, expiresAt: Number.isFinite(expires) ? expires : Date.now() + ADMIN_SESSION_FALLBACK_MS });
     }
   };
-  const withAdmin = (body) => (adminValid()
-    ? callFunction('admin-redeem', body, { 'x-admin-capability': admin.token })
+  const asAdmin = (ctx, fn, body) => (adminValid(ctx)
+    ? callFunction(fn, body, { 'x-admin-capability': adminOf(ctx).token })
     : Promise.resolve({ success: false, error: 'admin_capability_required' }));
+  const withAdmin = (body, ctx) => asAdmin(ctx, 'admin-redeem', body);
 
   const handlers = {
     listPassOffers: () => callFunction('payment-order', { operation: 'offers' }),
@@ -52,58 +58,51 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
       sessionToken: a.sessionToken ?? null, packageId: a.packageId ?? null,
     }),
 
-    adminPinStatus: async () => {
+    adminPinStatus: async (_a, ctx) => {
       const status = await callFunction('admin-pin', { operation: 'status' });
-      return { ...status, authenticated: !!adminValid(), expiresAt: adminValid() ? admin.expiresAt : null };
+      return { ...status, authenticated: adminValid(ctx), expiresAt: adminValid(ctx) ? adminOf(ctx).expiresAt : null };
     },
-    adminEnrollPin: async (a) => {
+    adminEnrollPin: async (a, ctx) => {
       const result = await callFunction('admin-pin', { operation: 'enroll', pin: a.pin });
-      keepCapability(result);
-      return result.success ? { success: true, expiresAt: admin.expiresAt } : { success: false, error: result.error };
+      keepCapability(result, ctx);
+      return result.success ? { success: true, expiresAt: adminOf(ctx).expiresAt } : { success: false, error: result.error };
     },
-    adminVerifyPin: async (a) => {
+    adminVerifyPin: async (a, ctx) => {
       const result = await callFunction('admin-pin', { operation: 'verify', pin: a.pin });
       if (!result.valid) return { valid: false, error: result.error, lockedUntil: result.lockedUntil ?? null };
-      keepCapability(result);
-      return { valid: true, expiresAt: admin.expiresAt };
+      keepCapability(result, ctx);
+      return { valid: true, expiresAt: adminOf(ctx).expiresAt };
     },
+    // A changed PIN ends every screen's admin session.
     adminChangePin: async (a) => {
       const result = await callFunction('admin-pin', { operation: 'change', currentPin: a.currentPin, nextPin: a.nextPin });
-      if (result.success) admin = { token: '', expiresAt: 0 };
+      if (result.success) admins.clear();
       return result.success ? { success: true } : { success: false, error: result.error };
     },
-    adminLogout: async () => {
-      admin = { token: '', expiresAt: 0 };
+    adminLogout: async (_a, ctx) => {
+      admins.delete(screenOf(ctx));
       return { success: true };
     },
-    generatePrintPasses: async (a) => {
+    generatePrintPasses: async (a, ctx) => {
       const result = await withAdmin({
         operation: 'generatePass', packageId: a.packageId || packageId,
         count: a.count, expiresDays: a.expiresDays, quotaKind: a.quotaKind,
-      });
+      }, ctx);
       if (!result.success) return { success: false, codes: [], batchId: null, error: result.error };
       for (const row of result.codes ?? []) rawCodes.set(row.passId, row.code);
       return { success: true, codes: (result.codes ?? []).map((row) => row.code), batchId: null, expiresAt: result.expiresAt };
     },
     // Event photos: admin only (device credential + PIN capability, both held here).
-    listEventPhotos: () => (adminValid()
-      ? callFunction('event-photos', { operation: 'list' }, { 'x-admin-capability': admin.token })
-      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
-    deleteEventPhotos: (a) => (adminValid()
-      ? callFunction('event-photos', { operation: 'delete', ids: a.ids, reason: a.reason }, { 'x-admin-capability': admin.token })
-      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    listEventPhotos: (_a, ctx) => asAdmin(ctx, 'event-photos', { operation: 'list' }),
+    deleteEventPhotos: (a, ctx) => asAdmin(ctx, 'event-photos', { operation: 'delete', ids: a.ids, reason: a.reason }),
     // Shared themes: every kiosk reads the current set; publishing it needs the PIN session.
     themeLatest: () => callFunction('theme-sync', { operation: 'latest' }),
     themeFetch: () => callFunction('theme-sync', { operation: 'fetch' }),
-    themePublish: (a) => (adminValid()
-      ? callFunction('theme-sync', { operation: 'publish', bundle: a.bundle }, { 'x-admin-capability': admin.token })
-      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
+    themePublish: (a, ctx) => asAdmin(ctx, 'theme-sync', { operation: 'publish', bundle: a.bundle }),
     // Looks for the phone photo studio (main kiosk only, PIN session).
-    publishStudioLooks: (a) => (adminValid()
-      ? callFunction('theme-sync', { operation: 'publishLooks', looks: a.looks, defaults: a.defaults }, { 'x-admin-capability': admin.token })
-      : Promise.resolve({ success: false, error: 'admin_capability_required' })),
-    listPrintPasses: async () => {
-      const result = await withAdmin({ operation: 'listPass' });
+    publishStudioLooks: (a, ctx) => asAdmin(ctx, 'theme-sync', { operation: 'publishLooks', looks: a.looks, defaults: a.defaults }),
+    listPrintPasses: async (_a, ctx) => {
+      const result = await withAdmin({ operation: 'listPass' }, ctx);
       if (!result.success) return { success: false, codes: [], error: result.error };
       return {
         success: true,
@@ -124,7 +123,7 @@ export function createDeviceBridge({ supabaseUrl, publishableKey, credential, ki
     heartbeat: (payload) => callFunction('kiosk-heartbeat', payload),
   };
 
-  return { handlers, internal, isAdmin: () => !!adminValid() };
+  return { handlers, internal, isAdmin: (screen = 'local') => adminValid({ screen }) };
 }
 
 // Browser-side installer. `groups` maps a window global to its method names.

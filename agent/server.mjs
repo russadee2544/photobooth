@@ -17,6 +17,7 @@ import { createHeartbeat } from './heartbeat.mjs';
 import { ensureResetShortcut } from './shortcut.mjs';
 import { keepAwake } from './keep-awake.mjs';
 import { createUpdater, isValidChannel, readInstalledVersion } from './updater.mjs';
+import { createPairings, createScreenRegistry, ensureCertificates, HTTP_PORT, localNames, startRemoteScreen } from './remote-screen.mjs';
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const DEFAULT_PORT = 8787;
@@ -192,14 +193,14 @@ async function runKiosk(config) {
 
   // Only the page-facing PhotoboothPrinter surface; start/report stay internal.
   const printerHandlers = {
-    printAuthorizedPass: async (a) => {
+    printAuthorizedPass: async (a, ctx) => {
       const result = await printService.printAuthorizedPass(a);
       if (result && result.status !== 'completed') noteError(`print ${result.status}${result.error ? ': ' + result.error : ''}`);
       return result;
     },
     // Admin: several slips (redeem codes) in one job, each cut off. Receipt paper only.
-    printSlips: async (a) => {
-      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    printSlips: async (a, ctx) => {
+      if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
       const dots = RECEIPT_DOTS[String(a.paperMode || '')] || 576;
       const images = [];
       for (const url of Array.isArray(a.dataUrls) ? a.dataUrls.slice(0, 100) : []) {
@@ -217,8 +218,8 @@ async function runKiosk(config) {
       }
     },
     // Admin test page: one copy, PIN session required, no entitlement involved.
-    testPrint: async (a) => {
-      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    testPrint: async (a, ctx) => {
+      if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
       const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(a.dataUrl || '');
       if (!match) return { success: false, error: 'invalid_image' };
       try {
@@ -234,8 +235,8 @@ async function runKiosk(config) {
   // Switching the kiosk mode needs the admin PIN session; the agent persists it so the
   // silent-print rules (free event printing vs. paid redeem printing) match what the page shows.
   const modeHandlers = {
-    setKioskMode: async (a) => {
-      if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+    setKioskMode: async (a, ctx) => {
+      if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
       if (a.mode !== 'event' && a.mode !== 'redeem') return { success: false, error: 'invalid_mode' };
       try {
         const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
@@ -249,8 +250,8 @@ async function runKiosk(config) {
   };
   // The printer chosen on the admin page: kept in the agent config too, so printing defaults and the
   // owner dashboard's printer status follow the same printer.
-  modeHandlers.setPrinterName = async (a) => {
-    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+  modeHandlers.setPrinterName = async (a, ctx) => {
+    if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
     const name = String(a.printerName || '').trim().slice(0, 200);
     if (!name) return { success: false, error: 'invalid_printer' };
     try {
@@ -263,8 +264,8 @@ async function runKiosk(config) {
       return { success: false, error: 'config_write_failed' };
     }
   };
-  modeHandlers.setPrintTransport = async (a) => {
-    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+  modeHandlers.setPrintTransport = async (a, ctx) => {
+    if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
     const transport = a.transport === 'driver' ? 'driver' : 'escpos';
     try {
       const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
@@ -278,8 +279,8 @@ async function runKiosk(config) {
   modeHandlers.getPrintTransport = async () => ({ success: true, transport: config.printTransport === 'driver' ? 'driver' : 'escpos',
     lightness: Number.isInteger(config.printLightness) ? config.printLightness : 2 });
   // How much lighter receipt photos are printed (ESC/POS only): 0 = as is ... 4 = lightest.
-  modeHandlers.setPrintLightness = async (a) => {
-    if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
+  modeHandlers.setPrintLightness = async (a, ctx) => {
+    if (!isAdmin(ctx?.screen)) return { success: false, error: 'admin_capability_required' };
     const level = Math.max(0, Math.min(6, Math.round(Number(a.lightness))));
     if (!Number.isFinite(level)) return { success: false, error: 'invalid_lightness' };
     try {
@@ -291,11 +292,80 @@ async function runKiosk(config) {
       return { success: false, error: 'config_write_failed' };
     }
   };
-  modeHandlers.reportPageStatus = async (a) => {
+  modeHandlers.reportPageStatus = async (a, ctx) => {
     const paper = Number(a.paper);
     if (Number.isInteger(paper) && paper >= 0 && paper <= 100000) runtime.paper = paper;
     return { success: true };
   };
+  // ---- iPad as the customer screen over Wi-Fi (off until switched on in admin; remote-screen.mjs)
+  const saveConfig = async (patch) => {
+    const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
+    await writeFile(CONFIG_FILE, JSON.stringify({ ...saved, ...patch }, null, 2));
+    Object.assign(config, patch);
+  };
+  const pairings = createPairings();
+  const registry = createScreenRegistry({
+    devices: config.remoteScreen?.devices || [],
+    save: (devices) => saveConfig({ remoteScreen: { ...(config.remoteScreen || {}), devices } }),
+  });
+  const remote = {
+    server: null, names: null, error: null, watch: null,
+    async start() {
+      if (this.server) return;
+      this.names = localNames();
+      if (!this.names.ips.length) throw new Error('no_lan_address');
+      const certs = await ensureCertificates({ dir: join(DATA_DIR, 'remote-screen'), names: this.names, protect, unprotect });
+      const server = startRemoteScreen({ handle: route, registry, pairings, certs, names: this.names,
+        log: (line) => console.log(`[ipad] ${line}`), listenHost: process.env.PB_REMOTE_LISTEN || '0.0.0.0' });   // env: tests only
+      try { await server.ready; } catch (error) { await server.close().catch(() => {}); throw error; }
+      this.server = server;
+      this.error = null;
+      // A new IP (DHCP) needs a certificate that names it: restart with a re-issued one.
+      this.watch = setInterval(() => {
+        if (JSON.stringify(localNames()) === JSON.stringify(this.names)) return;
+        this.stop().then(() => this.start()).catch((error) => { this.error = error.message; noteError(`ipad screen: ${error.message}`); });
+      }, 10 * 60_000);
+      this.watch.unref?.();
+    },
+    async stop() {
+      clearInterval(this.watch);
+      const server = this.server;
+      this.server = null;
+      if (server) await server.close();
+    },
+  };
+  // Managing iPads: only from the PC's own screen, with the admin PIN entered there.
+  const pcAdmin = (ctx) => (ctx?.screen || 'local') === 'local' && isAdmin('local');
+  const remoteStatus = () => {
+    const names = remote.names || localNames();
+    return { success: true, enabled: !!config.remoteScreen?.enabled, running: !!remote.server, error: remote.error,
+      host: names.dnsNames[0], ips: names.ips, setupUrls: [names.dnsNames[0], ...names.ips].map((h) => `http://${h}:${HTTP_PORT}/`),
+      screens: registry.list() };
+  };
+  modeHandlers.remoteScreenStatus = async (_a, ctx) => (pcAdmin(ctx) ? remoteStatus() : { success: false, error: 'admin_capability_required' });
+  modeHandlers.setRemoteScreen = async (a, ctx) => {
+    if (!pcAdmin(ctx)) return { success: false, error: 'admin_capability_required' };
+    const enabled = a.enabled === true;
+    try {
+      await saveConfig({ remoteScreen: { ...(config.remoteScreen || {}), enabled } });
+      if (enabled) await remote.start(); else await remote.stop();
+    } catch (error) {
+      remote.error = error?.code || (error instanceof Error ? error.message : 'start_failed');
+      noteError(`ipad screen: ${remote.error}`);
+    }
+    return remoteStatus();
+  };
+  modeHandlers.startRemotePairing = async (_a, ctx) => {
+    if (!pcAdmin(ctx)) return { success: false, error: 'admin_capability_required' };
+    if (!remote.server) return { success: false, error: 'not_running' };
+    const { code, expiresAt } = pairings.start();
+    return { success: true, code, expiresAt, pairUrls: remote.server.urls.pair(code) };
+  };
+  modeHandlers.revokeRemoteScreen = async (a, ctx) => {
+    if (!pcAdmin(ctx)) return { success: false, error: 'admin_capability_required' };
+    return { success: await registry.revoke(String(a.id || '')) };
+  };
+
   const handlers = { ...deviceHandlers, ...modeHandlers, ...printerHandlers };
   const groups = {
     PhotoboothDevice: [...Object.keys(deviceHandlers), ...Object.keys(modeHandlers)],
@@ -305,8 +375,9 @@ async function runKiosk(config) {
   setInterval(() => { printService.flushUnreported().catch(() => {}); }, 30_000);
   printService.flushUnreported().catch(() => {});
 
-  const server = createServer(async (req, res) => {
-    if (!hostAllowed(req)) return json(res, 403, { error: 'forbidden' });
+  // One router for every screen: the PC's own browser (loopback, screen 'local') and paired
+  // iPads (remote-screen.mjs, screen = their id). The screen decides whose admin PIN session counts.
+  const route = async (req, res, screen) => {
     const { pathname } = new URL(req.url, 'http://localhost');
 
     if (pathname === '/__bridge.js') {
@@ -331,7 +402,7 @@ async function runKiosk(config) {
       if (!['reportPageStatus', 'themeLatest', 'themeFetch'].includes(payload.method)) activity.at = Date.now();
       const handler = Object.hasOwn(handlers, payload.method) ? handlers[payload.method] : null;
       if (!handler) return json(res, 400, { error: 'unknown_method' });
-      try { return json(res, 200, await handler(payload.args || {})); } catch { return json(res, 200, { error: 'agent_error' }); }
+      try { return json(res, 200, await handler(payload.args || {}, { screen })); } catch { return json(res, 200, { error: 'agent_error' }); }
     }
 
     // Free-event mode only: silent print without an entitlement. Never in redeem mode.
@@ -370,12 +441,14 @@ async function runKiosk(config) {
       }
     }
     return serveStatic(req, res);
-  });
+  };
+  const server = createServer((req, res) => (hostAllowed(req) ? route(req, res, 'local') : json(res, 403, { error: 'forbidden' })));
 
   const port = Number(config.port) || DEFAULT_PORT;
   server.listen(port, '127.0.0.1', () => {
     console.log(`Photobooth agent on http://localhost:${port}/home.html (mode: ${config.mode}, kiosk: ${config.kioskId})`);
   });
+  if (config.remoteScreen?.enabled) remote.start().catch((error) => noteError(`ipad screen: ${error.message}`));
   // A booth must not go dark between customers.
   keepAwake({ log: (line) => console.log(`[power] ${line}`) });
 
