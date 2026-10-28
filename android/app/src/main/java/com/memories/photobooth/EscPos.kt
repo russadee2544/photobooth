@@ -8,8 +8,8 @@ import kotlin.math.pow
 object EscPos {
     val RECEIPT_DOTS = mapOf("thermal58" to 384, "thermal80" to 576, "thermal100" to 832)
 
-    // Lightness levels from the admin page: 0 = as the image is ... 4 = lightest. Default 2.
-    private val LIGHTNESS = doubleArrayOf(1.0, 0.85, 0.72, 0.6, 0.5)
+    // Lightness levels from the admin page: 0 = as the image is ... 6 = lightest. Default 2.
+    private val LIGHTNESS = doubleArrayOf(1.0, 0.85, 0.72, 0.6, 0.5, 0.42, 0.35)
     fun gammaOf(level: Int?): Double = LIGHTNESS.getOrNull(level ?: 2) ?: 0.72
 
     private const val BAND_ROWS = 128   // rows per GS v 0 block (small printer buffers)

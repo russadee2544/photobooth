@@ -41,7 +41,7 @@ class KioskConfig(private val context: Context) {
         get() = prefs.getString("printerName", "") ?: ""
         set(value) { prefs.edit().putString("printerName", value).commit() }
 
-    // How much lighter receipt photos are printed: 0 = as is ... 4 = lightest.
+    // How much lighter receipt photos are printed: 0 = as is ... 6 = lightest.
     var printLightness: Int
         get() = prefs.getInt("printLightness", 2)
         set(value) { prefs.edit().putInt("printLightness", value).commit() }

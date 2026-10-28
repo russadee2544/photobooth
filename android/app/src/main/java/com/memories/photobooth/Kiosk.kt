@@ -126,14 +126,14 @@ class Kiosk(private val context: Context, private val onConfigured: () -> Unit) 
                 }
             },
             "getPrintTransport" to h { _ -> obj("success" to true, "transport" to "escpos", "lightness" to config.printLightness) },
-            // How much lighter receipt photos are printed: 0 = as is ... 4 = lightest.
+            // How much lighter receipt photos are printed: 0 = as is ... 6 = lightest.
             "setPrintLightness" to h { a ->
                 val level = a.optDouble("lightness", Double.NaN)
                 when {
                     !api.isAdmin() -> adminRequired
                     level.isNaN() -> obj("success" to false, "error" to "invalid_lightness")
                     else -> {
-                        val clamped = Math.round(level).toInt().coerceIn(0, 4)
+                        val clamped = Math.round(level).toInt().coerceIn(0, 6)
                         config.printLightness = clamped
                         obj("success" to true, "lightness" to clamped)
                     }
