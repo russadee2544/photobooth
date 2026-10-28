@@ -56,7 +56,12 @@
 
     <!-- Header -->
     <header class="kiosk-header">
+        <button onclick="window.location.href='layout.html'" class="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span class="font-medium text-sm tracking-wide" data-i18n="btn_back">กลับ</span>
+        </button>
         <div class="kiosk-brand tracking-widest text-sm" data-i18n="brand">MEMORIES</div>
+        <div class="w-20"></div>
     </header>
 
     <main class="flex-grow pt-20 pb-32 flex flex-col items-center justify-center w-full fade-up-enter">
@@ -84,9 +89,9 @@
 
     <!-- Bottom Bar -->
     <div class="fixed bottom-0 left-0 w-full p-8 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-40 flex justify-center">
-        <button onclick="saveAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group" data-i18n="btn_process">
-            Process Photos
-            <span class="material-symbols-outlined ml-2 text-sm group-hover:rotate-180 transition-transform duration-500">sync</span>
+        <button onclick="saveAndContinue()" class="btn-modern btn-primary text-base px-16 py-4 w-full max-w-sm group">
+            <span data-i18n="tpl_start">เริ่มถ่ายรูป</span>
+            <span class="material-symbols-outlined ml-2 text-sm">photo_camera</span>
         </button>
     </div>
 
@@ -105,7 +110,7 @@
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
             await ThemePacks.installAll();
-            globalPhotos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
+            globalPhotos = [];   // frames are picked before shooting: previews show empty photo slots
 
             const paperMode = Kiosk.paperMode || 'photo4x6_dual';
             const currentLayoutStr = Session.layout || '3_1x1';
@@ -264,23 +269,11 @@
             return div.innerHTML;
         }
 
-        function saveAndContinue() {
-            const nextPage = Kiosk.filterEnabled ? 'filter.html' : 'processing.html';
-            if (!Kiosk.filterEnabled) {
-                Session.filter = 'original';
-            }
-            if (globalPhotos && globalPhotos.length > 0) {
-                Session.photos = globalPhotos;
-                SessionAsync.set('raw_photos', globalPhotos).then(() => {
-                    if (Session.templateSchemaId) SessionAsync.set('templateSchemaId', Session.templateSchemaId);
-                    if (Session.template) SessionAsync.set('template', Session.template);
-                    window.location.href = nextPage;
-                });
-            } else {
-                if (Session.templateSchemaId) SessionAsync.set('templateSchemaId', Session.templateSchemaId);
-                if (Session.template) SessionAsync.set('template', Session.template);
-                window.location.href = nextPage;
-            }
+        // The frame is picked before shooting; the camera page frames the photos for it.
+        async function saveAndContinue() {
+            await SessionAsync.set('templateSchemaId', Session.templateSchemaId || null);
+            if (Session.template) await SessionAsync.set('template', Session.template);
+            window.location.href = 'capture.html';
         }
     </script>
 </body>
