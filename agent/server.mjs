@@ -280,7 +280,7 @@ async function runKiosk(config) {
   // How much lighter receipt photos are printed (ESC/POS only): 0 = as is ... 4 = lightest.
   modeHandlers.setPrintLightness = async (a) => {
     if (!isAdmin()) return { success: false, error: 'admin_capability_required' };
-    const level = Math.max(0, Math.min(4, Math.round(Number(a.lightness))));
+    const level = Math.max(0, Math.min(6, Math.round(Number(a.lightness))));
     if (!Number.isFinite(level)) return { success: false, error: 'invalid_lightness' };
     try {
       const saved = JSON.parse(await readFile(CONFIG_FILE, 'utf8'));
