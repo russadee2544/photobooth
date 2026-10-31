@@ -756,6 +756,27 @@
                 </div>
             </div>
 
+            <!-- Home screen notice, this kiosk only -->
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-700 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-accent-mint/10 text-accent-mint flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined">support_agent</span>
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-white">ข้อความหน้าแรก "ติดต่อเคาน์เตอร์หรือพนักงาน"</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">เปิด: แสดงว่า "ต้องการใช้ตู้ กรุณาติดต่อเคาน์เตอร์หรือพนักงาน" ที่หน้าแรกของตู้นี้เท่านั้น</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0 ml-4">
+                        <button id="toggle-home-notice" onclick="toggleHomeNotice()" class="relative w-12 h-7 rounded-full border-2 transition-all duration-300 border-gray-600 bg-gray-700 cursor-pointer">
+                            <div id="toggle-home-notice-knob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-gray-400 rounded-full transition-all duration-300"></div>
+                        </button>
+                        <span id="home-notice-toggle-label" class="text-sm text-gray-400 min-w-[40px]">ปิด</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- One column per package: create, see and print its own codes -->
             <p id="rc-summary" class="text-xs text-gray-400 mb-3"></p>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -2767,6 +2788,7 @@
             updateQrToggle();
             updateGifToggle();
             updatePromptPayToggle();
+            updateHomeNoticeToggle();
         }
 
         function togglePromptPayEnabled() {
@@ -2782,6 +2804,27 @@
             var lbl = document.getElementById('promptpay-toggle-label');
             if (!btn || !knob || !lbl) return;
             var on = Kiosk.promptPayEnabled;
+            btn.style.background = on ? 'rgba(186,255,102,0.15)' : '#374151';
+            btn.style.borderColor = on ? '#BAFF66' : '#4b5563';
+            knob.style.transform = on ? 'translateX(20px)' : 'translateX(0)';
+            knob.style.background = on ? '#BAFF66' : '#9ca3af';
+            lbl.innerText = on ? 'เปิด' : 'ปิด';
+            lbl.style.color = on ? '#BAFF66' : '#9ca3af';
+        }
+
+        function toggleHomeNotice() {
+            Kiosk.homeNoticeEnabled = !Kiosk.homeNoticeEnabled;
+            updateHomeNoticeToggle();
+            adminAuditLocal('kiosk.home_notice_changed', { enabled: Kiosk.homeNoticeEnabled });
+            showToast(Kiosk.homeNoticeEnabled ? 'เปิดข้อความหน้าแรกของตู้นี้แล้ว ✓' : 'ปิดข้อความหน้าแรกแล้ว');
+        }
+
+        function updateHomeNoticeToggle() {
+            var btn = document.getElementById('toggle-home-notice');
+            var knob = document.getElementById('toggle-home-notice-knob');
+            var lbl = document.getElementById('home-notice-toggle-label');
+            if (!btn || !knob || !lbl) return;
+            var on = Kiosk.homeNoticeEnabled;
             btn.style.background = on ? 'rgba(186,255,102,0.15)' : '#374151';
             btn.style.borderColor = on ? '#BAFF66' : '#4b5563';
             knob.style.transform = on ? 'translateX(20px)' : 'translateX(0)';

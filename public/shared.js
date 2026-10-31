@@ -86,6 +86,9 @@ const Kiosk = {
     // Redeem mode: offer PromptPay purchase alongside code entry (default on).
     get promptPayEnabled() { return localStorage.getItem('kiosk_promptpay_enabled') !== 'false'; },
     set promptPayEnabled(v) { localStorage.setItem('kiosk_promptpay_enabled', v ? 'true' : 'false'); },
+    // Home screen line asking customers to see the counter or staff (default off, one kiosk at a time).
+    get homeNoticeEnabled() { return localStorage.getItem('kiosk_home_notice_enabled') === 'true'; },
+    set homeNoticeEnabled(v) { localStorage.setItem('kiosk_home_notice_enabled', v ? 'true' : 'false'); },
     // GIF download (default on). Effective only while download QR is on too.
     // Phone photo studio: the photo QR opens a page where the customer picks a look and saves.
     get studioEnabled() { return localStorage.getItem('kiosk_studio_enabled') === 'true' && !!this.studioUrl; },
@@ -749,6 +752,7 @@ const i18n = {
         "brand": "MEMORIES",
         "home_subtitle": "Photo booth. Solo is great, squad is better.",
         "home_price": "Starting at {price}",
+        "home_notice": "To use this booth, please contact the counter or staff",
         "home_start": "Tap here to start",
         "btn_back": "BACK",
         "layout_title": "Choose Your Layout",
@@ -790,6 +794,7 @@ const i18n = {
         "brand": "MEMORIES",
         "home_subtitle": "ตู้ถ่ายรูป ถ่ายคนเดียวก็ได้ ถ่ายเป็นแก๊งยิ่งดี",
         "home_price": "เริ่มต้น {price}",
+        "home_notice": "ต้องการใช้ตู้ กรุณาติดต่อเคาน์เตอร์หรือพนักงาน",
         "home_start": "แตะที่นี่เพื่อเริ่มถ่ายรูป",
         "btn_back": "กลับ",
         "layout_title": "เลือกรูปแบบ",
@@ -3055,7 +3060,8 @@ async function logSessionToCloud() {
 const THEME_PACK_URLS = ['/theme-packs/wanted-58mm.json', '/theme-packs/exhibition-58mm.json', '/theme-packs/boarding-58mm.json',
     '/theme-packs/wanted-80mm.json', '/theme-packs/exhibition-80mm.json', '/theme-packs/boarding-80mm.json',
     '/theme-packs/goodvibes-80mm.json', '/theme-packs/pinkretro-80mm.json', '/theme-packs/moment-80mm.json',
-    '/theme-packs/lace-80mm.json'];
+    '/theme-packs/lace-80mm.json', '/theme-packs/slowdays-80mm.json',
+    '/theme-packs/memoryreport-80mm.json', '/theme-packs/airline-80mm.json'];
 const ThemePacks = {
     async installAll() {
         for (const url of THEME_PACK_URLS) {

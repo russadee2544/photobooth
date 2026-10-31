@@ -1,0 +1,295 @@
+{
+  "packId": "memoryreport-80mm",
+  "version": 1,
+  "name": "Memory Report (80mm)",
+  "templates": [
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_memoryreport_80_1",
+      "layoutId": "1_4x3",
+      "name": "Memory Report · 80mm · 1 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 980,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/memoryreport/receipt-1-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [],
+      "slots": [
+        {
+          "index": 1,
+          "x": 41,
+          "y": 476,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_memoryreport_80_2",
+      "layoutId": "2_4x3",
+      "name": "Memory Report · 80mm · 2 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1354,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/memoryreport/receipt-2-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [],
+      "slots": [
+        {
+          "index": 1,
+          "x": 41,
+          "y": 476,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 41,
+          "y": 850,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_memoryreport_80_3",
+      "layoutId": "3_4x3",
+      "name": "Memory Report · 80mm · 3 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 1728,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/memoryreport/receipt-3-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [],
+      "slots": [
+        {
+          "index": 1,
+          "x": 41,
+          "y": 476,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 41,
+          "y": 850,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 41,
+          "y": 1224,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "templateId": "custom_pack_memoryreport_80_4",
+      "layoutId": "4_4x3",
+      "name": "Memory Report · 80mm · 4 รูป",
+      "type": "thermal80",
+      "orientation": "portrait",
+      "enabled": true,
+      "isCustom": true,
+      "canvas": {
+        "width": 576,
+        "height": 2102,
+        "dpi": 203,
+        "backgroundColor": "#FFFFFF",
+        "backgroundImage": "/theme-packs/memoryreport/receipt-4-paper.png",
+        "backgroundFitMode": "stretch",
+        "safeMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        },
+        "bleedMargin": {
+          "top": 0,
+          "bottom": 0,
+          "left": 0,
+          "right": 0
+        }
+      },
+      "overlay": {
+        "url": "",
+        "zIndex": 100,
+        "fitMode": "cover"
+      },
+      "artboard": [],
+      "slots": [
+        {
+          "index": 1,
+          "x": 41,
+          "y": 476,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 1,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 2,
+          "x": 41,
+          "y": 850,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 2,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 3,
+          "x": 41,
+          "y": 1224,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        },
+        {
+          "index": 4,
+          "x": 41,
+          "y": 1598,
+          "width": 495,
+          "height": 355,
+          "rotation": 0,
+          "zIndex": 4,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "rectangle"
+        }
+      ],
+      "printSettings": {
+        "printTwoPerPage": false,
+        "paperSize": "80mm"
+      }
+    }
+  ]
+}
