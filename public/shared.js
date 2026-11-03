@@ -90,8 +90,8 @@ const Kiosk = {
     get homeNoticeEnabled() { return localStorage.getItem('kiosk_home_notice_enabled') === 'true'; },
     set homeNoticeEnabled(v) { localStorage.setItem('kiosk_home_notice_enabled', v ? 'true' : 'false'); },
     // GIF download (default on). Effective only while download QR is on too.
-    // Phone photo studio: the photo QR opens a page where the customer picks a look and saves.
-    get studioEnabled() { return localStorage.getItem('kiosk_studio_enabled') === 'true' && !!this.studioUrl; },
+    // Phone photo studio (default on): the photo QR opens a page where the customer picks a look and saves.
+    get studioEnabled() { return localStorage.getItem('kiosk_studio_enabled') !== 'false' && !!this.studioUrl; },
     set studioEnabled(v) { localStorage.setItem('kiosk_studio_enabled', v ? 'true' : 'false'); },
     // Every booth uses the studio on the main site unless admin sets another address.
     get studioUrl() { return (localStorage.getItem('kiosk_studio_url') || 'https://photobooth-tau-one.vercel.app/studio').trim().replace(/\/+$/, ''); },

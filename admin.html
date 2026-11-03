@@ -2689,7 +2689,7 @@
             await preloadStudioLuts();
             const enabled = document.getElementById('studio-enabled');
             const url = document.getElementById('studio-url');
-            enabled.checked = localStorage.getItem('kiosk_studio_enabled') === 'true';
+            enabled.checked = Kiosk.studioEnabled;
             url.value = Kiosk.studioUrl;
             enabled.onchange = () => {
                 if (enabled.checked && !/^https?:\/\/\S+$/.test(url.value.trim())) { showToast('ใส่ที่อยู่หน้าแต่งรูปก่อน'); enabled.checked = false; return; }
