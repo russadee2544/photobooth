@@ -30,7 +30,13 @@
         .all { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 18px 0 8px;
             padding: 17px 20px; border: 0; border-radius: 999px; background: var(--red); color: #fff;
             font: 600 1.1rem 'Prompt', sans-serif; box-shadow: 0 10px 24px rgba(215, 54, 43, .28); cursor: pointer; }
-        .all:active { transform: translateY(1px); }
+        .all:active, .studio:active { transform: translateY(1px); }
+        .studio { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; margin: 18px 0 4px;
+            padding: 16px 18px; border-radius: 18px; background: var(--ink); color: #fff; text-decoration: none; }
+        .studio[hidden], .all[hidden] { display: none; }
+        .studio svg { width: 28px; height: 28px; }
+        .studio b { display: block; font-weight: 600; font-size: 1.08rem; }
+        .studio small { display: block; color: #CFC6B8; font-size: .82rem; margin-top: 1px; }
         .all[disabled] { opacity: .55; box-shadow: none; }
 
         .list { display: grid; gap: 12px; margin-top: 14px; }
@@ -64,6 +70,11 @@
         <p class="lead">กดบันทึกทีละแบบ หรือบันทึกทั้งหมดในครั้งเดียว</p>
     </header>
 
+    <a id="studio" class="studio" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 14v-2M8 9h2m10 0h2M17.8 11.8 19 13m-1.2-6.8L19 5M3 21l9-9m.2-5.8L11 5"/></svg>
+        <span><b>แต่งรูป เลือกฟิลเตอร์</b><small>เลือกโทนสี ปรับผิว แล้วบันทึกลงมือถือ</small></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    </a>
     <button id="save-all" class="all" type="button" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
         <span id="save-all-text">บันทึกทั้งหมด</span>
@@ -85,8 +96,14 @@
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>';
 
-    // #c=<colour>&r=<black-and-white>&g=<gif asset>&x=<expiry, unix seconds>
+    // #c=<colour>&r=<black-and-white>&g=<gif asset>&s=<phone studio>&x=<expiry, unix seconds>
     const params = new URLSearchParams(location.hash.slice(1));
+    if (/^[0-9a-f]{32}$/.test(params.get('s') || '')) {
+        const studio = document.getElementById('studio');
+        studio.href = '/studio/#' + params.get('s');
+        studio.hidden = false;
+        document.querySelector('.lead').textContent = 'แต่งรูปด้วยฟิลเตอร์ หรือบันทึกรูปทั้งหมดได้เลย';
+    }
     const taken = (() => { const m = NAME.exec(params.get('c') || params.get('r') || ''); return m ? new Date(Number(m[1])) : new Date(); })();
     const day = `${taken.getDate()}${MONTHS[taken.getMonth()]}`.replace(/\.$/, '');   // 27ต.ค + .jpg -> 27ต.ค.jpg
     const items = [];

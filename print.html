@@ -658,8 +658,9 @@
                         if (typeof logSessionToCloud === 'function') {
                             logSessionToCloud(colorUrl, ditherUrl);
                         }
-                        // The phone studio needs its own link, so it keeps the separate QRs.
-                        photosUploaded(studioLink ? false : { colorUrl, ditherUrl });
+                        // The one QR also carries the phone studio, opened from a button on the download page.
+                        const studioId = studioLink ? studioLink.split('#')[1] : null;
+                        photosUploaded({ colorUrl, ditherUrl, studioId });
                     } catch (err) {
                         console.warn('QR code upload notice:', err);
                         uploadStatus.classList.remove('hidden');
@@ -714,7 +715,8 @@
             const el = document.getElementById('qr-share');
             el.innerHTML = '';
             new QRCode(el, { text: link, width: 200, height: 200, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.L });
-            const kinds = [['palette', 'ภาพสี HD', share.photos.colorUrl], ['contrast', 'ภาพขาวดำ', share.photos.ditherUrl], ['gif_box', 'GIF ภาพเคลื่อนไหว', share.gif]]
+            const kinds = [['palette', 'ภาพสี HD', share.photos.colorUrl], ['contrast', 'ภาพขาวดำ', share.photos.ditherUrl], ['gif_box', 'GIF ภาพเคลื่อนไหว', share.gif],
+                ['auto_fix_high', 'แต่งรูป เลือกฟิลเตอร์', share.photos.studioId]]
                 .filter((k) => k[2]);
             const ul = document.getElementById('share-kinds');
             ul.replaceChildren(...kinds.map(([icon, label]) => {

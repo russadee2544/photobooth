@@ -9,6 +9,10 @@
     const PREVIEW_EDGE = 1100;       // longest side of the on-screen preview
     const EXPORT_SHOT_EDGE = 1600;   // single photos are saved at most this big
 
+    // Same film moods and names as the kiosk's filter page.
+    const FILM_LOOKS = [['kyoto', 'เกียวโต'], ['tokyo', 'โตเกียว'], ['hokkaido', 'ฮอกไกโด'],
+        ['instant', 'อินสแตนท์'], ['instantvintage', 'อินสแตนท์เก่า'], ['dreamy', 'ฟุ้งละมุน']];
+    const filmOf = (id) => (FILM_LOOKS.some(([f]) => f === id) ? id : null);
     const $ = (id) => document.getElementById(id);
     const state = {
         manifest: null, shots: [], under: null, over: null,
@@ -160,7 +164,10 @@
         const builtins = window.LookEngine ? LookEngine.BUILTIN : [];
         const list = doc && Array.isArray(doc.looks) ? doc.looks
             : builtins.map((l) => ({ id: l.id, name: l.th, builtin: true, strength: 1 }));
-        state.looks = [{ id: 'none', name: 'ธรรมดา', strength: 1 }].concat(list.filter((l) => l.id !== 'none'));
+        // The kiosk's film moods (film-looks.js) come with every studio, after the admin's looks.
+        const films = window.FilmLooks ? FILM_LOOKS.filter(([id]) => FilmLooks.has(id) && !list.some((l) => l.id === id))
+            .map(([id, name]) => ({ id, name, film: true, strength: 1 })) : [];
+        state.looks = [{ id: 'none', name: 'ธรรมดา', strength: 1 }].concat(list.filter((l) => l.id !== 'none'), films);
         const d = (doc && doc.defaults) || {};
         state.look = state.looks.some((l) => l.id === d.look) ? d.look : 'none';
         if (typeof d.smooth === 'number') state.smooth = d.smooth;
@@ -170,7 +177,7 @@
     }
 
     async function lutFor(id) {
-        if (id === 'none') return null;
+        if (id === 'none' || filmOf(id)) return null;
         if (state.lutCache.has(id)) return state.lutCache.get(id);
         const look = state.looks.find((l) => l.id === id);
         let lut = null;
@@ -185,7 +192,7 @@
     // ------------------------------------------------------------ drawing
     function settings(lut) {
         if (state.showOriginal) return { lut: null, amount: 0, smooth: 0, bright: 0, tone: 0 };
-        return { lut, amount: state.strength, smooth: state.smooth, bright: state.bright, tone: state.tone };
+        return { lut, film: filmOf(state.look), amount: state.strength, smooth: state.smooth, bright: state.bright, tone: state.tone };
     }
 
     // One shot through the look, at a size good for `targetW x targetH` (cover). Returns a canvas (copy).
@@ -199,6 +206,19 @@
         const ctx = out.getContext('2d');
         if (renderer) ctx.drawImage(renderer.render(image, look, w, h), 0, 0);
         else ctx.drawImage(image, 0, 0, w, h);
+        if (look.film && window.FilmLooks) {
+            // Film moods work on pixels (grain, vignette, lens mist), after the skin settings; strength mixes with the plain photo.
+            const pixels = ctx.getImageData(0, 0, w, h), data = pixels.data;
+            const amount = Math.max(0, Math.min(1, look.amount ?? 1));
+            const before = amount < 1 ? data.slice() : null;
+            FilmLooks.apply(data, w, h, look.film);
+            if (before) for (let i = 0; i < data.length; i += 4) {
+                data[i] = before[i] + (data[i] - before[i]) * amount;
+                data[i + 1] = before[i + 1] + (data[i + 1] - before[i + 1]) * amount;
+                data[i + 2] = before[i + 2] + (data[i + 2] - before[i + 2]) * amount;
+            }
+            ctx.putImageData(pixels, 0, 0);
+        }
         return out;
     }
 
@@ -327,7 +347,7 @@
             b.onclick = () => selectLook(l.id);
             looksEl.appendChild(b);
             lutFor(l.id).then((lut) => {
-                const thumb = processed(state.shots[0], { lut, amount: l.strength ?? 1, smooth: 0, bright: 0, tone: 0 }, 160, 160);
+                const thumb = processed(state.shots[0], { lut, film: filmOf(l.id), amount: l.strength ?? 1, smooth: 0, bright: 0, tone: 0 }, 160, 160);
                 b.querySelector('.thumb').appendChild(thumb);
             });
         });

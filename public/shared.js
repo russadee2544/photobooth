@@ -3027,7 +3027,7 @@ const StudioLooks = {
 // project's storage. Returns the link, or null when the uploaded URLs are not the expected kind.
 const SHARE_PAGE_URL = 'https://photobooth-tau-one.vercel.app/d';
 
-function buildShareLink({ colorUrl, ditherUrl, gifUrl, expiresAt } = {}) {
+function buildShareLink({ colorUrl, ditherUrl, gifUrl, studioId, expiresAt } = {}) {
     const photoName = (url, prefix) => {
         const base = `${SUPABASE_URL}/storage/v1/object/public/photobooth/${prefix}`;
         if (typeof url !== 'string' || !url.startsWith(base)) return null;
@@ -3043,6 +3043,7 @@ function buildShareLink({ colorUrl, ditherUrl, gifUrl, expiresAt } = {}) {
         ? gifUrl.split('?a=')[1] : null;
     if (g && /^[0-9a-f-]{36}$/i.test(g)) parts.push('g=' + g);
     if (!c && !r) return null;
+    if (typeof studioId === 'string' && /^[0-9a-f]{32}$/.test(studioId)) parts.push('s=' + studioId);
     const x = Date.parse(expiresAt || '');
     if (x > 0) parts.push('x=' + Math.floor(x / 1000));
     return `${SHARE_PAGE_URL}#${parts.join('&')}`;
