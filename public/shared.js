@@ -93,7 +93,8 @@ const Kiosk = {
     // Phone photo studio: the photo QR opens a page where the customer picks a look and saves.
     get studioEnabled() { return localStorage.getItem('kiosk_studio_enabled') === 'true' && !!this.studioUrl; },
     set studioEnabled(v) { localStorage.setItem('kiosk_studio_enabled', v ? 'true' : 'false'); },
-    get studioUrl() { return (localStorage.getItem('kiosk_studio_url') || '').trim().replace(/\/+$/, ''); },
+    // Every booth uses the studio on the main site unless admin sets another address.
+    get studioUrl() { return (localStorage.getItem('kiosk_studio_url') || 'https://photobooth-tau-one.vercel.app/studio').trim().replace(/\/+$/, ''); },
     set studioUrl(v) { localStorage.setItem('kiosk_studio_url', String(v || '').trim()); },
     get gifEnabled() { return localStorage.getItem('kiosk_gif_enabled') !== 'false'; },
     set gifEnabled(v) { localStorage.setItem('kiosk_gif_enabled', v ? 'true' : 'false'); },
@@ -3214,7 +3215,7 @@ const PRINT_PASS_CODE = /^(?=.*[0-9])(?=.*[A-Z])[0-9A-HJKMNP-TV-Z]{5}$/;
 const DEMO_PASS_OFFERS = [
     { packageId: 'demo-receipt', quotaKind: '2', priceMinor: 1900, currency: 'THB', copies: 1 },
     { packageId: 'demo-receipt', quotaKind: '5', priceMinor: 3500, currency: 'THB', copies: 1 },
-    { packageId: 'demo-receipt', quotaKind: 'unlimited', priceMinor: 14900, currency: 'THB', copies: 1 }
+    { packageId: 'demo-receipt', quotaKind: 'unlimited', priceMinor: 9900, currency: 'THB', copies: 1 }
 ];
 
 function paymentBridge(method) {
@@ -4141,7 +4142,14 @@ const FILTER_PRESETS = {
     vintage:   { name: { th: 'วินเทจ',     en: 'Vintage' },   css: 'sepia(55%) contrast(108%) brightness(96%)' },
     bright:    { name: { th: 'สดใส',       en: 'Bright' },    css: 'brightness(115%) saturate(125%)' },
     soft:      { name: { th: 'นุ่มนวล',   en: 'Soft' },      css: 'brightness(108%) contrast(88%) saturate(85%)' },
-    dramatic:  { name: { th: 'ดราม่า',    en: 'Dramatic' },  css: 'contrast(135%) saturate(130%) brightness(88%)' }
+    dramatic:  { name: { th: 'ดราม่า',    en: 'Dramatic' },  css: 'contrast(135%) saturate(130%) brightness(88%)' },
+    // Pixel looks (film-looks.js); css is only the fallback if that script is missing.
+    kyoto:     { name: { th: 'เกียวโต',    en: 'Kyoto' },     film: 'kyoto',    css: 'contrast(86%) saturate(84%)' },
+    tokyo:     { name: { th: 'โตเกียว',    en: 'Tokyo' },     film: 'tokyo',    css: 'contrast(108%) saturate(80%) brightness(95%)' },
+    hokkaido:  { name: { th: 'ฮอกไกโด',   en: 'Hokkaido' },  film: 'hokkaido', css: 'brightness(112%) contrast(80%) saturate(72%)' },
+    instant:   { name: { th: 'อินสแตนท์',  en: 'Instant' },   film: 'instant',  css: 'sepia(15%) contrast(84%) brightness(105%)' },
+    instantvintage: { name: { th: 'อินสแตนท์เก่า', en: 'Old Instant' }, film: 'instantvintage', css: 'sepia(35%) contrast(80%) saturate(70%)' },
+    dreamy:    { name: { th: 'ฟุ้งละมุน',  en: 'Dreamy' },    film: 'dreamy',   css: 'brightness(106%) contrast(90%)' }
 };
 
 // Apply a CSS filter to an array of photo DataURLs via canvas (for processing)
@@ -4157,12 +4165,14 @@ async function applyPhotosFilter(photos, filterName) {
             c.height = img.height;
             const ctx = c.getContext('2d');
             // Safari/iPad ignores ctx.filter: apply the same filter to the pixels instead (css-filter.js).
-            const byHand = globalThis.CssCanvasFilter && !CssCanvasFilter.nativeSupported();
-            if (!byHand) ctx.filter = preset.css;
+            const film = preset.film && globalThis.FilmLooks;
+            const byHand = !film && globalThis.CssCanvasFilter && !CssCanvasFilter.nativeSupported();
+            if (!film && !byHand) ctx.filter = preset.css;
             ctx.drawImage(img, 0, 0);
-            if (byHand) {
+            if (film || byHand) {
                 const pixels = ctx.getImageData(0, 0, c.width, c.height);
-                CssCanvasFilter.apply(pixels.data, preset.css);
+                if (film) FilmLooks.apply(pixels.data, c.width, c.height, preset.film);
+                else CssCanvasFilter.apply(pixels.data, preset.css);
                 ctx.putImageData(pixels, 0, 0);
             }
             resolve(c.toDataURL('image/jpeg', 0.92));

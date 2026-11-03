@@ -107,8 +107,9 @@
             </div>
 
             <h1 class="text-2xl font-bold tracking-tight mb-2" id="redeem-title">กรอกรหัส Redeem</h1>
-            <p class="text-gray-500 text-sm mb-8 text-center" id="redeem-desc">กรอกรหัส 6 หลักที่ได้รับจากพนักงาน</p>
-            
+            <p class="text-gray-500 text-sm mb-3 text-center" id="redeem-desc">กรอกรหัส 6 หลักที่ได้รับจากพนักงาน</p>
+            <p class="text-gray-900 text-base font-semibold mb-6 text-center" id="redeem-help">ยังไม่มีรหัส? ซื้อรหัสเข้าใช้งานได้ที่เคาน์เตอร์ หรือติดต่อพนักงาน</p>
+
             <!-- Code Input -->
             <div id="code-box" class="code-box w-full mb-4">
                 <input 
@@ -198,6 +199,7 @@
 
         const titleText = { en: 'Enter Redeem Code', th: 'กรอกรหัส Redeem' };
         const descText = { en: 'Enter the 5-character code on your card', th: 'กรอกรหัส 5 ตัวบนบัตร' };
+        const helpText = { en: 'No code yet? Buy one at the counter or ask our staff.', th: 'ยังไม่มีรหัส? ซื้อรหัสเข้าใช้งานได้ที่เคาน์เตอร์ หรือติดต่อพนักงาน' };
         const btnText = { en: 'Redeem', th: 'ใช้รหัส (Redeem)' };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -218,6 +220,7 @@
             const lang = getLanguage();
             document.getElementById('redeem-title').innerText = titleText[lang] || titleText.th;
             document.getElementById('redeem-desc').innerText = descText[lang] || descText.th;
+            document.getElementById('redeem-help').innerText = helpText[lang] || helpText.th;
             btn.innerHTML = (btnText[lang] || btnText.th) + ' <span class="material-symbols-outlined ml-2">east</span>';
             
             // Short codes are checked by the server; the browser only helps with entry.

@@ -104,7 +104,7 @@
             <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-1 md:mb-2 shrink-0" id="filter-title">เลือก Filter</h1>
             <p class="text-gray-500 text-xs md:text-sm mb-4 lg:mb-6 shrink-0" id="filter-desc">ปรับสีรูปให้เป็นสไตล์ที่คุณชอบ</p>
 
-            <!-- 2x3 Filter Grid -->
+            <!-- 3x4 Filter Grid -->
             <div class="grid grid-cols-3 gap-3 pb-8" id="filter-grid">
 
                 <!-- Original -->
@@ -143,6 +143,39 @@
                     <div class="filter-label" id="label-dramatic">ดราม่า</div>
                 </div>
 
+                <!-- Japanese film moods -->
+                <div class="filter-card" data-filter="kyoto">
+                    <img class="filter-thumb" id="thumb-kyoto" src="" alt="Kyoto">
+                    <div class="filter-label" id="label-kyoto">เกียวโต</div>
+                </div>
+
+                <div class="filter-card" data-filter="tokyo">
+                    <img class="filter-thumb" id="thumb-tokyo" src="" alt="Tokyo">
+                    <div class="filter-label" id="label-tokyo">โตเกียว</div>
+                </div>
+
+                <div class="filter-card" data-filter="hokkaido">
+                    <img class="filter-thumb" id="thumb-hokkaido" src="" alt="Hokkaido">
+                    <div class="filter-label" id="label-hokkaido">ฮอกไกโด</div>
+                </div>
+
+                <!-- Instant-camera prints -->
+                <div class="filter-card" data-filter="instant">
+                    <img class="filter-thumb" id="thumb-instant" src="" alt="Instant">
+                    <div class="filter-label" id="label-instant">อินสแตนท์</div>
+                </div>
+
+                <div class="filter-card" data-filter="instantvintage">
+                    <img class="filter-thumb" id="thumb-instantvintage" src="" alt="Old Instant">
+                    <div class="filter-label" id="label-instantvintage">อินสแตนท์เก่า</div>
+                </div>
+
+                <!-- Lens mist glow -->
+                <div class="filter-card" data-filter="dreamy">
+                    <img class="filter-thumb" id="thumb-dreamy" src="" alt="Dreamy">
+                    <div class="filter-label" id="label-dreamy">ฟุ้งละมุน</div>
+                </div>
+
             </div>
         </div>
     </main>
@@ -159,6 +192,7 @@
     <div id="flash-overlay" class="flash-overlay"></div>
 
     <script src="shared.js?v=3.4"></script>
+    <script src="film-looks.js?v=1"></script>
     <script>
         // Localization
         const LABELS = {
@@ -172,6 +206,12 @@
                 bright: 'สดใส',
                 soft: 'นุ่มนวล',
                 dramatic: 'ดราม่า',
+                kyoto: 'เกียวโต',
+                tokyo: 'โตเกียว',
+                hokkaido: 'ฮอกไกโด',
+                instant: 'อินสแตนท์',
+                instantvintage: 'อินสแตนท์เก่า',
+                dreamy: 'ฟุ้งละมุน',
             },
             en: {
                 title: 'Choose a Filter',
@@ -183,6 +223,12 @@
                 bright: 'Bright',
                 soft: 'Soft',
                 dramatic: 'Dramatic',
+                kyoto: 'Kyoto',
+                tokyo: 'Tokyo',
+                hokkaido: 'Hokkaido',
+                instant: 'Instant',
+                instantvintage: 'Old Instant',
+                dreamy: 'Dreamy',
             }
         };
 
@@ -196,7 +242,35 @@
             dramatic: 'filter-dramatic',
         };
 
+        const FILM_FILTERS = ['kyoto', 'tokyo', 'hokkaido', 'instant', 'instantvintage', 'dreamy'];
+
         let selectedFilter = 'original';
+        let previewSrc = null;
+        let bigPreviewToken = 0;
+        const filmPreviews = {};
+
+        // Film looks work on pixels, so their previews are rendered images rather than CSS classes.
+        function renderFilm(filterName, maxSide) {
+            const key = filterName + maxSide;
+            filmPreviews[key] ??= new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.width * scale);
+                    c.height = Math.round(img.height * scale);
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0, c.width, c.height);
+                    const pixels = ctx.getImageData(0, 0, c.width, c.height);
+                    FilmLooks.apply(pixels.data, c.width, c.height, filterName);
+                    ctx.putImageData(pixels, 0, 0);
+                    resolve(c.toDataURL('image/jpeg', 0.9));
+                };
+                img.onerror = () => resolve(previewSrc);
+                img.src = previewSrc;
+            });
+            return filmPreviews[key];
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             // If filter feature is disabled in admin, skip to processing
@@ -218,16 +292,20 @@
             document.getElementById('label-bright').innerText = L.bright;
             document.getElementById('label-soft').innerText = L.soft;
             document.getElementById('label-dramatic').innerText = L.dramatic;
+            FILM_FILTERS.forEach(f => { document.getElementById('label-' + f).innerText = L[f]; });
 
             // Load photos from session
             const photos = (await SessionAsync.get('raw_photos')) || Session.photos || [];
-            const previewSrc = photos.length > 0 ? photos[0] : null;
+            previewSrc = photos.length > 0 ? photos[0] : null;
 
             if (previewSrc) {
                 // Set all thumbnails to the first photo
                 ['original','bw','vintage','bright','soft','dramatic'].forEach(f => {
                     const thumb = document.getElementById('thumb-' + f);
                     if (thumb) thumb.src = previewSrc;
+                });
+                FILM_FILTERS.forEach(async (f) => {
+                    document.getElementById('thumb-' + f).src = await renderFilm(f, 320);
                 });
 
                 // Big preview
@@ -273,6 +351,14 @@
             Object.values(BIG_FILTER_CLASSES).forEach(cls => bigPreview.classList.remove(cls));
             // Add selected filter class
             bigPreview.classList.add(BIG_FILTER_CLASSES[filterName] || 'filter-original');
+            const token = ++bigPreviewToken;
+            if (previewSrc) {
+                if (FILM_FILTERS.includes(filterName)) {
+                    renderFilm(filterName, 1000).then(src => { if (token === bigPreviewToken) bigPreview.src = src; });
+                } else if (bigPreview.src !== previewSrc) {
+                    bigPreview.src = previewSrc;
+                }
+            }
 
             if (animate) {
                 bigPreview.style.opacity = '0.6';
