@@ -230,18 +230,7 @@
     <style>
         /* Portrait / narrow screens: one screen, no scrolling. The strip preview takes whatever height is left,
            the QR codes and the buttons sit together underneath, so nothing is hidden and nothing overlaps. */
-        .qr-pick { position: relative; display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: .5rem;
-            border: 3px solid transparent; border-radius: 1rem; background: transparent; transition: border-color .15s, transform .15s; }
-        .qr-pick img { max-height: min(66vh, calc(100dvh - 15rem)); max-width: 40vw; width: auto; background: #fff; box-shadow: 0 12px 30px rgba(0,0,0,.18); }
-        .qr-pick span { font-weight: 700; font-size: .95rem; color: #374151; }
-        .qr-pick.on { border-color: #111827; background: #fff; }
-        .qr-pick.on::after { content: '✓'; position: absolute; top: -.7rem; right: -.7rem; width: 1.9rem; height: 1.9rem; border-radius: 999px;
-            background: #111827; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-        .qr-pick:active { transform: scale(.98); }
-        .qr-pick[disabled] { opacity: .5; }
-        .qr-pick[disabled] img[src=""], .qr-pick img:not([src]) { width: 8rem; height: 16rem; }
         @media (max-width: 1023px) {
-            .qr-pick img { max-height: clamp(200px, calc(100dvh - 640px), 56vh); }
             body { height: 100dvh; min-height: 0; }
             #print-preview { flex: 1 1 auto; min-height: 0 !important; padding-top: 4.5rem; padding-bottom: 1rem; }
             #final-result { max-height: clamp(240px, calc(100dvh - 600px), 64vh); }
@@ -276,6 +265,11 @@
             <span data-i18n="uploading">Uploading to Cloud...</span>
         </div>
 
+        <!-- Receipt paper with the QR slip on: the QR comes out of the printer after the photo -->
+        <div id="slip-note" class="hidden flex items-center gap-3 bg-white rounded-3xl shadow-md border border-gray-200 p-4 mb-6">
+            <span class="material-symbols-outlined text-3xl text-gray-800">qr_code_2</span>
+            <p class="text-sm md:text-base font-semibold text-gray-800 leading-snug">กดพิมพ์รูป แล้วจะได้ใบ QR<br><span class="font-normal text-gray-600">สำหรับโหลดรูปและแต่งรูปบนมือถือ ตามออกมาด้วย</span></p>
+        </div>
         <!-- All QR codes (photo, retro, GIF) sit side by side in one row -->
         <div id="qr-row" class="flex flex-nowrap items-start gap-3 md:gap-5 justify-center lg:justify-start mb-6">
         <!-- One QR for everything: opens the download page with the colour, black-and-white and GIF versions -->
@@ -447,20 +441,6 @@
             <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-12 bg-white rounded-t-xl shadow-lg z-20 hidden"></div>
             <img id="final-result" class="max-h-[50vh] lg:max-h-[75vh] w-auto max-w-full shadow-2xl rounded-sm z-10 relative bg-white object-contain" src="" alt="Final Strip" />
         </div>
-        <!-- Receipt paper: the customer picks the slip with or without the download QR (Kiosk.receiptQrEnabled) -->
-        <div id="qr-choice" class="hidden w-full h-full flex flex-col items-center justify-center gap-3">
-            <p class="text-sm md:text-base font-bold text-gray-800">เลือกแบบที่จะพิมพ์</p>
-            <div class="flex items-end justify-center gap-4 md:gap-6 min-h-0">
-                <button type="button" id="choice-plain" class="qr-pick" onclick="pickReceiptQr(false)">
-                    <img alt="">
-                    <span>ไม่มี QR</span>
-                </button>
-                <button type="button" id="choice-qr" class="qr-pick" onclick="pickReceiptQr(true)" disabled>
-                    <img alt="">
-                    <span>มี QR โหลดรูป</span>
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- Hidden section strictly for the printer -->
@@ -588,7 +568,7 @@
                     printResult.src = dithered || result; // Dithered B&W for thermal receipt
                 }
                 await initPrintQualityEnhancer(result, dithered, paperMode);
-                initReceiptQrChoice();
+                initQrSlip();
             } else {
                 window.location.href = 'home.html';
                 return;
@@ -613,7 +593,7 @@
                 uploadStatus.classList.remove('hidden');
                 uploadStatus.innerHTML = '<span class="material-symbols-outlined text-gray-400 text-sm">science</span><span class="text-xs text-gray-500">โหมดเดโม · ไม่อัปโหลดรูปขึ้นคลาวด์ (QR รูปภาพใช้ได้เฉพาะเครื่องจริง)</span>';
                 qrContainer.classList.add('hidden');
-                receiptQrLinkReady(`${SHARE_PAGE_URL}#demo`, new Date(Date.now() + 24 * 3600_000).toISOString());
+                qrSlipLinkReady(`${SHARE_PAGE_URL}#demo`, new Date(Date.now() + 24 * 3600_000).toISOString());
             } else if (typeof Kiosk !== 'undefined' && Kiosk.qrEnabled) {
                 uploadStatus.classList.remove('hidden');
                 uploadStatus.innerHTML = '<div class="spinner border-gray-300 w-5 h-5 border-2"></div><span class="text-xs sm:text-sm text-gray-500 font-medium">กำลังเตรียม QR Code สำหรับดาวน์โหลดภาพ...</span>';
@@ -675,7 +655,7 @@
 
                         // Update description
                         const printDesc = document.querySelector('[data-i18n="print_desc"]');
-                        if (printDesc) {
+                        if (printDesc && !qrSlip.offered) {
                             const isThai = (localStorage.getItem('pb_lang') || 'th') === 'th';
                             printDesc.innerText = isThai
                                 ? 'สแกน QR Code เพื่อดาวน์โหลดรูปภาพลงมือถือ หรือกดพิมพ์ได้ทันที'
@@ -705,42 +685,52 @@
             new IdleTimer(120000, 'home.html').start();
         });
 
-        // ---- receipt with or without the download QR ----------------------------------------------------
-        // Receipt paper only. The QR slip can be picked once the one-QR link exists; the plain slip is the default.
-        const receiptQr = { offered: false, on: false, link: null, image: null };
-        function initReceiptQrChoice() {
-            receiptQr.offered = Kiosk.receiptQrEnabled && Kiosk.qrEnabled && !String(Kiosk.paperMode || '').startsWith('photo');
-            if (!receiptQr.offered) return;
-            document.querySelector('#choice-plain img').src = activePrintDataUrl || document.getElementById('final-result').src;
-            document.querySelector('#choice-qr span').textContent = 'กำลังเตรียม QR…';
-            document.getElementById('single-preview').classList.add('hidden');
-            document.getElementById('qr-choice').classList.remove('hidden');
-            pickReceiptQr(false);
+        // ---- download-QR slip after the photo (receipt paper) --------------------------------------------
+        // One tap prints the photo, cuts, then prints a small slip with the one-QR link (Kiosk.receiptQrEnabled).
+        // The QR on screen stays hidden until the photo is printed, so customers do not scan first and run
+        // out of time editing on their phone before printing.
+        const qrSlip = { offered: false, settled: false, link: null, image: null, waiters: [] };
+        function initQrSlip() {
+            qrSlip.offered = Kiosk.receiptQrEnabled && Kiosk.qrEnabled && !String(Kiosk.paperMode || '').startsWith('photo');
+            if (!qrSlip.offered) return;
+            document.getElementById('qr-row').classList.add('hidden');
+            document.getElementById('slip-note').classList.remove('hidden');
+            const desc = document.querySelector('[data-i18n="print_desc"]');
+            if (desc) {
+                desc.removeAttribute('data-i18n');
+                desc.innerText = (localStorage.getItem('pb_lang') || 'th') === 'th'
+                    ? 'กดพิมพ์รูป รับรูปพร้อมใบ QR โหลดรูปลงมือถือ'
+                    : 'Tap print: your photo comes out with a QR slip to get it on your phone.';
+            }
         }
-        async function receiptQrLinkReady(link, expiresAt) {
-            if (!receiptQr.offered || receiptQr.link) return;
-            receiptQr.link = link;
-            const base = activePrintDataUrl || document.getElementById('final-result').src;
-            const image = link ? await addReceiptQr(base, link, expiresAt).catch(() => null) : null;
-            if (!image) {
-                // No link (offline, upload failed): back to the one plain slip.
-                if (share.photos === undefined) { receiptQr.link = null; return; }
-                receiptQr.offered = false;
-                pickReceiptQr(false);
-                document.getElementById('qr-choice').classList.add('hidden');
-                document.getElementById('single-preview').classList.remove('hidden');
+        function settleQrSlip() {
+            qrSlip.settled = true;
+            qrSlip.waiters.splice(0).forEach((done) => done());
+        }
+        async function qrSlipLinkReady(link, expiresAt) {
+            if (!qrSlip.offered || qrSlip.settled || qrSlip.link) return;
+            if (!link) {
+                if (share.photos === undefined) return;      // still uploading
+                settleQrSlip();
+                revealScreenQr();                            // no slip possible: whatever QR there is goes back on screen
                 return;
             }
-            receiptQr.image = image;
-            const button = document.getElementById('choice-qr');
-            button.querySelector('img').src = image;
-            button.querySelector('span').textContent = 'มี QR โหลดรูป';
-            button.disabled = false;
+            qrSlip.link = link;
+            qrSlip.image = await makeQrSlip(link, expiresAt).catch(() => null);
+            settleQrSlip();
+            if (!qrSlip.image) revealScreenQr();
         }
-        function pickReceiptQr(on) {
-            receiptQr.on = !!(on && receiptQr.image);
-            document.getElementById('choice-plain').classList.toggle('on', !receiptQr.on);
-            document.getElementById('choice-qr').classList.toggle('on', receiptQr.on);
+        // The slip, waiting a little for the upload when the customer taps print very quickly.
+        function waitForQrSlip(ms) {
+            if (!qrSlip.offered || qrSlip.settled) return Promise.resolve(qrSlip.image);
+            return new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(qrSlip.image), ms);
+                qrSlip.waiters.push(() => { clearTimeout(timer); resolve(qrSlip.image); });
+            });
+        }
+        function revealScreenQr() {
+            document.getElementById('qr-row').classList.remove('hidden');
+            document.getElementById('slip-note').classList.add('hidden');
         }
 
         // ---- one QR for every version (colour, black-and-white, GIF) -----------------------------------
@@ -771,7 +761,7 @@
             const photoExpiry = Kiosk.mode === 'redeem' ? new Date(Date.now() + 24 * 3600_000).toISOString() : null;
             const expiries = [photoExpiry, share.gif ? share.gifExpiresAt : null].filter(Boolean).sort();
             const link = share.photos ? buildShareLink({ ...share.photos, gifUrl: share.gif, expiresAt: expiries[0] }) : null;
-            receiptQrLinkReady(link, expiries[0]);
+            qrSlipLinkReady(link, expiries[0]);
             if (!link) {
                 if (share.photos !== null) { uploadStatus.classList.add('hidden'); qrContainer.classList.remove('hidden'); }
                 if (share.gif) gifWrapper.classList.remove('hidden');
@@ -1353,9 +1343,9 @@
                 else if (paperMode === 'photo4x6_postcard') btnText.innerText = 'พิมพ์รูปภาพ 4x6 นิ้ว (Postcard)';
                 else if (paperMode === 'photo2x6_single') btnText.innerText = 'พิมพ์รูปภาพ 2x6 นิ้ว';
                 else if (paperMode === 'photo5x7') btnText.innerText = 'พิมพ์รูปภาพ 5x7 นิ้ว';
-                else if (paperMode === 'thermal58') btnText.innerText = 'พิมพ์ใบเสร็จ (58mm)';
-                else if (paperMode === 'thermal80') btnText.innerText = 'พิมพ์ใบเสร็จ (80mm)';
-                else if (paperMode === 'thermal100') btnText.innerText = 'พิมพ์ใบเสร็จ (100mm)';
+                else if (paperMode === 'thermal58') btnText.innerText = 'พิมพ์รูป';
+                else if (paperMode === 'thermal80') btnText.innerText = 'พิมพ์รูป';
+                else if (paperMode === 'thermal100') btnText.innerText = 'พิมพ์รูป';
             }
         }
 
@@ -1715,7 +1705,8 @@
             appendPrintAudit('print.queued', jobId, { copies, paper_mode: Kiosk.paperMode });
 
             // Use the enhanced/sharpened photo adjusted by user!
-            const animPhoto = (receiptQr.on && receiptQr.image) || activePrintDataUrl || Session.result || Session.dithered || createDemoReceipt();
+            const animPhoto = activePrintDataUrl || Session.result || Session.dithered || createDemoReceipt();
+            const slip = await waitForQrSlip(8000);
             if (Kiosk.mode === 'redeem') {
                 if (!isLocalPrototypeDemo() && typeof window.PhotoboothPrinter?.printAuthorizedPass !== 'function') {
                     button.textContent = 'เครื่องพิมพ์ยังไม่รองรับแพ็กเกจ กรุณาเรียกพนักงาน';
@@ -1727,7 +1718,8 @@
                         throw new Error('งานพิมพ์เดิมกำลังตรวจสอบ กรุณาเรียกพนักงาน');
                     }
                     const outcome = await printAuthorizedPass({ dataUrl: animPhoto,
-                        paperMode: Kiosk.paperMode, jobId, copies });
+                        paperMode: Kiosk.paperMode, jobId, copies, slip });
+                    revealScreenQr();
                     if (outcome.status === 'failed') {
                         await SessionAsync.remove('printJobId');
                     }
@@ -1738,6 +1730,7 @@
                     await completePrintJob(jobId, 'device', outcome, copies);
                     showPrintPassNextStep();
                 } catch (error) {
+                    revealScreenQr();
                     button.textContent = error instanceof Error ? error.message : 'ไม่สามารถพิมพ์ได้';
                     const toast = document.getElementById('toast');
                     if (toast) { toast.textContent = button.textContent; toast.classList.remove('opacity-0'); }
@@ -1754,7 +1747,8 @@
                             dataUrl: animPhoto,
                             paperMode: Kiosk.paperMode,
                             jobId,
-                            copies
+                            copies,
+                            slip
                         });
                     } catch (error) {
                         return {
@@ -1766,6 +1760,7 @@
                 })()
             ]);
 
+            revealScreenQr();
             if (outcome.status === 'completed') {
                 await showPrintComplete();
                 await hidePrintingAnimation();

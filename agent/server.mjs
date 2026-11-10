@@ -11,7 +11,7 @@ import { createDeviceBridge, clientScript } from '../bridge/core.mjs';
 import { APP_ROOT, CONFIG_FILE, DATA_DIR, JOBS_FILE, WEB_ROOT } from './paths.mjs';
 import { protect, unprotect } from './dpapi.mjs';
 import { createJournal } from './jobs.mjs';
-import { createPrintService } from './print-pass.mjs';
+import { createPrintService, decodeSlip } from './print-pass.mjs';
 import { listPrinters, printerHealth, printImage as printViaDriver, printImageEscPos, printImagesEscPos, RECEIPT_DOTS } from './printer-win.mjs';
 import { createHeartbeat } from './heartbeat.mjs';
 import { ensureResetShortcut } from './shortcut.mjs';
@@ -185,9 +185,21 @@ async function runKiosk(config) {
   await journal.load();
   // Receipt paper: ESC/POS raw by default (some receipt drivers feed a blank slip for pictures).
   // config.printTransport = 'driver' switches back to printing through the Windows driver.
-  const printImage = (opts) => {
+  // opts.slip (receipt paper only): the download-QR slip, printed and cut after the photo copies in the same job.
+  const printImage = async ({ slip, ...opts }) => {
     const dots = RECEIPT_DOTS[opts.paperMode];
-    return dots && config.printTransport !== 'driver' ? printImageEscPos({ ...opts, dots, lightness: config.printLightness }) : printViaDriver(opts);
+    if (!dots) return printViaDriver(opts);
+    if (config.printTransport !== 'driver') {
+      if (!slip) return printImageEscPos({ ...opts, dots, lightness: config.printLightness });
+      const photos = Array.from({ length: Math.max(1, opts.copies || 1) }, () => ({ bytes: opts.bytes, ext: opts.ext }));
+      return printImagesEscPos({ images: [...photos, slip], dots, lightness: config.printLightness, printerName: opts.printerName });
+    }
+    const result = await printViaDriver(opts);
+    if (slip) {
+      // The photo is already out: a failed slip must not turn the print into a failure.
+      try { await printViaDriver({ ...slip, printerName: opts.printerName, copies: 1 }); } catch (error) { noteError(`qr slip: ${error?.message || 'failed'}`); }
+    }
+    return result;
   };
   const printService = createPrintService({ internal, journal, printImage, printerName: config.printerName || '' });
 
@@ -415,8 +427,9 @@ async function runKiosk(config) {
         const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(body.image || '');
         if (!match) return json(res, 400, { success: false, error: 'invalid_image' });
         const copies = Math.min(10, Math.max(1, parseInt(body.copies, 10) || 1));
+        const slip = decodeSlip(body.slip);
         const result = await printImage({ bytes: Buffer.from(match[2], 'base64'), ext: match[1] === 'jpeg' ? 'jpg' : 'png',
-          printerName: String(body.printerName || config.printerName || ''), copies, paperMode: String(body.paperMode || '') });
+          printerName: String(body.printerName || config.printerName || ''), copies, paperMode: String(body.paperMode || ''), ...(slip ? { slip } : {}) });
         return json(res, 200, { success: true, printer: result.printer, copies });
       } catch (error) {
         noteError(`direct print: ${error instanceof Error ? error.message : 'failed'}`);

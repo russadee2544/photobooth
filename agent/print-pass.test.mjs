@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPrintService, sha256Hex } from './print-pass.mjs';
+import { createPrintService, decodeSlip, sha256Hex } from './print-pass.mjs';
 
 const JOB = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'a'.repeat(64);
@@ -96,5 +96,31 @@ describe('printAuthorizedPass', () => {
   it('rejects non-image data URLs', async () => {
     const { service } = setup();
     expect((await service.printAuthorizedPass({ ...args, dataUrl: 'data:text/html;base64,AAAA' })).status).toBe('failed');
+  });
+});
+
+function pngOf(width, height) {
+  const b = Buffer.alloc(40);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b, 0);
+  b.writeUInt32BE(13, 8); b.write('IHDR', 12, 'latin1'); b.writeUInt32BE(width, 16); b.writeUInt32BE(height, 20);
+  return `data:image/png;base64,${b.toString('base64')}`;
+}
+
+describe('QR slip after the photo', () => {
+  it('passes a small slip to the printer together with the photo', async () => {
+    const { service, printImage } = setup();
+    await service.printAuthorizedPass({ ...args, slip: pngOf(576, 600) });
+    expect(printImage).toHaveBeenCalledTimes(1);
+    expect(printImage.mock.calls[0][0].slip?.ext).toBe('png');
+    expect(printImage.mock.calls[0][0].copies).toBe(2);
+  });
+
+  it('drops a slip that is too tall or not a PNG, and still prints the photo', async () => {
+    const { service, printImage } = setup();
+    expect((await service.printAuthorizedPass({ ...args, slip: pngOf(576, 2000) })).status).toBe('completed');
+    expect(printImage.mock.calls[0][0].slip).toBeUndefined();
+    expect(decodeSlip('data:image/jpeg;base64,AAAA')).toBeNull();
+    expect(decodeSlip(pngOf(100, 100))).toBeNull();
+    expect(decodeSlip(pngOf(576, 900))).not.toBeNull();
   });
 });

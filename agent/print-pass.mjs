@@ -14,6 +14,19 @@ function decodeDataUrl(dataUrl) {
   return bytes.length && bytes.length <= MAX_IMAGE_BYTES ? { ext: match[1] === 'jpeg' ? 'jpg' : 'png', bytes } : null;
 }
 
+// The small download-QR slip printed (and cut) after the photo. PNG only, and no taller than 1.6 x its
+// width, so it cannot carry a second full photo strip. Anything else is dropped; the photo still prints.
+const MAX_SLIP_BYTES = 1536 * 1024;
+export function decodeSlip(dataUrl) {
+  const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
+  if (!match) return null;
+  const bytes = Buffer.from(match[1], 'base64');
+  if (bytes.length < 24 || bytes.length > MAX_SLIP_BYTES || bytes.toString('latin1', 12, 16) !== 'IHDR') return null;
+  const width = bytes.readUInt32BE(16), height = bytes.readUInt32BE(20);
+  if (width < 200 || width > 1000 || height < 1 || height > width * 1.6) return null;
+  return { ext: 'png', bytes };
+}
+
 export function createPrintService({ internal, journal, printImage, printerName = '' }) {
   // Report a result to the server; remember it for retry if the network fails.
   async function report(jobId, result) {
@@ -36,7 +49,7 @@ export function createPrintService({ internal, journal, printImage, printerName 
     for (const [jobId, job] of journal.unreported()) await report(jobId, job.unreported);
   }
 
-  async function printAuthorizedPass({ sessionToken, jobId, dataUrl, copies, printerName: requested, paperMode = '' }) {
+  async function printAuthorizedPass({ sessionToken, jobId, dataUrl, copies, printerName: requested, paperMode = '', slip: slipUrl }) {
     if (!UUID.test(jobId || '') || !/^[0-9a-f]{64}$/.test(sessionToken || '')) return { status: 'failed', error: 'invalid_request' };
     const image = decodeDataUrl(dataUrl || '');
     if (!image) return { status: 'failed', error: 'invalid_image' };
@@ -66,7 +79,8 @@ export function createPrintService({ internal, journal, printImage, printerName 
     await journal.set(jobId, { state: 'printing', copies, sha: start.assetSha256 });
     try {
       const chosen = typeof requested === 'string' ? requested.trim().slice(0, 200) : '';
-      await printImage({ ...image, printerName: chosen || printerName, copies, paperMode });
+      const slip = decodeSlip(slipUrl);
+      await printImage({ ...image, printerName: chosen || printerName, copies, paperMode, ...(slip ? { slip } : {}) });
     } catch (error) {
       if (error?.notPrinted) {
         await journal.set(jobId, { state: 'failed' });

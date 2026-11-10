@@ -784,8 +784,8 @@
                             <span class="material-symbols-outlined">qr_code_2</span>
                         </div>
                         <div>
-                            <span class="block text-sm font-bold text-white">ให้ลูกค้าเลือกพิมพ์ QR ลงใบเสร็จ</span>
-                            <span class="block text-xs text-gray-500 mt-0.5">เปิด: หน้าพิมพ์แสดง 2 แบบ "ไม่มี QR" กับ "มี QR โหลดรูป" ให้ลูกค้าแตะเลือก (เฉพาะกระดาษใบเสร็จ และต้องเปิด QR ดาวน์โหลด)</span>
+                            <span class="block text-sm font-bold text-white">พิมพ์ใบ QR ต่อท้ายรูป</span>
+                            <span class="block text-xs text-gray-500 mt-0.5">เปิด: กดพิมพ์รูปครั้งเดียว ตู้พิมพ์รูป ตัดกระดาษ แล้วพิมพ์ใบ QR โหลดรูป/แต่งรูปตามออกมา QR บนจอจะขึ้นหลังพิมพ์ (เฉพาะกระดาษใบเสร็จ ต้องเปิด QR ดาวน์โหลด)</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 shrink-0 ml-4">
@@ -2858,7 +2858,7 @@
             Kiosk.receiptQrEnabled = !Kiosk.receiptQrEnabled;
             updateReceiptQrToggle();
             adminAuditLocal('kiosk.receipt_qr_changed', { enabled: Kiosk.receiptQrEnabled });
-            showToast(Kiosk.receiptQrEnabled ? 'ลูกค้าเลือกพิมพ์ QR ลงใบเสร็จได้แล้ว ✓' : 'ปิดตัวเลือก QR บนใบเสร็จแล้ว');
+            showToast(Kiosk.receiptQrEnabled ? 'พิมพ์ใบ QR ต่อท้ายรูปแล้ว ✓' : 'ปิดใบ QR ต่อท้ายรูปแล้ว (QR แสดงบนจอ)');
         }
 
         function updateReceiptQrToggle() {

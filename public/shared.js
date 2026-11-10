@@ -751,7 +751,7 @@ const i18n = {
         "print_color": "Premium Color",
         "print_retro": "Retro Edition",
         "btn_finish": "Finish",
-        "btn_print": "Print Receipt",
+        "btn_print": "Print Photo",
         "uploading": "Uploading to Cloud...",
         "brand": "MEMORIES",
         "home_subtitle": "Photo booth. Solo is great, squad is better.",
@@ -793,7 +793,7 @@ const i18n = {
         "print_color": "ภาพสีพรีเมียม",
         "print_retro": "ภาพเรโทร",
         "btn_finish": "เสร็จสิ้น",
-        "btn_print": "พิมพ์ใบเสร็จ",
+        "btn_print": "พิมพ์รูป",
         "uploading": "กำลังอัปโหลด...",
         "brand": "MEMORIES",
         "home_subtitle": "ตู้ถ่ายรูป ถ่ายคนเดียวก็ได้ ถ่ายเป็นแก๊งยิ่งดี",
@@ -1407,7 +1407,8 @@ async function printViaUSB(paperMode, copies = 1, customDataUrl = null) {
 }
 
 // Unified adapter used by Kiosk print page and Admin.
-async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies = 2 }) {
+// slip: optional download-QR slip (makeQrSlip), printed and cut after the photo copies on receipt paper.
+async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies = 2, slip = null }) {
     if (Kiosk.mode === 'redeem') {
         throw new Error('โหมดแพ็กเกจต้องพิมพ์ผ่านงานที่อนุมัติสิทธิ์แล้ว');
     }
@@ -1427,7 +1428,8 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies
                 image: dataUrl,
                 copies: copyCount,
                 printerName: selectedPrinter,
-                paperMode
+                paperMode,
+                ...(slip ? { slip } : {})
             })
         });
         if (resp.ok) {
@@ -1448,7 +1450,8 @@ async function printReceiptSet({ dataUrl, paperMode = 'thermal80', jobId, copies
             dataUrl,
             paperMode,
             copies: copyCount,
-            cutEachCopy: true
+            cutEachCopy: true,
+            ...(slip ? { slip } : {})
         });
         if (!nativeResult || !['completed', 'ambiguous', 'failed'].includes(nativeResult.status)) {
             return { status: 'ambiguous', error: 'invalid_native_response' };
@@ -3052,38 +3055,43 @@ function buildShareLink({ colorUrl, ditherUrl, gifUrl, studioId, expiresAt } = {
     return `${SHARE_PAGE_URL}#${parts.join('&')}`;
 }
 
-// The receipt with the one-QR link printed under the photo. Resolves to a PNG data URL, or null.
-async function addReceiptQr(dataUrl, link, expiresAt) {
-    const photo = await loadTemplateImage(dataUrl);
-    if (!photo || !link || typeof QRCode === 'undefined') return null;
-    const w = photo.naturalWidth, h = photo.naturalHeight;
-    const qrSize = Math.round(w * 0.46), pad = Math.round(w * 0.06), textSize = Math.max(12, Math.round(w * 0.045));
+// The small slip printed (and cut) after the photo on receipt paper: the one-QR link with a short line
+// above and the expiry under it. Width = the printer's dots, so it prints 1:1. Resolves to a PNG data URL, or null.
+const QR_SLIP_DOTS = { thermal58: 384, thermal80: 576, thermal100: 832 };
+async function makeQrSlip(link, expiresAt, paperMode = Kiosk.paperMode) {
+    if (!link || typeof QRCode === 'undefined') return null;
+    const w = QR_SLIP_DOTS[paperMode] || 576;
+    const pad = Math.round(w * 0.06), qrSize = Math.round(w * 0.6);
+    const big = Math.round(w * 0.06), small = Math.round(w * 0.042);
     const holder = document.createElement('div');
     new QRCode(holder, { text: link, width: qrSize, height: qrSize, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
     const qr = holder.querySelector('canvas');
     if (!qr) return null;
-    try { await document.fonts.load(`600 ${textSize}px Prompt`); } catch (_) {}
+    try { await Promise.all([document.fonts.load(`600 ${big}px Prompt`), document.fonts.load(`400 ${small}px Prompt`)]); } catch (_) {}
     const x = Date.parse(expiresAt || '');
-    const lines = ['สแกนโหลดรูป · แต่งรูปบนมือถือ'];
+    const below = ['โหลดรูป · แต่งรูป · เลือกฟิลเตอร์'];
     if (x > 0) {
         const d = new Date(x);
-        lines.push(`ใช้ได้ถึง ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`);
+        below.push(`ใช้ได้ถึง ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`);
     }
-    const footer = pad + qrSize + Math.round(pad * 0.5) + Math.round(lines.length * textSize * 1.5) + pad;
     const c = document.createElement('canvas');
-    c.width = w; c.height = h + footer;
+    c.width = w;
+    c.height = pad + Math.round(big * 1.6) + qrSize + Math.round(pad * 0.5) + Math.round(below.length * small * 1.6) + pad;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(photo, 0, 0);
-    ctx.imageSmoothingEnabled = false;   // crisp modules on thermal paper
-    ctx.drawImage(qr, Math.round((w - qrSize) / 2), h + pad, qrSize, qrSize);
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    lines.forEach((line, i) => {
-        ctx.font = `${i ? 400 : 600} ${textSize}px Prompt, sans-serif`;
-        ctx.fillText(line, w / 2, h + pad + qrSize + Math.round(pad * 0.5) + i * textSize * 1.5, w - pad * 2);
+    ctx.font = `600 ${big}px Prompt, sans-serif`;
+    ctx.fillText('สแกนรับรูปลงมือถือ', w / 2, pad, w - pad * 2);
+    let y = pad + Math.round(big * 1.6);
+    ctx.imageSmoothingEnabled = false;   // crisp modules on thermal paper
+    ctx.drawImage(qr, Math.round((w - qrSize) / 2), y, qrSize, qrSize);
+    y += qrSize + Math.round(pad * 0.5);
+    below.forEach((line, i) => {
+        ctx.font = `${i ? 400 : 600} ${small}px Prompt, sans-serif`;
+        ctx.fillText(line, w / 2, y + i * small * 1.6, w - pad * 2);
     });
     return c.toDataURL('image/png');
 }
@@ -3462,7 +3470,7 @@ async function reservePrintPass(dataUrl, jobId) {
     return result;
 }
 
-async function printAuthorizedPass({ dataUrl, paperMode, jobId, copies }) {
+async function printAuthorizedPass({ dataUrl, paperMode, jobId, copies, slip = null }) {
     const pass = Session.authorization;
     if (isLocalPrototypeDemo()) {
         const rows = demoLoadRedeemCodes();
@@ -3486,7 +3494,7 @@ async function printAuthorizedPass({ dataUrl, paperMode, jobId, copies }) {
     // print, then report its trusted result. Never expose start/report to page JS.
     const printerName = (JSON.parse(localStorage.getItem('kiosk_printer_config') || '{}').systemPrinterName) || '';
     const result = await bridge.printAuthorizedPass({ kioskId: Kiosk.kioskId,
-        passId: pass.passId, sessionToken: pass.sessionToken, jobId, dataUrl, paperMode, copies, printerName });
+        passId: pass.passId, sessionToken: pass.sessionToken, jobId, dataUrl, paperMode, copies, printerName, ...(slip ? { slip } : {}) });
     if (result?.status === 'completed' && pass.quotaKind !== 'unlimited'
         && typeof result.remaining !== 'number') {
         throw new Error('ยังยืนยันยอดสิทธิ์หลังพิมพ์ไม่ได้ กรุณาเรียกพนักงาน');
