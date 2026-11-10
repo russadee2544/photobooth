@@ -12,6 +12,15 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
+    <style>
+        /* Tap area over a photo; the small retake badge sits in the corner so the face stays visible. */
+        .retake-spot { position: absolute; display: flex; align-items: flex-end; justify-content: flex-end; padding: 4px;
+            border: 2px dashed rgba(255,255,255,.8); background: transparent; transition: background .15s; }
+        .retake-spot:active, .retake-spot:hover { background: rgba(0,0,0,.25); }
+        .retake-spot b { display: flex; align-items: center; gap: 2px; padding: 2px 8px 2px 5px; border-radius: 999px;
+            background: rgba(17,24,39,.82); color: #fff; font-size: clamp(.75rem, 1.4vw, 1rem); font-weight: 700; white-space: nowrap; }
+        .retake-spot b .material-symbols-outlined { font-size: 1.15em; }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans min-h-screen overflow-y-auto no-scrollbar relative flex flex-col">
     
@@ -35,6 +44,15 @@
         <!-- Centered both ways in the space between the title and the Continue bar -->
         <div id="photo-grid" class="flex-grow flex flex-wrap justify-center content-center items-center gap-3 sm:gap-4 w-full">
             <!-- Injected by JS -->
+        </div>
+        <!-- The photos inside the picked frame, as they will print: tap a photo to retake it (stickers over a face show here) -->
+        <div id="framed" class="hidden flex-grow flex flex-col items-center justify-center gap-3 w-full">
+            <div id="framed-box" class="relative">
+                <img id="framed-img" class="block bg-white shadow-2xl" alt="">
+            </div>
+            <p id="framed-hint" class="text-sm md:text-base text-gray-600 font-semibold flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-lg">touch_app</span><span></span>
+            </p>
         </div>
     </main>
 
@@ -63,8 +81,10 @@
                 return;
             }
 
-            renderGrid();
-            window.addEventListener('resize', fitGrid);
+            if (!(await renderFramed())) {
+                renderGrid();
+                window.addEventListener('resize', fitGrid);
+            }
             new IdleTimer(120000, 'home.html').start();
         });
 
@@ -113,6 +133,68 @@
                 grid.appendChild(item);
             });
             fitGrid();
+        }
+
+        // The shots composed into the frame picked before shooting (same drawing as the print), with a tap area
+        // over every photo slot. Resolves false when the frame has no slot layout, then the plain grid is used.
+        async function renderFramed() {
+            const engine = window.PhotoTemplateEngine;
+            const layoutStr = Session.layout || '4';
+            const mode = Kiosk.paperMode || 'photo4x6_dual';
+            const schema = engine && TemplateCatalog.current(layoutStr, mode);
+            if (!schema) return false;
+            try {
+                const t = engine.normalizeTemplate(schema);
+                const template = Session.template || 'light';
+                const theme = ['light', 'dark', 'mint', 'blue', 'exhibition'].includes(template) ? null : await fetchCustomThemeById(template);
+                const canvas = await composePhotoByMode(rawPhotos, template, 720, theme, layoutStr, await fetchLayoutSizeFor(layoutStr));
+                const W = canvas.width, H = canvas.height;
+                const dual = t.type === '2x6' && mode === 'photo4x6_dual' && t.printSettings.printTwoPerPage;
+                const targets = dual ? [{ x: 0, width: W / 2 }, { x: W / 2, width: W / 2 }] : [{ x: 0, width: W }];
+                const en = getLanguage() === 'en';
+                const img = document.getElementById('framed-img');
+                img.src = canvas.toDataURL('image/jpeg', 0.9);
+                await img.decode().catch(() => {});
+                document.getElementById('framed-hint').lastElementChild.textContent = en ? 'Tap a photo to retake it' : 'แตะที่รูปเพื่อถ่ายใหม่';
+                const box = document.getElementById('framed-box');
+                targets.forEach((target) => {
+                    const kx = target.width / t.canvas.width, ky = H / t.canvas.height;
+                    t.slots.forEach((slot) => {
+                        const idx = (slot.index - 1) % rawPhotos.length;
+                        const spot = document.createElement('button');
+                        spot.type = 'button';
+                        spot.className = 'retake-spot';
+                        spot.style.left = ((target.x + slot.x * kx) / W * 100) + '%';
+                        spot.style.top = (slot.y * ky / H * 100) + '%';
+                        spot.style.width = (slot.width * kx / W * 100) + '%';
+                        spot.style.height = (slot.height * ky / H * 100) + '%';
+                        if (slot.rotation) spot.style.transform = `rotate(${slot.rotation}deg)`;
+                        spot.innerHTML = '<b><span class="material-symbols-outlined">autorenew</span><span></span></b>';
+                        spot.querySelector('b').lastElementChild.textContent = (en ? 'Retake ' : 'ถ่ายใหม่ ') + (idx + 1);
+                        spot.setAttribute('aria-label', (en ? 'Retake ' : 'ถ่ายใหม่ ') + (idx + 1));
+                        spot.onclick = () => { window.location.href = `capture.html?retake=${idx}`; };
+                        box.appendChild(spot);
+                    });
+                });
+                document.getElementById('photo-grid').classList.add('hidden');
+                document.getElementById('framed').classList.remove('hidden');
+                fitFramed();
+                window.addEventListener('resize', fitFramed);
+                return true;
+            } catch (e) {
+                console.warn('Framed review unavailable, showing the photos alone:', e);
+                return false;
+            }
+        }
+
+        // As big as the space between the title and the Continue bar allows.
+        function fitFramed() {
+            const img = document.getElementById('framed-img');
+            const bar = document.getElementById('btn-continue').parentElement.offsetHeight;
+            const top = document.getElementById('framed').getBoundingClientRect().top;
+            const h = Math.max(240, window.innerHeight - top - bar - 48), w = Math.min(window.innerWidth - 32, 1100);
+            const k = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+            img.style.width = Math.floor(img.naturalWidth * k) + 'px';
         }
 
         // Shape of the photo in the frame picked before shooting, so the review shows what will be printed.

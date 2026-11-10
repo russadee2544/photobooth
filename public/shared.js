@@ -96,6 +96,9 @@ const Kiosk = {
     // Every booth uses the studio on the main site unless admin sets another address.
     get studioUrl() { return (localStorage.getItem('kiosk_studio_url') || 'https://photobooth-tau-one.vercel.app/studio').trim().replace(/\/+$/, ''); },
     set studioUrl(v) { localStorage.setItem('kiosk_studio_url', String(v || '').trim()); },
+    // Receipt paper: the customer may pick a slip with the download QR printed under the photo (default offered).
+    get receiptQrEnabled() { return localStorage.getItem('kiosk_receipt_qr_enabled') !== 'false'; },
+    set receiptQrEnabled(v) { localStorage.setItem('kiosk_receipt_qr_enabled', v ? 'true' : 'false'); },
     get gifEnabled() { return localStorage.getItem('kiosk_gif_enabled') !== 'false'; },
     set gifEnabled(v) { localStorage.setItem('kiosk_gif_enabled', v ? 'true' : 'false'); },
     get kioskId() { return localStorage.getItem('kiosk_id') || ''; },
@@ -3047,6 +3050,42 @@ function buildShareLink({ colorUrl, ditherUrl, gifUrl, studioId, expiresAt } = {
     const x = Date.parse(expiresAt || '');
     if (x > 0) parts.push('x=' + Math.floor(x / 1000));
     return `${SHARE_PAGE_URL}#${parts.join('&')}`;
+}
+
+// The receipt with the one-QR link printed under the photo. Resolves to a PNG data URL, or null.
+async function addReceiptQr(dataUrl, link, expiresAt) {
+    const photo = await loadTemplateImage(dataUrl);
+    if (!photo || !link || typeof QRCode === 'undefined') return null;
+    const w = photo.naturalWidth, h = photo.naturalHeight;
+    const qrSize = Math.round(w * 0.46), pad = Math.round(w * 0.06), textSize = Math.max(12, Math.round(w * 0.045));
+    const holder = document.createElement('div');
+    new QRCode(holder, { text: link, width: qrSize, height: qrSize, colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+    const qr = holder.querySelector('canvas');
+    if (!qr) return null;
+    try { await document.fonts.load(`600 ${textSize}px Prompt`); } catch (_) {}
+    const x = Date.parse(expiresAt || '');
+    const lines = ['สแกนโหลดรูป · แต่งรูปบนมือถือ'];
+    if (x > 0) {
+        const d = new Date(x);
+        lines.push(`ใช้ได้ถึง ${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`);
+    }
+    const footer = pad + qrSize + Math.round(pad * 0.5) + Math.round(lines.length * textSize * 1.5) + pad;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h + footer;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(photo, 0, 0);
+    ctx.imageSmoothingEnabled = false;   // crisp modules on thermal paper
+    ctx.drawImage(qr, Math.round((w - qrSize) / 2), h + pad, qrSize, qrSize);
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    lines.forEach((line, i) => {
+        ctx.font = `${i ? 400 : 600} ${textSize}px Prompt, sans-serif`;
+        ctx.fillText(line, w / 2, h + pad + qrSize + Math.round(pad * 0.5) + i * textSize * 1.5, w - pad * 2);
+    });
+    return c.toDataURL('image/png');
 }
 
 // The session-photo function writes the log row together with the upload, so the
