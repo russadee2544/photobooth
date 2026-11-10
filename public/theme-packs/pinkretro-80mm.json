@@ -1,6 +1,6 @@
 {
   "packId": "pinkretro-80mm",
-  "version": 2,
+  "version": 3,
   "name": "Pink Retro (80mm)",
   "templates": [
     {
@@ -249,7 +249,7 @@
     {
       "schemaVersion": 1,
       "templateId": "custom_pack_pinkretro_80_4",
-      "layoutId": "4_3x2",
+      "layoutId": "4_3x4",
       "name": "Pink Retro · 80mm · 4 รูป",
       "type": "thermal80",
       "orientation": "portrait",
@@ -257,10 +257,10 @@
       "isCustom": true,
       "canvas": {
         "width": 576,
-        "height": 1728,
+        "height": 1113,
         "dpi": 203,
         "backgroundColor": "#FFFFFF",
-        "backgroundImage": "/theme-packs/pinkretro/receipt-4-light.jpg",
+        "backgroundImage": "/theme-packs/pinkretro/receipt-4grid-light.jpg",
         "backgroundFitMode": "stretch",
         "safeMargin": {
           "top": 0,
@@ -284,12 +284,12 @@
         {
           "id": "stickers",
           "name": "Stickers and frame lines",
-          "url": "/theme-packs/pinkretro/receipt-4-over.png",
+          "url": "/theme-packs/pinkretro/receipt-4grid-over.png",
           "placement": "front",
           "x": 0,
           "y": 0,
           "width": 576,
-          "height": 1728,
+          "height": 1113,
           "rotation": 0,
           "zIndex": 220,
           "opacity": 1,
@@ -299,10 +299,10 @@
       "slots": [
         {
           "index": 1,
-          "x": 82,
+          "x": 36,
           "y": 134,
-          "width": 412,
-          "height": 270,
+          "width": 240,
+          "height": 320,
           "rotation": 0,
           "zIndex": 1,
           "focusX": 0.5,
@@ -311,34 +311,34 @@
         },
         {
           "index": 2,
-          "x": 58,
-          "y": 443,
-          "width": 461,
-          "height": 325,
+          "x": 300,
+          "y": 134,
+          "width": 240,
+          "height": 320,
           "rotation": 0,
           "zIndex": 2,
-          "focusX": 0.5,
-          "focusY": 0.42,
-          "shape": "cloud"
-        },
-        {
-          "index": 3,
-          "x": 82,
-          "y": 809,
-          "width": 412,
-          "height": 270,
-          "rotation": 0,
-          "zIndex": 3,
           "focusX": 0.5,
           "focusY": 0.42,
           "shape": "rounded"
         },
         {
+          "index": 3,
+          "x": 36,
+          "y": 478,
+          "width": 240,
+          "height": 320,
+          "rotation": 0,
+          "zIndex": 3,
+          "focusX": 0.5,
+          "focusY": 0.42,
+          "shape": "cloud"
+        },
+        {
           "index": 4,
-          "x": 58,
-          "y": 1119,
-          "width": 461,
-          "height": 325,
+          "x": 300,
+          "y": 478,
+          "width": 240,
+          "height": 320,
           "rotation": 0,
           "zIndex": 4,
           "focusX": 0.5,

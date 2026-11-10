@@ -1,6 +1,6 @@
 {
   "packId": "lace-80mm",
-  "version": 1,
+  "version": 2,
   "name": "Lace (80mm)",
   "templates": [
     {
@@ -212,10 +212,10 @@
       "isCustom": true,
       "canvas": {
         "width": 576,
-        "height": 2984,
+        "height": 1114,
         "dpi": 203,
         "backgroundColor": "#FFFFFF",
-        "backgroundImage": "/theme-packs/lace/receipt-4-paper.png",
+        "backgroundImage": "/theme-packs/lace/receipt-4grid-paper.png",
         "backgroundFitMode": "stretch",
         "safeMargin": {
           "top": 0,
@@ -239,10 +239,10 @@
       "slots": [
         {
           "index": 1,
-          "x": 117,
-          "y": 134,
-          "width": 341,
-          "height": 477,
+          "x": 59,
+          "y": 105,
+          "width": 171,
+          "height": 239,
           "rotation": 0,
           "zIndex": 1,
           "focusX": 0.5,
@@ -251,10 +251,10 @@
         },
         {
           "index": 2,
-          "x": 117,
-          "y": 762,
-          "width": 341,
-          "height": 477,
+          "x": 347,
+          "y": 105,
+          "width": 171,
+          "height": 239,
           "rotation": 0,
           "zIndex": 2,
           "focusX": 0.5,
@@ -263,10 +263,10 @@
         },
         {
           "index": 3,
-          "x": 117,
-          "y": 1390,
-          "width": 341,
-          "height": 477,
+          "x": 59,
+          "y": 414,
+          "width": 171,
+          "height": 239,
           "rotation": 0,
           "zIndex": 3,
           "focusX": 0.5,
@@ -275,10 +275,10 @@
         },
         {
           "index": 4,
-          "x": 117,
-          "y": 2017,
-          "width": 341,
-          "height": 477,
+          "x": 347,
+          "y": 414,
+          "width": 171,
+          "height": 239,
           "rotation": 0,
           "zIndex": 4,
           "focusX": 0.5,

@@ -18,15 +18,23 @@ const OVAL = { dx: 39.118, dy: 44.768 - 25.2, w: 113.765, h: 159.058 };
 const TEXT = { y0: 440, y1: 556, gapAbove: 446.382 - (234.415 + 198.194) - 6 };
 const TEXT_TOP = 440;                                    // lettering starts here (solid ink below)
 
+// Four photos: half-size doilies two by two; one to three photos stack full size.
+const GRID = { n: 4, scale: 0.5, gap: 4 };
 function layout(n) {
-  const frames = Array.from({ length: n }, (_, i) => DOILY.y + i * (DOILY.h + GAP));
-  const textAt = frames[n - 1] + DOILY.h + TEXT.gapAbove;
+  const grid = n === GRID.n;
+  const s = grid ? GRID.scale : 1;
+  const frames = grid
+    ? [0, 1, 2, 3].map((i) => ({ x: (i % 2) * (W / 2), y: DOILY.y + Math.floor(i / 2) * (DOILY.h * s + GRID.gap), s }))
+    : Array.from({ length: n }, (_, i) => ({ x: 0, y: DOILY.y + i * (DOILY.h + GAP), s }));
+  const textAt = frames[frames.length - 1].y + DOILY.h * s + TEXT.gapAbove;
   const height = textAt + (TEXT.y1 - TEXT.y0) + 20;
   const pieces = [
-    ...frames.map((y) => `P,${DOILY.y - DOILY.pad},${DOILY.y + DOILY.h + DOILY.pad},${(y - DOILY.pad).toFixed(3)}`),
+    ...frames.map((f) => (grid
+      ? `Q,${DOILY.y - DOILY.pad},${DOILY.y + DOILY.h + DOILY.pad},${f.x},${(f.y - DOILY.pad * s).toFixed(3)},${s}`
+      : `P,${DOILY.y - DOILY.pad},${DOILY.y + DOILY.h + DOILY.pad},${(f.y - DOILY.pad).toFixed(3)}`)),
     `P,${TEXT.y0},${TEXT.y1},${textAt.toFixed(3)}`,
   ];
-  return { n, height, frames, spec: [`C,${W},${height.toFixed(3)}`, ...pieces].join('|') };
+  return { n, height, frames, tag: grid ? `${n}grid` : `${n}`, spec: [`C,${W},${height.toFixed(3)}`, ...pieces].join('|') };
 }
 
 const layouts = [1, 2, 3, 4].map(layout);
@@ -34,13 +42,13 @@ const q = (p) => p.replace(/'/g, "''");
 const cs = q(join(import.meta.dirname, 'lace-render.cs'));
 const art = join(import.meta.dirname, 'lace-lineart.tmp.png');
 const calls = [`[LaceTheme]::LineArt('${q(join(import.meta.dirname, 'lace-src.png'))}', '${q(art)}', ${TEXT_TOP})`,
-  ...layouts.map((l) => `[LaceTheme]::Variant('${q(art)}', '${l.spec}', '${q(join(outDir, `receipt-${l.n}-paper.png`))}')`)];
+  ...layouts.map((l) => `[LaceTheme]::Variant('${q(art)}', '${l.spec}', '${q(join(outDir, `receipt-${l.tag}-paper.png`))}')`)];
 execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
   `$ErrorActionPreference='Stop'; Add-Type -ReferencedAssemblies System.Drawing -Path '${cs}'; ${calls.join('; ')}`], { stdio: 'inherit' });
 rmSync(art, { force: true });
 
 const ASSET = (name) => `/theme-packs/lace/${name}`;
-const templates = layouts.map(({ n, height, frames }) => {
+const templates = layouts.map(({ n, height, frames, tag }) => {
   const width = 576, k = width / W, r = (v) => Math.round(v * k);
   return {
     schemaVersion: 1,
@@ -53,17 +61,17 @@ const templates = layouts.map(({ n, height, frames }) => {
     isCustom: true,
     canvas: {
       width, height: Math.round(height * k), dpi: 203, backgroundColor: '#FFFFFF',
-      backgroundImage: ASSET(`receipt-${n}-paper.png`), backgroundFitMode: 'stretch',
+      backgroundImage: ASSET(`receipt-${tag}-paper.png`), backgroundFitMode: 'stretch',
       safeMargin: { top: 0, bottom: 0, left: 0, right: 0 },
       bleedMargin: { top: 0, bottom: 0, left: 0, right: 0 },
     },
     overlay: { url: '', zIndex: 100, fitMode: 'cover' },
     artboard: [],
-    slots: frames.map((y, i) => ({ index: i + 1, x: r(OVAL.dx), y: r(y + OVAL.dy), width: r(OVAL.w), height: r(OVAL.h), rotation: 0,
+    slots: frames.map((f, i) => ({ index: i + 1, x: r(f.x + OVAL.dx * f.s), y: r(f.y + OVAL.dy * f.s), width: r(OVAL.w * f.s), height: r(OVAL.h * f.s), rotation: 0,
       zIndex: i + 1, focusX: 0.5, focusY: 0.42, shape: 'oval' })),
     printSettings: { printTwoPerPage: false, paperSize: '80mm' },
   };
 });
 writeFileSync(join(root, 'public', 'theme-packs', 'lace-80mm.json'),
-  JSON.stringify({ packId: 'lace-80mm', version: 1, name: 'Lace (80mm)', templates }, null, 2) + '\n');
+  JSON.stringify({ packId: 'lace-80mm', version: 2, name: 'Lace (80mm)', templates }, null, 2) + '\n');
 console.log('lace:', templates.map((t) => `${t.name} ${t.canvas.width}x${t.canvas.height}`).join(' | '));

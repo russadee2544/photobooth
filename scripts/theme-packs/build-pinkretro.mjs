@@ -42,6 +42,13 @@ const LAYOUTS = {
   4: { frames: [[R(44.540), []], [C(147.752), ['smileHeartPearl']], [R(269.591), ['blueHeart']], [C(372.936), ['memoriesHeartStar']]], end: 485 },
 };
 
+// Receipts with four photos: two by two (portrait 3:4), rounded frames on top, clouds below.
+const GX = 12, GW = 168, GGAP = 8, CW = (GW - GGAP) / 2, CH = CW * 4 / 3, GY = 44.540;
+const cell = (shape, col, row) => ({ shape, x: GX + col * (CW + GGAP), y: GY + row * (CH + GGAP), w: CW, h: CH,
+  stroke: shape === 'cloud' ? '#ebc0e7' : '#fc8fc8' });
+const RECEIPT_GRID = { frames: [[cell('rounded', 0, 0), []], [cell('rounded', 1, 0), ['blueHeart']],
+  [cell('cloud', 0, 1), []], [cell('cloud', 1, 1), []]], end: GY + 2 * CH + GGAP + 14 };
+
 // Spread a compact layout to a fixed height (photo strips are always 2x6).
 function place(layout, height) {
   const compact = layout.end + (BOTTOM.src[1] - BOTTOM.src[0]);
@@ -85,10 +92,13 @@ const calls = [];
 const variants = [];
 for (const kind of ['strip', 'receipt']) {
   for (const n of [1, 2, 3, 4]) {
-    const placed = place(LAYOUTS[n], kind === 'strip' ? FULL_H : 0);
-    variants.push({ kind, n, placed });
+    const grid = kind === 'receipt' && n === 4;
+    const placed = place(grid ? RECEIPT_GRID : LAYOUTS[n], kind === 'strip' ? FULL_H : 0);
+    placed.grid = grid;
+    const tag = grid ? `${n}grid` : `${n}`;
+    variants.push({ kind, n, placed, tag });
     // strip uses the dark paper, receipt the light one; both get written, one is used
-    calls.push(`[PinkRetroTheme]::Variant('${src('pinkretro-under-src.png')}', '${src('pinkretro-over-src.png')}', '${spec(placed)}', '${cloudPath}', '${out(`${kind}-${n}-dark.jpg`)}', '${out(`${kind}-${n}-light.jpg`)}', '${out(`${kind}-${n}-over.png`)}')`);
+    calls.push(`[PinkRetroTheme]::Variant('${src('pinkretro-under-src.png')}', '${src('pinkretro-over-src.png')}', '${spec(placed)}', '${cloudPath}', '${out(`${kind}-${tag}-dark.jpg`)}', '${out(`${kind}-${tag}-light.jpg`)}', '${out(`${kind}-${tag}-over.png`)}')`);
   }
 }
 execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
@@ -97,11 +107,11 @@ execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
 // Each variant only needs one paper: dark for strips, light for receipts.
 for (const n of [1, 2, 3, 4]) {
   rmSync(join(outDir, `strip-${n}-light.jpg`), { force: true });
-  rmSync(join(outDir, `receipt-${n}-dark.jpg`), { force: true });
+  rmSync(join(outDir, `receipt-${n === 4 ? '4grid' : n}-dark.jpg`), { force: true });
 }
 
 const ASSET = (name) => `/theme-packs/pinkretro/${name}`;
-function template({ kind, n, placed }) {
+function template({ kind, n, placed, tag }) {
   const strip = kind === 'strip';
   const width = strip ? 600 : 576;
   const k = width / W;
@@ -110,7 +120,7 @@ function template({ kind, n, placed }) {
   return {
     schemaVersion: 1,
     templateId: strip ? `custom_pack_pinkretro_2x6_${n}` : `custom_pack_pinkretro_80_${n}`,
-    layoutId: `${n}_3x2`,
+    layoutId: placed.grid ? `${n}_3x4` : `${n}_3x2`,
     name: `Pink Retro · ${strip ? '2×6' : '80mm'} · ${n} รูป`,
     type: strip ? '2x6' : 'thermal80',
     orientation: 'portrait',
@@ -118,12 +128,12 @@ function template({ kind, n, placed }) {
     isCustom: true,
     canvas: {
       width, height, dpi: strip ? 300 : 203, backgroundColor: strip ? '#232323' : '#FFFFFF',
-      backgroundImage: ASSET(`${kind}-${n}-${strip ? 'dark' : 'light'}.jpg`), backgroundFitMode: 'stretch',
+      backgroundImage: ASSET(`${kind}-${tag}-${strip ? 'dark' : 'light'}.jpg`), backgroundFitMode: 'stretch',
       safeMargin: { top: 0, bottom: 0, left: 0, right: 0 },
       bleedMargin: { top: 0, bottom: 0, left: 0, right: 0 },
     },
     overlay: { url: '', zIndex: 100, fitMode: 'cover' },
-    artboard: [{ id: 'stickers', name: 'Stickers and frame lines', url: ASSET(`${kind}-${n}-over.png`), placement: 'front',
+    artboard: [{ id: 'stickers', name: 'Stickers and frame lines', url: ASSET(`${kind}-${tag}-over.png`), placement: 'front',
       x: 0, y: 0, width, height, rotation: 0, zIndex: 220, opacity: 1, visible: true }],
     slots: placed.frames.map(({ frame: f }, i) => ({ index: i + 1, x: r(f.x), y: r(f.y), width: r(f.w), height: r(f.h), rotation: 0,
       zIndex: i + 1, focusX: 0.5, focusY: 0.42, shape: f.shape })),
@@ -136,5 +146,5 @@ const receipts = variants.filter((v) => v.kind === 'receipt').map(template);
 writeFileSync(join(root, 'public', 'theme-packs', 'pinkretro-2x6.json'),
   JSON.stringify({ packId: 'pinkretro-2x6', version: 2, name: 'Pink Retro (2x6)', templates: strips }, null, 2) + '\n');
 writeFileSync(join(root, 'public', 'theme-packs', 'pinkretro-80mm.json'),
-  JSON.stringify({ packId: 'pinkretro-80mm', version: 2, name: 'Pink Retro (80mm)', templates: receipts }, null, 2) + '\n');
+  JSON.stringify({ packId: 'pinkretro-80mm', version: 3, name: 'Pink Retro (80mm)', templates: receipts }, null, 2) + '\n');
 console.log('pink retro:', [...strips, ...receipts].map((t) => `${t.name} ${t.canvas.width}x${t.canvas.height}`).join(' | '));

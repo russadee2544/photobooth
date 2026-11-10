@@ -71,7 +71,7 @@ public static class LaceTheme
         }
     }
 
-    // spec: C,W,H | P,srcY0,srcY1,dstY  (full-width pieces of the line art, same size)
+    // spec: C,W,H | P,srcY0,srcY1,dstY  (full-width pieces of the line art, same size) | Q (scaled piece, see below)
     public static void Variant(string lineArt, string spec, string paperOut)
     {
         var items = spec.Split('|');
@@ -85,6 +85,15 @@ public static class LaceTheme
             foreach (var raw in items)
             {
                 var p = raw.Split(',');
+                if (p[0] == "Q")
+                {
+                    // Q,srcY0,srcY1,dstX,dstY,scale: a full-width piece drawn smaller (two doilies side by side)
+                    var qs = new Rectangle(0, (int)Math.Round(F(p[1]) * K), art.Width, (int)Math.Round((F(p[2]) - F(p[1])) * K));
+                    float sc = F(p[5]);
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(art, new RectangleF(F(p[3]) * K, F(p[4]) * K, art.Width * sc, qs.Height * sc), qs, GraphicsUnit.Pixel);
+                    continue;
+                }
                 if (p[0] != "P") continue;
                 var src = new Rectangle(0, (int)Math.Round(F(p[1]) * K), art.Width, (int)Math.Round((F(p[2]) - F(p[1])) * K));
                 g.DrawImage(art, new Rectangle(0, (int)Math.Round(F(p[3]) * K), W, src.Height), src, GraphicsUnit.Pixel);

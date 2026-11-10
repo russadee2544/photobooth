@@ -32,16 +32,25 @@ const second = ['starRight', 'starMid'];
 const third = ['starLow', 'ringRight'];
 const foot = ['bigStar', 'ringCorner', 'ringFoot', 'starFoot'];
 
+// Four photos sit two by two (portrait 3:4) across the house; one to three photos stack.
+const GRID = { n: 4, x: 20, w: 152, gap: 6 };
+GRID.cw = (GRID.w - GRID.gap) / 2; GRID.ch = GRID.cw * 4 / 3;
 function layout(n) {
-  const height = FRAME.y + n * FRAME.h + (n - 1) * (FRAME.pitch - FRAME.h) + FOOT;
+  const grid = n === GRID.n;
+  const area = grid ? 2 * GRID.ch + GRID.gap : n * FRAME.h + (n - 1) * (FRAME.pitch - FRAME.h);
+  const height = FRAME.y + area + FOOT;
   const shift = height - FULL_H;
-  const frames = Array.from({ length: n }, (_, i) => FRAME.y + i * FRAME.pitch);
+  const frames = grid
+    ? [0, 1, 2, 3].map((i) => ({ x: GRID.x + (i % 2) * (GRID.cw + GRID.gap), y: FRAME.y + Math.floor(i / 2) * (GRID.ch + GRID.gap), w: GRID.cw, h: GRID.ch }))
+    : Array.from({ length: n }, (_, i) => ({ x: FRAME.x, y: FRAME.y + i * FRAME.pitch, w: FRAME.w, h: FRAME.h }));
   const place = (name, dy) => {
     const [x, y, w, h] = D[name];
     return `S,${x},${y},${w},${h},${x},${(y + dy).toFixed(3)}`;
   };
   // One photo: the corner ring would run into the bow, so it stays out.
-  const stickers = [...upper.map((d) => place(d, 0)),
+  // Two by two: the bow and the stars that would land on the photos stay out.
+  const stickers = grid ? [place('ringTop', 0),
+    ...foot.filter((d) => d !== 'bigStar').map((d) => place(d, shift))] : [...upper.map((d) => place(d, 0)),
     ...(n >= 2 ? second.map((d) => place(d, 0)) : []),
     ...(n >= 3 ? third.map((d) => place(d, 0)) : []),
     ...(n >= 4 ? third.map((d) => place(d, FRAME.pitch)) : []),
@@ -51,9 +60,9 @@ function layout(n) {
     178.877, 95.05, 178.877, b.toFixed(3), 13.123, b.toFixed(3), 13.123, 95.05, 7.047, 95.05];
   const spec = [`C,${W},${height.toFixed(3)},${HEADER_END},${b.toFixed(3)},${HOUSE_END}`,
     `H,${house.join(',')}`,
-    ...frames.map((y) => `R,${FRAME.x},${y.toFixed(3)},${FRAME.w},${FRAME.h},${FRAME.stroke}`),
+    ...frames.map((f) => `R,${f.x.toFixed(3)},${f.y.toFixed(3)},${f.w.toFixed(3)},${f.h.toFixed(3)},${FRAME.stroke}`),
     ...stickers].join('|');
-  return { n, height, frames, spec };
+  return { n, height, frames, spec, tag: grid ? `${n}grid` : `${n}` };
 }
 
 const layouts = [1, 2, 3, 4].map(layout);
@@ -62,20 +71,20 @@ const here = (name) => q(join(import.meta.dirname, name));
 const paperArt = here('slowdays-paper.tmp.png'), doodleArt = here('slowdays-doodles.tmp.png');
 const calls = [`[SlowDaysTheme]::Paper('${here('slowdays-clean-src.png')}', '${paperArt}', ${PILL.join(', ')})`,
   `[SlowDaysTheme]::Doodles('${here('slowdays-doodles-src.png')}', '${here('slowdays-clean-src.png')}', '${doodleArt}')`,
-  ...layouts.map((l) => `[SlowDaysTheme]::Variant('${paperArt}', '${doodleArt}', '${l.spec}', '${q(join(outDir, `receipt-${l.n}-paper.png`))}', '${q(join(outDir, `receipt-${l.n}-over.png`))}')`)];
+  ...layouts.map((l) => `[SlowDaysTheme]::Variant('${paperArt}', '${doodleArt}', '${l.spec}', '${q(join(outDir, `receipt-${l.tag}-paper.png`))}', '${q(join(outDir, `receipt-${l.tag}-over.png`))}')`)];
 execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
   `$ErrorActionPreference='Stop'; Add-Type -ReferencedAssemblies System.Drawing -Path '${here('slowdays-render.cs')}'; ${calls.join('; ')}`], { stdio: 'inherit' });
 rmSync(join(import.meta.dirname, 'slowdays-paper.tmp.png'), { force: true });
 rmSync(join(import.meta.dirname, 'slowdays-doodles.tmp.png'), { force: true });
 
 const ASSET = (name) => `/theme-packs/slowdays/${name}`;
-const templates = layouts.map(({ n, height, frames }) => {
+const templates = layouts.map(({ n, height, frames, tag }) => {
   const width = 576, k = width / W, h = Math.round(height * k);
   const r = (v) => Math.round(v * k);
   return {
     schemaVersion: 1,
     templateId: `custom_pack_slowdays_80_${n}`,
-    layoutId: `${n}_4x3`,
+    layoutId: n === GRID.n ? `${n}_3x4` : `${n}_4x3`,
     name: `Slow Days · 80mm · ${n} รูป`,
     type: 'thermal80',
     orientation: 'portrait',
@@ -83,18 +92,18 @@ const templates = layouts.map(({ n, height, frames }) => {
     isCustom: true,
     canvas: {
       width, height: h, dpi: 203, backgroundColor: '#FFFFFF',
-      backgroundImage: ASSET(`receipt-${n}-paper.png`), backgroundFitMode: 'stretch',
+      backgroundImage: ASSET(`receipt-${tag}-paper.png`), backgroundFitMode: 'stretch',
       safeMargin: { top: 0, bottom: 0, left: 0, right: 0 },
       bleedMargin: { top: 0, bottom: 0, left: 0, right: 0 },
     },
     overlay: { url: '', zIndex: 100, fitMode: 'cover' },
-    artboard: [{ id: 'doodles', name: 'Doodles and photo borders', url: ASSET(`receipt-${n}-over.png`), placement: 'front',
+    artboard: [{ id: 'doodles', name: 'Doodles and photo borders', url: ASSET(`receipt-${tag}-over.png`), placement: 'front',
       x: 0, y: 0, width, height: h, rotation: 0, zIndex: 220, opacity: 1, visible: true }],
-    slots: frames.map((y, i) => ({ index: i + 1, x: r(FRAME.x), y: r(y), width: r(FRAME.w), height: r(FRAME.h), rotation: 0,
+    slots: frames.map((f, i) => ({ index: i + 1, x: r(f.x), y: r(f.y), width: r(f.w), height: r(f.h), rotation: 0,
       zIndex: i + 1, focusX: 0.5, focusY: 0.42, shape: 'rectangle' })),
     printSettings: { printTwoPerPage: false, paperSize: '80mm' },
   };
 });
 writeFileSync(join(root, 'public', 'theme-packs', 'slowdays-80mm.json'),
-  JSON.stringify({ packId: 'slowdays-80mm', version: 1, name: 'Slow Days (80mm)', templates }, null, 2) + '\n');
+  JSON.stringify({ packId: 'slowdays-80mm', version: 2, name: 'Slow Days (80mm)', templates }, null, 2) + '\n');
 console.log('slow days:', templates.map((t) => `${t.name} ${t.canvas.width}x${t.canvas.height}`).join(' | '));
