@@ -18,40 +18,33 @@ const FRAME = { x: 56.368, w: 116.432, h: 174.377, stroke: 1 };
 const NAME = { box: [25, 15, 29, 148], at: [25, 15] };
 const MOMENT = { box: [15, 408, 40.5, 152], bottomGap: 576 - 560 };
 
-// Four photos sit two by two in the space of one photo; one to three photos stack.
-const GRID = 4, CELL_GAP = 5, CELL_W = (FRAME.w - CELL_GAP) / 2, CELL_H = (FRAME.h - CELL_GAP) / 2;
 function layout(n) {
-  const grid = n === GRID;
-  const rows = grid ? 1 : n;
-  const height = MARGIN * 2 + rows * FRAME.h + (rows - 1) * GAP;
-  const frames = grid
-    ? [0, 1, 2, 3].map((i) => ({ x: FRAME.x + (i % 2) * (CELL_W + CELL_GAP), y: MARGIN + Math.floor(i / 2) * (CELL_H + CELL_GAP), w: CELL_W, h: CELL_H }))
-    : Array.from({ length: n }, (_, i) => ({ x: FRAME.x, y: MARGIN + i * (FRAME.h + GAP), w: FRAME.w, h: FRAME.h }));
-  // A short column (one photo, or four two by two): both words get smaller so they still fit one above the other.
-  const short = rows === 1;
-  const scale = short ? 0.58 : 1;
+  const height = MARGIN * 2 + n * FRAME.h + (n - 1) * GAP;
+  const frames = Array.from({ length: n }, (_, i) => ({ x: FRAME.x, y: MARGIN + i * (FRAME.h + GAP), w: FRAME.w, h: FRAME.h }));
+  // One photo leaves a short column: both words get smaller so they still fit one above the other.
+  const scale = n === 1 ? 0.58 : 1;
   const [nx, ny, nw, nh] = NAME.box;
   const [mx, my, mw, mh] = MOMENT.box;
-  const nameAt = short ? [38.65 - (nw * scale) / 2, ny] : NAME.at;
-  const momentAt = short ? [35.25 - (mw * scale) / 2, height - MOMENT.bottomGap * scale - mh * scale - 4]
+  const nameAt = n === 1 ? [38.65 - (nw * scale) / 2, ny] : NAME.at;
+  const momentAt = n === 1 ? [35.25 - (mw * scale) / 2, height - MOMENT.bottomGap * scale - mh * scale - 4]
     : [mx, height - MOMENT.bottomGap - mh];
   const items = [`C,${W},${height.toFixed(3)}`,
     `T,${nx},${ny},${nw},${nh},${nameAt[0].toFixed(3)},${nameAt[1].toFixed(3)},${scale}`,
     `T,${mx},${my},${mw},${mh},${momentAt[0].toFixed(3)},${momentAt[1].toFixed(3)},${scale}`,
     ...frames.map((f) => `R,${f.x},${f.y.toFixed(3)},${f.w},${f.h},${FRAME.stroke}`)];
-  return { n, height, frames, spec: items.join('|'), tag: grid ? `${n}grid` : `${n}` };
+  return { n, height, frames, spec: items.join('|') };
 }
 
 const layouts = [1, 2, 3, 4].map(layout);
 const q = (p) => p.replace(/'/g, "''");
 const cs = q(join(import.meta.dirname, 'moment-render.cs'));
 const src = q(join(import.meta.dirname, 'moment-src.png'));
-const calls = layouts.map((l) => `[MomentTheme]::Variant('${src}', '${l.spec}', '${q(join(outDir, `receipt-${l.tag}-paper.png`))}', '${q(join(outDir, `receipt-${l.tag}-over.png`))}')`);
+const calls = layouts.map((l) => `[MomentTheme]::Variant('${src}', '${l.spec}', '${q(join(outDir, `receipt-${l.n}-paper.png`))}', '${q(join(outDir, `receipt-${l.n}-over.png`))}')`);
 execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
   `$ErrorActionPreference='Stop'; Add-Type -ReferencedAssemblies System.Drawing -Path '${cs}'; ${calls.join('; ')}`], { stdio: 'inherit' });
 
 const ASSET = (name) => `/theme-packs/moment/${name}`;
-const templates = layouts.map(({ n, height, frames, tag }) => {
+const templates = layouts.map(({ n, height, frames }) => {
   const width = 576, k = width / W, h = Math.round(height * k);
   const r = (v) => Math.round(v * k);
   return {
@@ -65,12 +58,12 @@ const templates = layouts.map(({ n, height, frames, tag }) => {
     isCustom: true,
     canvas: {
       width, height: h, dpi: 203, backgroundColor: '#FFFFFF',
-      backgroundImage: ASSET(`receipt-${tag}-paper.png`), backgroundFitMode: 'stretch',
+      backgroundImage: ASSET(`receipt-${n}-paper.png`), backgroundFitMode: 'stretch',
       safeMargin: { top: 0, bottom: 0, left: 0, right: 0 },
       bleedMargin: { top: 0, bottom: 0, left: 0, right: 0 },
     },
     overlay: { url: '', zIndex: 100, fitMode: 'cover' },
-    artboard: [{ id: 'borders', name: 'Photo borders', url: ASSET(`receipt-${tag}-over.png`), placement: 'front',
+    artboard: [{ id: 'borders', name: 'Photo borders', url: ASSET(`receipt-${n}-over.png`), placement: 'front',
       x: 0, y: 0, width, height: h, rotation: 0, zIndex: 220, opacity: 1, visible: true }],
     slots: frames.map((f, i) => ({ index: i + 1, x: r(f.x), y: r(f.y), width: r(f.w), height: r(f.h), rotation: 0,
       zIndex: i + 1, focusX: 0.5, focusY: 0.42, shape: 'rectangle' })),
@@ -78,5 +71,5 @@ const templates = layouts.map(({ n, height, frames, tag }) => {
   };
 });
 writeFileSync(join(root, 'public', 'theme-packs', 'moment-80mm.json'),
-  JSON.stringify({ packId: 'moment-80mm', version: 2, name: 'The Moment (80mm)', templates }, null, 2) + '\n');
+  JSON.stringify({ packId: 'moment-80mm', version: 3, name: 'The Moment (80mm)', templates }, null, 2) + '\n');
 console.log('the moment:', templates.map((t) => `${t.name} ${t.canvas.width}x${t.canvas.height}`).join(' | '));
